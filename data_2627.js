@@ -14,6 +14,20 @@ const FINAL_STANDINGS_2526 = {
   'Killer Whales':       {rank:9, pts:909},
 };
 
+// Cap overrides for players with no signed 26-27 contract yet, but who'll clearly command real
+// money once they do — without this they'd fall through to the generic
+// UNSIGNED_FALLBACK_CAP_2627 floor ($1M), understating their real cap impact. Found live
+// 2026-08-25 via a user report that unsigned players were giving their PPTS to a roster for
+// $0 (Zach Bolduc → Dumb and Goalie To). Same format as MANUAL_CAPS_2425/2526/2324 (yrStr is
+// display-only, not read by assignCapFromSignings — left blank since none have signed yet).
+const MANUAL_CAPS_2627 = {
+  'adam fantilli_F':      { cap: 13, yrStr: '' },
+  'cutter gauthier_F':    { cap: 14, yrStr: '' },
+  'alexander nikishin_D': { cap: 6,  yrStr: '' },
+  'zach bolduc_F':        { cap: 3,  yrStr: '' },
+  'simon edvinsson_D':    { cap: 7,  yrStr: '' },
+};
+
 // Captured 2026-07 from the 465.l.97882 league (25-26 season, essentially done — no more moves
 // expected before a new league key is created for 26-27) via /rosters.
 // 25-26 final rosters — pre-drop starting state for 26-27 simulation. Keys = normName.toLowerCase().

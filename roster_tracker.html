@@ -1595,6 +1595,12 @@ const ELC_MAX_2324 = 0.950;
 const ELC_MAX_2425 = 0.975;
 const ELC_MAX_2526 = 0.975; // ELC max cap hit 2025-26 (league min + $175k)
 const ELC_MAX_2627 = 1.025; // ELC max cap hit 2026-27
+// Fallback cap for a player with no signed 26-27 contract — without this, assignCapFromSignings()/
+// syncSigningsAll() left them at cap2627=0, letting a team roster their full PPTS for literally
+// $0 (found live 2026-08-25 via Zach Bolduc giving Dumb and Goalie To 36 points for $0). A
+// deliberately conservative floor, not a real projection — see MANUAL_CAPS_2627 (data_2627.js)
+// for specific players known to be worth much more once they actually sign.
+const UNSIGNED_FALLBACK_CAP_2627 = 1.0;
 const DRAFT_RESERVE_2425 = 1.5 * (ELC_MAX_2425 - 0.175);
 const DRAFT_RESERVE_2526 = 1.5 * (ELC_MAX_2526 - 0.175); // cap to reserve per drop for 25-26 drafting (~$1.20M)
 const DRAFT_RESERVE_2627 = 1.5 * (ELC_MAX_2627 - 0.175); // cap to reserve per drop for 26-27 drafting (~$1.275M)
@@ -2809,7 +2815,9 @@ function assignCapFromSignings(){
       if(c2627.birthDate && !p.birthDate)          p.birthDate = c2627.birthDate;
       if(c2627.nhl_id && !p.nhlId)                 p.nhlId = c2627.nhl_id;
     } else if(!p.capMan){
-      p.cap2627 = 0; p.contractTerm = 0; p.expYear = 0;
+      const manual = _dictLookupPos(p.name, p.pos, MANUAL_CAPS_2627);
+      p.cap2627 = manual?.cap ?? UNSIGNED_FALLBACK_CAP_2627;
+      p.contractTerm = 0; p.expYear = 0;
     }
     const cNext = _findNextContract(contracts, c2627);
     p.nextCap2627          = cNext?.cap ?? null;
@@ -2938,7 +2946,9 @@ async function syncSigningsAll(e){
         if(c2627.birthDate && !p.birthDate) p.birthDate = c2627.birthDate;
         if(c2627.nhl_id && !p.nhlId) p.nhlId = c2627.nhl_id;
       } else {
-        p.cap2627 = 0; p.contractTerm = 0; p.expYear = 0;
+        const manual = _dictLookupPos(p.name, p.pos, MANUAL_CAPS_2627);
+        p.cap2627 = manual?.cap ?? UNSIGNED_FALLBACK_CAP_2627;
+        p.contractTerm = 0; p.expYear = 0;
       }
       const cNext = _findNextContract(contracts, c2627);
       p.nextCap2627          = cNext?.cap ?? null;
@@ -4030,6 +4040,7 @@ const INJURY_DROPS_2627 = new Set(['marcus johansson']);
 // (loadActualRoster2627/compareDrops2627 don't know or care whether this is predicted or real).
 const POSTDROP_ROSTER_2627 = {
   'connor mcdavid_F': 'Silence of the Lamb',
+  'brad marchand_F': 'Silence of the Lamb',
   'nathan mackinnon_F': 'Bossy Posse',
   'leon draisaitl_F': 'Pernicious Puckers',
   'nikita kucherov_F': 'Damage Inc.',
@@ -4084,7 +4095,6 @@ const POSTDROP_ROSTER_2627 = {
   'brandon hagel_F': 'Dumb and Goalie To',
   'morgan geekie_F': 'Dumb and Goalie To',
   'josh doan_F': 'Dumb and Goalie To',
-  'zachary bolduc_F': 'Dumb and Goalie To',
   'rasmus dahlin_D': 'Dumb and Goalie To',
   'shayne gostisbehere_D': 'Dumb and Goalie To',
   'parker wotherspoon_D': 'Dumb and Goalie To',
@@ -4121,7 +4131,6 @@ const POSTDROP_ROSTER_2627 = {
   'wyatt johnston_F': 'Muller Time!',
   'matvei michkov_F': 'Muller Time!',
   'logan cooley_F': 'Muller Time!',
-  'aliaksei protas_F': 'Muller Time!',
   'ryan leonard_F': 'Muller Time!',
   'zayne parekh_D': 'Muller Time!',
   'zeev buium_D': 'Muller Time!',
@@ -4129,7 +4138,7 @@ const POSTDROP_ROSTER_2627 = {
   'john carlson_D': 'Muller Time!',
   'carter yakemchuk_D': 'Muller Time!',
   'karel vejmelka_G': 'Muller Time!',
-  'oliver kapanen_F': 'Muller Time!',
+  'bryan rust_F': 'Muller Time!',
   'tim stutzle_F': 'Pernicious Puckers',
   'nick suzuki_F': 'Pernicious Puckers',
   'alex debrincat_F': 'Pernicious Puckers',
