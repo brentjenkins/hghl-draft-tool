@@ -3908,8 +3908,11 @@ const DRAFT_TEAMS_2627 = Object.entries(FINAL_STANDINGS_2526)
 // Dmitri Voronkov: officially placed on IR 10/4/2024 (preseason upper-body injury 10/3/2024).
 // Yegor Sharangovich: injured late in Calgary's final preseason game 10/4/2024, sidelined
 // week-to-week. Frank Nazar: officially assigned to AHL Rockford 10/2/2024 for top-line minutes.
+// Kevin Shattenkirk & Joe Pavelski: retired ahead of 24-25, not an injury — same "dead roster
+// spot no real GM would keep" logic (per the user, 2026-08-25, naming the rostered players who
+// retired and were therefore dropped that season).
 const INJURY_DROPS_2425       = new Set(['artyom levshunov', 'thatcher demko', 'dmitri voronkov',
-  'yegor sharangovich', 'frank nazar']);
+  'yegor sharangovich', 'frank nazar', 'kevin shattenkirk', 'joe pavelski']);
 const ELC_MANDATORY_DROPS_2425 = new Set([]);
 
 // ── 23-24 season ──────────────────────────────────────────────────────────────
@@ -3943,9 +3946,13 @@ const DRAFT_RESERVE_2324 = 1.5 * (ELC_MAX_2324 - 0.175); // cap to reserve per d
 // didn't make the Penguins' 23-24 opening night roster. Shane Wright: started the season in the
 // AHL (Coachella Valley), granted a CHL-NHL transfer exemption. Simon Edvinsson: started the
 // season in the AHL (Grand Rapids). Jack Quinn: on IR to begin the season.
+// Alexander Edler, Patrice Bergeron, David Krejci, Phil Kessel: retired ahead of 23-24, not an
+// injury — same "dead roster spot no real GM would keep" logic (per the user, 2026-08-25,
+// naming the rostered players who retired and were therefore dropped that season).
 const INJURY_DROPS_2324       = new Set(['brandon montour', 'aaron ekblad', 'andrei vasilevskiy',
   'patrick kane', 'dylan guenther', 'olen zellweger', 'shane pinto',
-  'ty smith', 'shane wright', 'simon edvinsson', 'jack quinn']);
+  'ty smith', 'shane wright', 'simon edvinsson', 'jack quinn',
+  'alexander edler', 'patrice bergeron', 'david krejci', 'phil kessel']);
 const ELC_MANDATORY_DROPS_2324 = new Set([]);
 
 
@@ -5806,12 +5813,12 @@ function _runCompareDrops({ season, guards, predropRoster, postdropRoster, predr
     };
 
     html += section('Correctly dropped', '#16a34a', '✓', r.correctDrops);
+    html += section('Dropped for Injury/Demotion/Retirement', '#6b7280', '🏥', r.injuryMandatory);
     html += section('Algo dropped — should have kept', '#dc2626', '✗', r.algoDroppedShouldKeep);
     html += section('Algo dropped — kept, but dropped later anyway (vindicated)', '#0891b2', '⏱', r.algoDroppedVindicated);
     html += section('Algo kept — should have dropped', '#d97706', '△', r.algoKeptShouldDrop);
     html += section('Algo kept — dropped, but re-acquired by same team later (vindicated)', '#0891b2', '⏱', r.algoKeptReacquired);
     html += section('Dropped by rule — ELC', '#6366f1', '📋', r.elcMandatory);
-    html += section('Dropped for Injury/Demotion/Retirement', '#6b7280', '🏥', r.injuryMandatory);
     // Omit correctKeeps — too verbose; they're the bulk and uninteresting
     html += `</div></div>`;
     return html;
