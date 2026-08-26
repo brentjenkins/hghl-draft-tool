@@ -5985,10 +5985,10 @@ function _runCompareDrops({ season, guards, predropRoster, postdropRoster, predr
 
     html += section('Correctly dropped', '#16a34a', '✓', r.correctDrops);
     html += section('Dropped for Injury/Demotion/Retirement', '#6b7280', '🏥', r.injuryMandatory);
-    html += section('Algo dropped — should have kept', '#dc2626', '✗', r.algoDroppedShouldKeep);
     html += section('Algo dropped — kept, but dropped later anyway (vindicated)', '#0891b2', '⏱', r.algoDroppedVindicated);
-    html += section('Algo kept — should have dropped', '#d97706', '△', r.algoKeptShouldDrop);
+    html += section('Algo dropped — should have kept', '#dc2626', '✗', r.algoDroppedShouldKeep);
     html += section('Algo kept — dropped, but re-acquired by same team later (vindicated)', '#0891b2', '⏱', r.algoKeptReacquired);
+    html += section('Algo kept — should have dropped', '#d97706', '△', r.algoKeptShouldDrop);
     html += section('Dropped by rule — ELC', '#6366f1', '📋', r.elcMandatory);
     // Omit correctKeeps — too verbose; they're the bulk and uninteresting
     html += `</div></div>`;
