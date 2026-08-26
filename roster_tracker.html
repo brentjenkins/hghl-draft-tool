@@ -1138,7 +1138,7 @@ tr:hover td{background:#fafaf8}
               <div style="font-size:11px;color:#6b7280;font-family:monospace;margin-bottom:8px">avg future PPTS/$M gain from cap growth × wtTermValue</div>
               <div style="display:flex;flex-direction:column;gap:3px">
                 <span style="font-size:11px;color:#9ca3af" title="Rewards a candidate's already-signed contract term: a flat AAV gets cheaper as a share of the rising cap ceiling the longer it's locked in. 0 for a 1-year-left deal, maxes out at CAP_GROWTH_TERM_CAP (5) years. Simulate-mode teams always show 0/grayed out.">Term value weight (<span style="font-family:monospace;color:#b0b0ac">wtTermValue</span>)</span>
-                <input type="number" id="s-wtTermValue" value="2" min="0" max="20" step="0.5" onchange="updateDraftWeight('wtTermValue',+this.value)" style="width:64px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center">
+                <input type="number" id="s-wtTermValue" value="8" min="0" max="20" step="0.5" onchange="updateDraftWeight('wtTermValue',+this.value)" style="width:64px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center">
               </div>
             </div>
 
@@ -1536,7 +1536,7 @@ function _effectiveDraftWeights(team, draftWeightsBase){
   const teamMode = _draftModeFor(team);
   return teamMode === 'simulate'
     ? { ...draftWeightsBase, elcExpF: 35, elcExpD: 25, wtCapUse: 0, wtFanBias: draftWeightsBase.wtFanBias || 5, wtTermValue: 0 }
-    : { ...draftWeightsBase, wtCapUse: draftWeightsBase.wtCapUse || 0.15, wtFanBias: 0, wtTermValue: draftWeightsBase.wtTermValue || 2 };
+    : { ...draftWeightsBase, wtCapUse: draftWeightsBase.wtCapUse || 0.15, wtFanBias: 0, wtTermValue: draftWeightsBase.wtTermValue || 8 };
 }
 let ptsTarget = 1200; // historically the real points needed to win the championship, apart from last year
 let minDropF = 1, minDropD = 1; // every team must drop at least this many F and D (G excluded)
@@ -4820,7 +4820,7 @@ function syncSettings(){
   set('s-minSrcCoverage', W.minSrcCoverage??0.28);
   set('s-wtPressure', W.wtPressure);
   set('s-wtDeltaCurve', W.wtDeltaCurve);
-  set('s-wtTermValue', W.wtTermValue??2);
+  set('s-wtTermValue', W.wtTermValue??8);
   set('s-wtPosAlloc', W.wtPosAlloc??1.0);
   set('s-draftProspectRounds', draftProspectRounds);
   set('s-minDropsPreseason', minDropsPreseason); set('s-maxDropsPreseason', maxDropsPreseason);
