@@ -1491,6 +1491,33 @@ function peakTrajectoryScore(age, pg, contractYrsRemaining){
   const primeYrs = Math.max(0, Math.min(age + ctYrs, peakAge + 2) - Math.max(age, peakAge));
   return prox + ascYrs * 1.5 + primeYrs * 0.7;
 }
+
+// Per-year production trajectory rate for the term-value projection (tTermValue, see
+// _scoreDraftCandidate) - a locked-in flat AAV's future efficiency shouldn't assume flat
+// production forever: a still-ascending player's real output likely keeps climbing toward peak
+// (compounding on top of the separate cap-growth effect), while a genuinely past-peak player's
+// likely declining (partially offsetting it). Mirrors peakTrajectoryScore's own pre/post-peak
+// asymmetry (gentler growth, steeper decline) but applied to the PRODUCTION assumption instead
+// of an additive score bonus - deliberately conservative since this compounds on top of
+// CAP_GROWTH_RATE_ASSUMED. ageAtYear is the player's age in the specific future year being
+// projected (age + yearsFromNow), not their current age.
+//
+// A flat decline starting the very year AFTER peak compounds too aggressively over a 5-year
+// term (found 2026-08-26: crushed a merely-1-year-past-peak forward's Term bonus by ~63%,
+// nearly back to the pre-recalibration wt=2 level) - real production doesn't fall off a cliff
+// immediately post-peak. Reuses peakTrajectoryScore's own [peakAge, peakAge+2] prime window
+// (the same Suzuki/Caufield/Hutson "locked in during prime" concept) as a flat-production grace
+// period before decline actually starts.
+const TRAJ_GROWTH_RATE = 0.02;
+const TRAJ_DECLINE_RATE = 0.04;
+const TRAJ_PRIME_WINDOW_YRS = 2; // years past peakAge still treated as flat/prime, not declining
+function _trajYearMult(ageAtYear, pg){
+  if(ageAtYear == null || ageAtYear >= 99) return 1; // unknown age - no trajectory adjustment
+  const peakAge = PEAK_AGE_BY_POS[pg] || 27;
+  if(ageAtYear <= peakAge) return 1 + TRAJ_GROWTH_RATE;       // still ascending toward peak
+  if(ageAtYear <= peakAge + TRAJ_PRIME_WINDOW_YRS) return 1;  // prime window - flat, not yet declining
+  return 1 - TRAJ_DECLINE_RATE;                                // past prime - real decline
+}
 let lastPressure = null, lastPressure2526 = null, lastAllScored = null, lastAllScored2526 = null;
 let _summaryIdx = 0, _summaryTimer = null, _summaryPaused = false;
 let draftMode2425 = false, draftSubMode2425 = 'prospect';
@@ -3512,7 +3539,7 @@ function _scoreCols2627(p){
       conTrjTip: `Peak Trajectory × wtAge\n${b.youthRaw.toFixed(1)} × ${draftWeights.wtAge} = ${(b.tYouth*mult).toFixed(1)}\nPeak Trajectory @ age ${b.ageRaw} = ${b.youthRaw.toFixed(1)}${mult!==1?`\n(× ${mult.toFixed(2)} pos-budget correction)`:''}`,
       conCrvTip: `((PPTS × coverage) − curve baseline) × wtDeltaCurve\n((${b.pp} × ${b.coverageMult.toFixed(2)}) − ${(b.curveBase!=null?b.pp*(Math.round(b.coverageMult*100)/100)-b.deltaRaw:0).toFixed(1)}) × ${draftWeights.wtDeltaCurve} = ${(b.tDelta*mult).toFixed(1)}\ncoverage @ ${b.srcN} src = ${b.coverageMult.toFixed(2)}${mult!==1?`\n(× ${mult.toFixed(2)} pos-budget correction)`:''}`,
       conTermTip: termIsActive
-        ? `Term-adjusted cap efficiency × wtTermValue (Optimize mode)\n${b.termYears||0} yr(s) of locked-in term → ${(b.tTermValue*mult).toFixed(1)}\nRewards a flat AAV that gets cheaper as the cap ceiling rises (hidden value not visible in PpM alone)${mult!==1?`\n(× ${mult.toFixed(2)} pos-budget correction)`:''}`
+        ? `Term-adjusted cap efficiency × wtTermValue (Optimize mode)\n${b.termYears||0} yr(s) of locked-in term → ${(b.tTermValue*mult).toFixed(1)}\nRewards a flat AAV that gets cheaper as the cap ceiling rises (hidden value not visible in PpM alone), adjusted for age trajectory: rising production pre-peak, flat through the prime window (peak to peak+${TRAJ_PRIME_WINDOW_YRS}), declining once past prime (age ${b.ageRaw}, ${posGroup(p.pos)} peak ${PEAK_AGE_BY_POS[posGroup(p.pos)]||27})${b.declineDampen>0?`\nStill-elite production dampens the past-prime decline by ${Math.round(b.declineDampen*100)}%`:''}${mult!==1?`\n(× ${mult.toFixed(2)} pos-budget correction)`:''}`
         : `${b.team||'This team'} is in Simulate mode — Term bonus only applies to Optimize-mode teams`,
       prospectTip: b.tProspect>0
         ? `Years × (PPTS × coverage / ELC expected pts) × wtProspect${b.tFanBias>0?' + Fan team bonus':''}\n${b.prospectAgeScore} × (${b.pp} × ${b.coverageMult.toFixed(2)} / ${b.prospectNormPts}) × ${draftWeights.wtProspect} = ${b.tProspect.toFixed(1)}\nProspect Age @ ${posGroup(p.pos)} <= ${prospectMaxAge}\nYears as prospect = ${prospectMaxAge}+1-${b.ageRaw}=${b.prospectAgeScore}\ncoverage @ ${b.srcN} src = ${b.coverageMult.toFixed(2)}\nELC expected pts @ ${posGroup(p.pos)} = ${b.prospectNormPts}${pw!==1?(pw===0?'\n(ignored — past round decay window)':`\n(× ${pw} round decay = ${(b.tProspect*pw).toFixed(1)})`):''}${b.tFanBias>0?`\nFan team bonus @ ${teamAbbr(b.team)} = ${b.tFanBias.toFixed(1)}`:''}${mult!==1?`\n(× ${mult.toFixed(2)} pos-budget correction)`:''}`
@@ -3847,7 +3874,7 @@ function render(){
         // tCapUse/posAllocMult are mode-specific (both always no-op in prospect mode, only ever
         // real in bestAvail) - so the tooltip needs BOTH breakdowns and picks whichever matches
         // draftSubMode, not just the prospect one every time.
-        const toParts = (x) => ({tPPTS:x.tPPTS,tPPTSM:x.tPPTSM,yrsRaw:x.yrsRaw,youthRaw:x.youthRaw,tYouth:x.tYouth,ageRaw:x.ageRaw,tProspect:x.tProspect,round:focusRound2627,srcN:x.srcN,coverageMult:x.coverageMult,tDelta:x.tDelta,tFanBias:x.tFanBias,pressRaw:x.pressRaw,pressMult:x.pressMult,posMult:x.posMult,posAllocMult:x.posAllocMult,tCapUse:x.tCapUse,tTermValue:x.tTermValue,termYears:x.termYears,pp:x.pp,tPPTSBase:x.tPPTSBase,ppPerM:x.ppPerM,deltaRaw:x.deltaRaw,curveBase:x.curveBase,prospectAgeScore:x.prospectAgeScore,prospectNormPts:x.prospectNormPts,team:viewTeam});
+        const toParts = (x) => ({tPPTS:x.tPPTS,tPPTSM:x.tPPTSM,yrsRaw:x.yrsRaw,youthRaw:x.youthRaw,tYouth:x.tYouth,ageRaw:x.ageRaw,tProspect:x.tProspect,round:focusRound2627,srcN:x.srcN,coverageMult:x.coverageMult,tDelta:x.tDelta,tFanBias:x.tFanBias,pressRaw:x.pressRaw,pressMult:x.pressMult,posMult:x.posMult,posAllocMult:x.posAllocMult,tCapUse:x.tCapUse,tTermValue:x.tTermValue,termYears:x.termYears,declineDampen:x.declineDampen,pp:x.pp,tPPTSBase:x.tPPTSBase,ppPerM:x.ppPerM,deltaRaw:x.deltaRaw,curveBase:x.curveBase,prospectAgeScore:x.prospectAgeScore,prospectNormPts:x.prospectNormPts,team:viewTeam});
         return Object.assign({},p,{_ds,_dsNormal,_dsParts:toParts(b),_dsPartsNormal:toParts(bNormal)});
       });
     const dsField = sortCol==='prod'?'prod':sortCol==='contract'?'contract':sortCol==='con_ppm'?'conPpm':sortCol==='con_trj'?'conTrj':sortCol==='con_crv'?'conCrv':sortCol==='con_term'?'conTerm':sortCol==='prospect'?'prospect':sortCol==='score'?'total':null;
@@ -7961,16 +7988,42 @@ function _scoreDraftCandidate(p, { pg, pp, cap0, pressure, mode, round, draftWei
   // SHARE of a rising cap ceiling — every season it's held, even though ppPerM (points per raw
   // cap dollar, computed above) can't see that, since it only compares cap0 against today's
   // fixed CAP_LIMIT-equivalent. Reuses yrsRaw (contract security, including any already-signed
-  // extension) computed just above. For each future year y, scale today's ppPerM by how much
+  // extension) computed just above. For each future year y, scale today's ppPerM by (a) how much
   // bigger the projected cap ceiling is relative to capLimit0 (today's) — a flat cap0 buys
-  // proportionally more of a bigger cap, so ppPerM effectively grows by that same ratio — then
-  // average across min(yrsRaw, CAP_GROWTH_TERM_CAP) years and compare to today's baseline
-  // (ratio 1). A 1-year-left deal contributes ~0 gain; a long flat deal compounds it. See
-  // wtTermValue / CAP_SCHEDULE_KNOWN above — Optimize-only (0 elsewhere).
+  // proportionally more of a bigger cap — AND (b) a compounding trajectory multiplier (see
+  // _trajYearMult above) that assumes a still-ascending player's production keeps climbing
+  // toward peak while a past-peak player's likely declines, instead of naively holding
+  // production flat for the whole term. Then average across min(yrsRaw, CAP_GROWTH_TERM_CAP)
+  // years and compare to today's baseline (ratio 1, trajMult 1). A 1-year-left deal contributes
+  // ~0 gain; a long flat deal on a young pre-peak player compounds favorably, a long flat deal
+  // on a declining veteran gets partially offset. See wtTermValue / CAP_SCHEDULE_KNOWN above —
+  // Optimize-only (0 elsewhere).
+  // Elite-production dampening: a past-prime player whose CURRENT output is still well above a
+  // genuinely elite threshold gets LESS of the age-based decline applied below — being past a
+  // position's typical peak age doesn't mean actually declining if today's production says
+  // otherwise. Threshold derives from the position's existing ELC-tier expectation (_elcExp /
+  // elcExpF/D/G) scaled up, rather than a cap-curve reference point — found live 2026-08-26 that
+  // comparing against a specific cap point on the fitted curve (tried $6M) was too sensitive to
+  // this league's actual curve shape and barely moved William Nylander (95 pts, $11.5M, 0.03
+  // dampen) despite him clearly still being elite in absolute terms — an ABSOLUTE points
+  // threshold sidesteps the cap-curve dependency entirely and reads the same regardless of what
+  // he's paid. Only dampens the DECLINE branch (never boosts growth/prime years) and is capped
+  // well short of full immunity — age-related risk on a long-term deal is real even for an
+  // elite producer.
+  const ELITE_PTS_MULT = 1.6;
+  const eliteThreshold = _elcExp(pg, draftWeights) * ELITE_PTS_MULT;
+  const eliteRatio = (ppEff > 0 && eliteThreshold > 0) ? Math.max(0, (ppEff - eliteThreshold) / eliteThreshold) : 0;
+  const declineDampen = Math.min(0.75, eliteRatio * 0.5);
   const termYears = Math.max(0, Math.min(yrsRaw, CAP_GROWTH_TERM_CAP));
   let futurePerMNorm = 0;
   if(termYears > 0 && ppPerM > 0 && capLimit0 > 0){
-    for(let y = 1; y <= termYears; y++) futurePerMNorm += ppPerM * (_projectedCapLimit(y, capLimit0) / capLimit0);
+    let trajMult = 1;
+    for(let y = 1; y <= termYears; y++){
+      const rawYearMult = _trajYearMult(age < 99 ? age + y : null, pg);
+      const yearMult = rawYearMult < 1 ? 1 - (1 - rawYearMult) * (1 - declineDampen) : rawYearMult;
+      trajMult *= yearMult;
+      futurePerMNorm += ppPerM * trajMult * (_projectedCapLimit(y, capLimit0) / capLimit0);
+    }
     futurePerMNorm /= termYears;
   }
   const termGain = Math.max(0, futurePerMNorm - ppPerM);
@@ -8050,7 +8103,7 @@ function _scoreDraftCandidate(p, { pg, pp, cap0, pressure, mode, round, draftWei
       }
     }
   }
-  return { score, tPPTS, tPPTSM, yrsRaw, youthRaw, tYouth, ageRaw: age, tProspect: prospect, srcN, coverageMult, tDelta, tCapUse, tFanBias, tTermValue, termYears, pressRaw: pressure[pg], pressMult, posMult, posAllocMult, pp, tPPTSBase, ppPerM, deltaRaw, curveBase: deltaCurveBase, prospectAgeScore, prospectNormPts };
+  return { score, tPPTS, tPPTSM, yrsRaw, youthRaw, tYouth, ageRaw: age, tProspect: prospect, srcN, coverageMult, tDelta, tCapUse, tFanBias, tTermValue, termYears, declineDampen, pressRaw: pressure[pg], pressMult, posMult, posAllocMult, pp, tPPTSBase, ppPerM, deltaRaw, curveBase: deltaCurveBase, prospectAgeScore, prospectNormPts };
 }
 
 // ── Fully-uncontested batch drafting ─────────────────────────────────────────
