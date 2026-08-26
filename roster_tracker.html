@@ -318,7 +318,7 @@ tr:hover td{background:#fafaf8}
   <th onclick="setSortCol2425('con_term2425')" title="Term-length value component — rewards a locked-in flat AAV against the rising cap ceiling (Optimize-mode teams only; grayed out for Simulate)" style="color:#0d9488;text-align:right;white-space:nowrap;font-size:10px;padding:9px 2px">Trm <span id="sort2425-con_term2425"></span></th>
   <th onclick="setSortCol2425('con_trj2425')" title="Peak Trajectory component — age-based, applies to every player" style="color:#475569;text-align:right;white-space:nowrap;font-size:10px;padding:9px 2px">Trj <span id="sort2425-con_trj2425"></span></th>
   <th onclick="setSortCol2425('prospect2425')" title="Prospect Score" style="color:#475569;text-align:right;white-space:nowrap;font-size:10px;padding:9px 2px">Prs <span id="sort2425-prospect2425"></span></th>
-  <th onclick="setSortCol2425('score2425')" title="Production + Contract + Prospect" style="color:#111827;text-align:right;white-space:nowrap;font-size:10px;padding:9px 2px">Score <span id="sort2425-score2425"></span></th>
+  <th onclick="setSortCol2425('score2425')" title="Production + Contract + Trajectory + Prospect" style="color:#111827;text-align:right;white-space:nowrap;font-size:10px;padding:9px 2px">Score <span id="sort2425-score2425"></span></th>
   <th></th>
 </tr>
 </thead>
@@ -417,7 +417,7 @@ tr:hover td{background:#fafaf8}
   <th onclick="setSortCol2324('con_term2324')" title="Term-length value component — rewards a locked-in flat AAV against the rising cap ceiling (Optimize-mode teams only; grayed out for Simulate)" style="color:#0d9488;text-align:right;white-space:nowrap;font-size:10px;padding:9px 2px">Trm <span id="sort2324-con_term2324"></span></th>
   <th onclick="setSortCol2324('con_trj2324')" title="Peak Trajectory component — age-based, applies to every player" style="color:#475569;text-align:right;white-space:nowrap;font-size:10px;padding:9px 2px">Trj <span id="sort2324-con_trj2324"></span></th>
   <th onclick="setSortCol2324('prospect2324')" title="Prospect Score" style="color:#475569;text-align:right;white-space:nowrap;font-size:10px;padding:9px 2px">Prs <span id="sort2324-prospect2324"></span></th>
-  <th onclick="setSortCol2324('score2324')" title="Production + Contract + Prospect" style="color:#111827;text-align:right;white-space:nowrap;font-size:10px;padding:9px 2px">Score <span id="sort2324-score2324"></span></th>
+  <th onclick="setSortCol2324('score2324')" title="Production + Contract + Trajectory + Prospect" style="color:#111827;text-align:right;white-space:nowrap;font-size:10px;padding:9px 2px">Score <span id="sort2324-score2324"></span></th>
   <th></th>
 </tr>
 </thead>
@@ -526,7 +526,7 @@ tr:hover td{background:#fafaf8}
   <th onclick="setSortCol2526('con_term2526')" title="Term-length value component — rewards a locked-in flat AAV against the rising cap ceiling (Optimize-mode teams only; grayed out for Simulate)" style="color:#0d9488;text-align:right;white-space:nowrap;font-size:10px;padding:9px 2px">Trm <span id="sort2526-con_term2526"></span></th>
   <th onclick="setSortCol2526('con_trj2526')" title="Peak Trajectory component — age-based, applies to every player" style="color:#475569;text-align:right;white-space:nowrap;font-size:10px;padding:9px 2px">Trj <span id="sort2526-con_trj2526"></span></th>
   <th onclick="setSortCol2526('prospect2526')" title="Prospect Score" style="color:#475569;text-align:right;white-space:nowrap;font-size:10px;padding:9px 2px">Prs <span id="sort2526-prospect2526"></span></th>
-  <th onclick="setSortCol2526('score2526')" title="Production + Contract + Prospect" style="color:#111827;text-align:right;white-space:nowrap;font-size:10px;padding:9px 2px">Score <span id="sort2526-score2526"></span></th>
+  <th onclick="setSortCol2526('score2526')" title="Production + Contract + Trajectory + Prospect" style="color:#111827;text-align:right;white-space:nowrap;font-size:10px;padding:9px 2px">Score <span id="sort2526-score2526"></span></th>
   <th></th>
 </tr>
 </thead>
@@ -703,7 +703,7 @@ tr:hover td{background:#fafaf8}
   <th onclick="setSortCol('con_term')" title="Term-length value component — rewards a locked-in flat AAV against the rising cap ceiling (Optimize-mode teams only; grayed out for Simulate)" style="color:#0d9488;text-align:right;white-space:nowrap;font-size:10px;padding:9px 2px">Trm <span id="sort-con_term"></span></th>
   <th onclick="setSortCol('con_trj')" title="Peak Trajectory component — age-based, applies to every player" style="color:#475569;text-align:right;white-space:nowrap;font-size:10px;padding:9px 2px">Trj <span id="sort-con_trj"></span></th>
   <th onclick="setSortCol('prospect')" title="Prospect Score" style="color:#475569;text-align:right;white-space:nowrap;font-size:10px;padding:9px 2px">Prs <span id="sort-prospect"></span></th>
-  <th id="th-score" onclick="setSortCol('score')" title="Production + Contract + Prospect" style="color:#111827;text-align:right;white-space:nowrap;font-size:10px;padding:9px 2px">Score <span id="sort-score"></span></th>
+  <th id="th-score" onclick="setSortCol('score')" title="Production + Contract + Trajectory + Prospect" style="color:#111827;text-align:right;white-space:nowrap;font-size:10px;padding:9px 2px">Score <span id="sort-score"></span></th>
   <th></th>
 </tr>
 </thead>
@@ -1058,7 +1058,7 @@ tr:hover td{background:#fafaf8}
     <!-- Rank Scoring -->
     <div style="margin-bottom:20px">
       <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#9ca3af;margin-bottom:6px">Rank Scoring</div>
-      <div style="font-size:12px;color:#6b7280;margin-bottom:12px">Score = <strong style="color:#185FA5">Production</strong> + <strong style="color:#0d9488">Contract</strong> + <strong style="color:#475569">Prospect</strong></div>
+      <div style="font-size:12px;color:#6b7280;margin-bottom:12px">Score = <strong style="color:#185FA5">Production</strong> + <strong style="color:#0d9488">Contract</strong> + <strong style="color:#475569">Trajectory</strong> + <strong style="color:#475569">Prospect</strong></div>
       <div style="display:flex;flex-direction:column;gap:10px">
 
         <!-- Production bubble (long horizontal: Coverage | Position | Pressure/Draft Scoring) -->
@@ -1172,10 +1172,10 @@ tr:hover td{background:#fafaf8}
           </div>
         </div>
 
-        <!-- Score-wide correction bubble (applies after Production+Contract+Prospect, Draft Mode only) -->
+        <!-- Score-wide correction bubble (applies after Production+Contract+Trajectory+Prospect, Draft Mode only) -->
         <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:10px 16px">
           <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;margin-bottom:2px">Position Budget Correction <span style="font-weight:400;text-transform:none;color:#9ca3af">(Draft Mode only)</span></div>
-          <div style="font-size:10px;color:#9ca3af;margin-bottom:8px">Applies to Production, Contract, AND Prospect alike — not one component. (Production + Contract + Prospect) × wtPosAlloc. Penalizes D picks when the on-the-clock team's D cap share exceeds the optimal 35% (knapsack-derived); 0 = off, no correction.</div>
+          <div style="font-size:10px;color:#9ca3af;margin-bottom:8px">Applies to Production, Contract, Trajectory, AND Prospect alike — not one component. (Production + Contract + Trajectory + Prospect) × wtPosAlloc. Penalizes D picks when the on-the-clock team's D cap share exceeds the optimal 35% (knapsack-derived); 0 = off, no correction.</div>
           <div style="display:flex;flex-direction:column;gap:3px">
             <span style="font-size:11px;color:#9ca3af">Position budget correction (<span style="font-family:monospace;color:#b0b0ac">wtPosAlloc</span>)</span>
             <input type="number" id="s-wtPosAlloc" value="1.0" min="0" max="5" step="0.1" onchange="updateDraftWeight('wtPosAlloc',+this.value)" style="width:80px;height:32px;border:1px solid #ddd;border-radius:8px;padding:0 8px;font-size:13px;text-align:center">
@@ -2287,8 +2287,8 @@ function rankPlayers(){
     .forEach(({ p, r }, i) => {
       p.rank2627 = i + 1;
       // Static snapshot, same as rank2627 - only refreshed on the next Rank Players click, not
-      // live per-render like Draft Score. Feeds the Production/Contract/Prospect/Score columns
-      // outside Draft Mode, including the hover tooltip text (see _scoreCols2627, which
+      // live per-render like Draft Score. Feeds the Production/Contract/Trajectory/Prospect/Score
+      // columns outside Draft Mode, including the hover tooltip text (see _scoreCols2627, which
       // reconstructs the tooltip from the raw fields below at hover time - same architecture
       // Draft Score already used, live from _dsParts).
       p.rsProd2627 = r.prod; p.rsPros2627 = r.prospect; p.rankScore2627 = r.score;
