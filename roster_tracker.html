@@ -2297,7 +2297,7 @@ function rankPlayers(){
       const r = _computeRankScore(p, {
         pg, pp: p.proj2627.blend, cap: p.cap2627,
         calcAgeForSim: calcAge, contractYearAnchor: NHL_SEASON_YEAR, nextContractYrs: p.nextTerm2627||0,
-        curveFn: curveFns2627RS[pg], elcMax: ELC_MAX_2627, srcNFn: srcNFn2627, maxSrc: MAX_SRC_2627, draftWeights, capLimit: CAP_LIMIT,
+        curveFn: curveFns2627RS[pg], elcMax: ELC_MAX_2627, srcNFn: srcNFn2627, maxSrc: MAX_SRC_2627, draftWeights: {...draftWeights, wtTermValue: draftWeights.wtTermValue || 8}, capLimit: CAP_LIMIT,
       });
       return { p, r };
     })
@@ -6378,7 +6378,7 @@ function rankPlayers2425(){
       const r = _computeRankScore(p, {
         pg, pp: ppts2425blend(p), cap: getCap2425(p),
         calcAgeForSim: calcAge2425, contractYearAnchor: 2025, nextContractYrs: p.nextTerm2425||0,
-        curveFn: curveFns2425RS[pg], elcMax: ELC_MAX_2425, srcNFn: srcNFn2425, maxSrc: MAX_SRC_2425, draftWeights, capLimit: CAP_LIMIT_2425,
+        curveFn: curveFns2425RS[pg], elcMax: ELC_MAX_2425, srcNFn: srcNFn2425, maxSrc: MAX_SRC_2425, draftWeights: {...draftWeights, wtTermValue: draftWeights.wtTermValue || 8}, capLimit: CAP_LIMIT_2425,
       });
       return { p, r };
     })
@@ -6562,7 +6562,7 @@ function rankPlayers2324(){
       const r = _computeRankScore(p, {
         pg, pp: ppts2324blend(p), cap: getCap2324(p),
         calcAgeForSim: calcAge2324, contractYearAnchor: 2024, nextContractYrs: p.nextTerm2324||0,
-        curveFn: curveFns2324RS[pg], elcMax: ELC_MAX_2324, srcNFn: srcNFn2324, maxSrc: MAX_SRC_2324, draftWeights, capLimit: CAP_LIMIT_2324,
+        curveFn: curveFns2324RS[pg], elcMax: ELC_MAX_2324, srcNFn: srcNFn2324, maxSrc: MAX_SRC_2324, draftWeights: {...draftWeights, wtTermValue: draftWeights.wtTermValue || 8}, capLimit: CAP_LIMIT_2324,
       });
       return { p, r };
     })
@@ -9330,7 +9330,7 @@ function rankPlayers2526(){
       const r = _computeRankScore(p, {
         pg, pp: ppts2526blend(p), cap: getCap2526(p),
         calcAgeForSim: calcAge2526, contractYearAnchor: 2026, nextContractYrs: p.nextTerm2526||0,
-        curveFn: curveFns2526RS[pg], elcMax: ELC_MAX_2526, srcNFn: srcNFn2526, maxSrc: MAX_SRC_2526, draftWeights, capLimit: CAP_LIMIT_2526,
+        curveFn: curveFns2526RS[pg], elcMax: ELC_MAX_2526, srcNFn: srcNFn2526, maxSrc: MAX_SRC_2526, draftWeights: {...draftWeights, wtTermValue: draftWeights.wtTermValue || 8}, capLimit: CAP_LIMIT_2526,
       });
       return { p, r };
     })
