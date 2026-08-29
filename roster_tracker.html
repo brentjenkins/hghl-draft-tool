@@ -3664,12 +3664,13 @@ function _scoreColsHtml2627(p){
   const c = _scoreCols2627(p);
   if(!c) return `<td style="color:#9ca3af;text-align:right;font-size:10px;padding:9px 2px">—</td>`.repeat(7);
   const termColor = c.termActive ? '#0d9488' : '#c4c4c0';
+  const prospectColor = draftMode ? '#475569' : '#c4c4c0';
   return `<td style="color:#185FA5;text-align:right;font-variant-numeric:tabular-nums;font-size:10px;padding:9px 2px;cursor:default" title="${esc(c.prodTip)}">${c.prod.toFixed(1)}</td>`+
     `<td style="color:#0d9488;text-align:right;font-variant-numeric:tabular-nums;font-size:10px;padding:9px 2px;cursor:default" title="${esc(c.conPpmTip)}">${c.conPpm.toFixed(1)}</td>`+
     `<td style="color:#0d9488;text-align:right;font-variant-numeric:tabular-nums;font-size:10px;padding:9px 2px;cursor:default" title="${esc(c.conCrvTip)}">${c.conCrv.toFixed(1)}</td>`+
     `<td style="color:${termColor};text-align:right;font-variant-numeric:tabular-nums;font-size:10px;padding:9px 2px;cursor:default" title="${esc(c.conTermTip)}">${c.conTerm.toFixed(1)}</td>`+
     `<td style="color:#475569;text-align:right;font-variant-numeric:tabular-nums;font-size:10px;padding:9px 2px;cursor:default" title="${esc(c.conTrjTip)}">${c.conTrj.toFixed(1)}</td>`+
-    `<td style="color:#475569;text-align:right;font-variant-numeric:tabular-nums;font-size:10px;padding:9px 2px;cursor:default" title="${esc(c.prospectTip)}">${c.prospect.toFixed(1)}</td>`+
+    `<td style="color:${prospectColor};text-align:right;font-variant-numeric:tabular-nums;font-size:10px;padding:9px 2px;cursor:default" title="${esc(c.prospectTip)}">${c.prospect.toFixed(1)}</td>`+
     `<td style="color:#111827;font-weight:700;text-align:right;font-variant-numeric:tabular-nums;font-size:10px;padding:9px 2px">${c.total.toFixed(1)}</td>`;
 }
 
@@ -3724,12 +3725,13 @@ function _scoreColsHtml2526(p){
   const c = _scoreCols2526(p);
   if(!c) return `<td style="color:#9ca3af;text-align:right;font-size:10px;padding:9px 2px">—</td>`.repeat(7);
   const termColor = c.termActive ? '#0d9488' : '#c4c4c0';
+  const prospectColor = draftMode2526 ? '#475569' : '#c4c4c0';
   return `<td style="color:#185FA5;text-align:right;font-variant-numeric:tabular-nums;font-size:10px;padding:9px 2px;cursor:default" title="${esc(c.prodTip)}">${c.prod.toFixed(1)}</td>`+
     `<td style="color:#0d9488;text-align:right;font-variant-numeric:tabular-nums;font-size:10px;padding:9px 2px;cursor:default" title="${esc(c.conPpmTip)}">${c.conPpm.toFixed(1)}</td>`+
     `<td style="color:#0d9488;text-align:right;font-variant-numeric:tabular-nums;font-size:10px;padding:9px 2px;cursor:default" title="${esc(c.conCrvTip)}">${c.conCrv.toFixed(1)}</td>`+
     `<td style="color:${termColor};text-align:right;font-variant-numeric:tabular-nums;font-size:10px;padding:9px 2px;cursor:default" title="${esc(c.conTermTip)}">${c.conTerm.toFixed(1)}</td>`+
     `<td style="color:#475569;text-align:right;font-variant-numeric:tabular-nums;font-size:10px;padding:9px 2px;cursor:default" title="${esc(c.conTrjTip)}">${c.conTrj.toFixed(1)}</td>`+
-    `<td style="color:#475569;text-align:right;font-variant-numeric:tabular-nums;font-size:10px;padding:9px 2px;cursor:default" title="${esc(c.prospectTip)}">${c.prospect.toFixed(1)}</td>`+
+    `<td style="color:${prospectColor};text-align:right;font-variant-numeric:tabular-nums;font-size:10px;padding:9px 2px;cursor:default" title="${esc(c.prospectTip)}">${c.prospect.toFixed(1)}</td>`+
     `<td style="color:#111827;font-weight:700;text-align:right;font-variant-numeric:tabular-nums;font-size:10px;padding:9px 2px">${c.total.toFixed(1)}</td>`;
 }
 
@@ -3781,12 +3783,13 @@ function _scoreColsHtml2425(p){
   const c = _scoreCols2425(p);
   if(!c) return `<td style="color:#9ca3af;text-align:right;font-size:10px;padding:9px 2px">—</td>`.repeat(7);
   const termColor = c.termActive ? '#0d9488' : '#c4c4c0';
+  const prospectColor = draftMode2425 ? '#475569' : '#c4c4c0';
   return `<td style="color:#185FA5;text-align:right;font-variant-numeric:tabular-nums;font-size:10px;padding:9px 2px;cursor:default" title="${esc(c.prodTip)}">${c.prod.toFixed(1)}</td>`+
     `<td style="color:#0d9488;text-align:right;font-variant-numeric:tabular-nums;font-size:10px;padding:9px 2px;cursor:default" title="${esc(c.conPpmTip)}">${c.conPpm.toFixed(1)}</td>`+
     `<td style="color:#0d9488;text-align:right;font-variant-numeric:tabular-nums;font-size:10px;padding:9px 2px;cursor:default" title="${esc(c.conCrvTip)}">${c.conCrv.toFixed(1)}</td>`+
     `<td style="color:${termColor};text-align:right;font-variant-numeric:tabular-nums;font-size:10px;padding:9px 2px;cursor:default" title="${esc(c.conTermTip)}">${c.conTerm.toFixed(1)}</td>`+
     `<td style="color:#475569;text-align:right;font-variant-numeric:tabular-nums;font-size:10px;padding:9px 2px;cursor:default" title="${esc(c.conTrjTip)}">${c.conTrj.toFixed(1)}</td>`+
-    `<td style="color:#475569;text-align:right;font-variant-numeric:tabular-nums;font-size:10px;padding:9px 2px;cursor:default" title="${esc(c.prospectTip)}">${c.prospect.toFixed(1)}</td>`+
+    `<td style="color:${prospectColor};text-align:right;font-variant-numeric:tabular-nums;font-size:10px;padding:9px 2px;cursor:default" title="${esc(c.prospectTip)}">${c.prospect.toFixed(1)}</td>`+
     `<td style="color:#111827;font-weight:700;text-align:right;font-variant-numeric:tabular-nums;font-size:10px;padding:9px 2px">${c.total.toFixed(1)}</td>`;
 }
 
@@ -3838,12 +3841,13 @@ function _scoreColsHtml2324(p){
   const c = _scoreCols2324(p);
   if(!c) return `<td style="color:#9ca3af;text-align:right;font-size:10px;padding:9px 2px">—</td>`.repeat(7);
   const termColor = c.termActive ? '#0d9488' : '#c4c4c0';
+  const prospectColor = draftMode2324 ? '#475569' : '#c4c4c0';
   return `<td style="color:#185FA5;text-align:right;font-variant-numeric:tabular-nums;font-size:10px;padding:9px 2px;cursor:default" title="${esc(c.prodTip)}">${c.prod.toFixed(1)}</td>`+
     `<td style="color:#0d9488;text-align:right;font-variant-numeric:tabular-nums;font-size:10px;padding:9px 2px;cursor:default" title="${esc(c.conPpmTip)}">${c.conPpm.toFixed(1)}</td>`+
     `<td style="color:#0d9488;text-align:right;font-variant-numeric:tabular-nums;font-size:10px;padding:9px 2px;cursor:default" title="${esc(c.conCrvTip)}">${c.conCrv.toFixed(1)}</td>`+
     `<td style="color:${termColor};text-align:right;font-variant-numeric:tabular-nums;font-size:10px;padding:9px 2px;cursor:default" title="${esc(c.conTermTip)}">${c.conTerm.toFixed(1)}</td>`+
     `<td style="color:#475569;text-align:right;font-variant-numeric:tabular-nums;font-size:10px;padding:9px 2px;cursor:default" title="${esc(c.conTrjTip)}">${c.conTrj.toFixed(1)}</td>`+
-    `<td style="color:#475569;text-align:right;font-variant-numeric:tabular-nums;font-size:10px;padding:9px 2px;cursor:default" title="${esc(c.prospectTip)}">${c.prospect.toFixed(1)}</td>`+
+    `<td style="color:${prospectColor};text-align:right;font-variant-numeric:tabular-nums;font-size:10px;padding:9px 2px;cursor:default" title="${esc(c.prospectTip)}">${c.prospect.toFixed(1)}</td>`+
     `<td style="color:#111827;font-weight:700;text-align:right;font-variant-numeric:tabular-nums;font-size:10px;padding:9px 2px">${c.total.toFixed(1)}</td>`;
 }
 
