@@ -2287,7 +2287,7 @@ function rankPlayers(){
   for(const p of players){
     delete p.rank2627; delete p.rsProd2627; delete p.rsPros2627; delete p.rankScore2627;
     delete p.rsCovM2627; delete p.rsSrcN2627; delete p.rsPosM2627; delete p.rsYRaw2627; delete p.rsDRaw2627;
-    delete p.rsPpm2627; delete p.rsTrj2627; delete p.rsCrv2627; delete p.rsCrvBase2627;
+    delete p.rsPpm2627; delete p.rsTrj2627; delete p.rsCrv2627; delete p.rsCrvBase2627; delete p.rsTerm2627;
   }
   const eligible = players.filter(p => p.cap2627 > 0 && p.proj2627.blend > 0);
 
@@ -2297,7 +2297,7 @@ function rankPlayers(){
       const r = _computeRankScore(p, {
         pg, pp: p.proj2627.blend, cap: p.cap2627,
         calcAgeForSim: calcAge, contractYearAnchor: NHL_SEASON_YEAR, nextContractYrs: p.nextTerm2627||0,
-        curveFn: curveFns2627RS[pg], elcMax: ELC_MAX_2627, srcNFn: srcNFn2627, maxSrc: MAX_SRC_2627, draftWeights,
+        curveFn: curveFns2627RS[pg], elcMax: ELC_MAX_2627, srcNFn: srcNFn2627, maxSrc: MAX_SRC_2627, draftWeights, capLimit: CAP_LIMIT,
       });
       return { p, r };
     })
@@ -2309,7 +2309,7 @@ function rankPlayers(){
       // columns outside Draft Mode, including the hover tooltip text (see _scoreCols2627, which
       // reconstructs the tooltip from the raw fields below at hover time - same architecture
       // Draft Score already used, live from _dsParts).
-      p.rsProd2627 = r.prod; p.rsPros2627 = r.prospect; p.rankScore2627 = r.score;
+      p.rsProd2627 = r.prod; p.rsPros2627 = r.prospect; p.rankScore2627 = r.score; p.rsTerm2627 = r.term;
       // Raw components only, not pre-built tooltip strings (see _scoreCols2627, which
       // reconstructs the tooltip text from these at hover time - same as Draft Score already
       // does from live _dsParts) - keeps localStorage cost to a handful of small numbers per
@@ -3649,12 +3649,12 @@ function _scoreCols2627(p){
   const rawPpPerMRS = p.cap2627>0 ? p.proj2627.blend/p.cap2627 : 0;
   return {
     prod: p.rsProd2627, prospect: p.rsPros2627, total: p.rankScore2627,
-    conPpm: p.rsPpm2627, conTrj: p.rsTrj2627, conCrv: p.rsCrv2627, conTerm: 0, termActive: false,
+    conPpm: p.rsPpm2627, conTrj: p.rsTrj2627, conCrv: p.rsCrv2627, conTerm: p.rsTerm2627||0, termActive: false,
     prodTip: `PPTS × coverage × position\n${p.proj2627.blend} × ${p.rsCovM2627.toFixed(2)} × ${p.rsPosM2627.toFixed(2)} = ${p.rsProd2627.toFixed(1)}\ncoverage @ ${p.rsSrcN2627} src = ${p.rsCovM2627.toFixed(2)}`,
     conPpmTip: `PPTS/$M × coverage × wtPPTSM\n${rawPpPerMRS.toFixed(1)} × ${p.rsCovM2627.toFixed(2)} × ${draftWeights.wtPPTSM} = ${p.rsPpm2627.toFixed(1)}\ncoverage @ ${p.rsSrcN2627} src = ${p.rsCovM2627.toFixed(2)}`,
     conTrjTip: `Peak Trajectory × wtAge\n${p.rsYRaw2627.toFixed(1)} × ${draftWeights.wtAge} = ${p.rsTrj2627.toFixed(1)}\nPeak Trajectory @ age ${age} = ${p.rsYRaw2627.toFixed(1)}`,
     conCrvTip: `((PPTS × coverage) − curve baseline) × wtDeltaCurve\n((${p.proj2627.blend} × ${p.rsCovM2627.toFixed(2)}) − ${(p.proj2627.blend*p.rsCovM2627-p.rsDRaw2627).toFixed(1)}) × ${draftWeights.wtDeltaCurve} = ${p.rsCrv2627.toFixed(1)}\ncoverage @ ${p.rsSrcN2627} src = ${p.rsCovM2627.toFixed(2)}`,
-    conTermTip: 'Term bonus only shown in Draft Mode (Optimize-mode teams) — not part of the static Rank Players snapshot',
+    conTermTip: `Term-adjusted cap efficiency × wtTermValue\nValue: ${(p.rsTerm2627||0).toFixed(1)}\nReference only here — doesn't count toward Score outside Draft Mode (Optimize-mode teams)`,
     prospectTip: p.rsPros2627 > 0
       ? `Years × (PPTS × coverage / ELC expected pts) × wtProspect\n${prospectAgeScoreRS} × (${p.proj2627.blend} × ${p.rsCovM2627.toFixed(2)} / ${prospectNormPtsRS}) × ${draftWeights.wtProspect} = ${p.rsPros2627.toFixed(1)}\nProspect Age @ ${posLetterRS} <= ${prospectMaxAgeRS}\nYears as prospect = ${prospectMaxAgeRS}+1-${age}=${prospectAgeScoreRS}\ncoverage @ ${p.rsSrcN2627} src = ${p.rsCovM2627.toFixed(2)}\nELC expected pts @ ${posLetterRS} = ${prospectNormPtsRS}`
       : 'No prospect bonus',
@@ -3710,12 +3710,12 @@ function _scoreCols2526(p){
   const rawPpPerMRS = getCap2526(p)>0 ? ppts2526blend(p)/getCap2526(p) : 0;
   return {
     prod: p.rsProd2526, prospect: p.rsPros2526, total: p.rankScore2526,
-    conPpm: p.rsPpm2526, conTrj: p.rsTrj2526, conCrv: p.rsCrv2526, conTerm: 0, termActive: false,
+    conPpm: p.rsPpm2526, conTrj: p.rsTrj2526, conCrv: p.rsCrv2526, conTerm: p.rsTerm2526||0, termActive: false,
     prodTip: `PPTS × coverage × position\n${ppts2526blend(p)} × ${p.rsCovM2526.toFixed(2)} × ${p.rsPosM2526.toFixed(2)} = ${p.rsProd2526.toFixed(1)}\ncoverage @ ${p.rsSrcN2526} src = ${p.rsCovM2526.toFixed(2)}`,
     conPpmTip: `PPTS/$M × coverage × wtPPTSM\n${rawPpPerMRS.toFixed(1)} × ${p.rsCovM2526.toFixed(2)} × ${draftWeights.wtPPTSM} = ${p.rsPpm2526.toFixed(1)}\ncoverage @ ${p.rsSrcN2526} src = ${p.rsCovM2526.toFixed(2)}`,
     conTrjTip: `Peak Trajectory × wtAge\n${p.rsYRaw2526.toFixed(1)} × ${draftWeights.wtAge} = ${p.rsTrj2526.toFixed(1)}\nPeak Trajectory @ age ${age} = ${p.rsYRaw2526.toFixed(1)}`,
     conCrvTip: `((PPTS × coverage) − curve baseline) × wtDeltaCurve\n((${ppts2526blend(p)} × ${p.rsCovM2526.toFixed(2)}) − ${(ppts2526blend(p)*p.rsCovM2526-p.rsDRaw2526).toFixed(1)}) × ${draftWeights.wtDeltaCurve} = ${p.rsCrv2526.toFixed(1)}\ncoverage @ ${p.rsSrcN2526} src = ${p.rsCovM2526.toFixed(2)}`,
-    conTermTip: 'Term bonus only shown in Draft Mode (Optimize-mode teams) — not part of the static Rank Players snapshot',
+    conTermTip: `Term-adjusted cap efficiency × wtTermValue\nValue: ${(p.rsTerm2526||0).toFixed(1)}\nReference only here — doesn't count toward Score outside Draft Mode (Optimize-mode teams)`,
     prospectTip: p.rsPros2526 > 0
       ? `Years × (PPTS × coverage / ELC expected pts) × wtProspect\n${prospectAgeScoreRS} × (${ppts2526blend(p)} × ${p.rsCovM2526.toFixed(2)} / ${prospectNormPtsRS}) × ${draftWeights.wtProspect} = ${p.rsPros2526.toFixed(1)}\nProspect Age @ ${posLetterRS} <= ${prospectMaxAgeRS}\nYears as prospect = ${prospectMaxAgeRS}+1-${age}=${prospectAgeScoreRS}\ncoverage @ ${p.rsSrcN2526} src = ${p.rsCovM2526.toFixed(2)}\nELC expected pts @ ${posLetterRS} = ${prospectNormPtsRS}`
       : 'No prospect bonus',
@@ -3768,12 +3768,12 @@ function _scoreCols2425(p){
   const rawPpPerMRS = getCap2425(p)>0 ? ppts2425blend(p)/getCap2425(p) : 0;
   return {
     prod: p.rsProd2425, prospect: p.rsPros2425, total: p.rankScore2425,
-    conPpm: p.rsPpm2425, conTrj: p.rsTrj2425, conCrv: p.rsCrv2425, conTerm: 0, termActive: false,
+    conPpm: p.rsPpm2425, conTrj: p.rsTrj2425, conCrv: p.rsCrv2425, conTerm: p.rsTerm2425||0, termActive: false,
     prodTip: `PPTS × coverage × position\n${ppts2425blend(p)} × ${p.rsCovM2425.toFixed(2)} × ${p.rsPosM2425.toFixed(2)} = ${p.rsProd2425.toFixed(1)}\ncoverage @ ${p.rsSrcN2425} src = ${p.rsCovM2425.toFixed(2)}`,
     conPpmTip: `PPTS/$M × coverage × wtPPTSM\n${rawPpPerMRS.toFixed(1)} × ${p.rsCovM2425.toFixed(2)} × ${draftWeights.wtPPTSM} = ${p.rsPpm2425.toFixed(1)}\ncoverage @ ${p.rsSrcN2425} src = ${p.rsCovM2425.toFixed(2)}`,
     conTrjTip: `Peak Trajectory × wtAge\n${p.rsYRaw2425.toFixed(1)} × ${draftWeights.wtAge} = ${p.rsTrj2425.toFixed(1)}\nPeak Trajectory @ age ${age} = ${p.rsYRaw2425.toFixed(1)}`,
     conCrvTip: `((PPTS × coverage) − curve baseline) × wtDeltaCurve\n((${ppts2425blend(p)} × ${p.rsCovM2425.toFixed(2)}) − ${(ppts2425blend(p)*p.rsCovM2425-p.rsDRaw2425).toFixed(1)}) × ${draftWeights.wtDeltaCurve} = ${p.rsCrv2425.toFixed(1)}\ncoverage @ ${p.rsSrcN2425} src = ${p.rsCovM2425.toFixed(2)}`,
-    conTermTip: 'Term bonus only shown in Draft Mode (Optimize-mode teams) — not part of the static Rank Players snapshot',
+    conTermTip: `Term-adjusted cap efficiency × wtTermValue\nValue: ${(p.rsTerm2425||0).toFixed(1)}\nReference only here — doesn't count toward Score outside Draft Mode (Optimize-mode teams)`,
     prospectTip: p.rsPros2425 > 0
       ? `Years × (PPTS × coverage / ELC expected pts) × wtProspect\n${prospectAgeScoreRS} × (${ppts2425blend(p)} × ${p.rsCovM2425.toFixed(2)} / ${prospectNormPtsRS}) × ${draftWeights.wtProspect} = ${p.rsPros2425.toFixed(1)}\nProspect Age @ ${posLetterRS} <= ${prospectMaxAgeRS}\nYears as prospect = ${prospectMaxAgeRS}+1-${age}=${prospectAgeScoreRS}\ncoverage @ ${p.rsSrcN2425} src = ${p.rsCovM2425.toFixed(2)}\nELC expected pts @ ${posLetterRS} = ${prospectNormPtsRS}`
       : 'No prospect bonus',
@@ -3826,12 +3826,12 @@ function _scoreCols2324(p){
   const rawPpPerMRS = getCap2324(p)>0 ? ppts2324blend(p)/getCap2324(p) : 0;
   return {
     prod: p.rsProd2324, prospect: p.rsPros2324, total: p.rankScore2324,
-    conPpm: p.rsPpm2324, conTrj: p.rsTrj2324, conCrv: p.rsCrv2324, conTerm: 0, termActive: false,
+    conPpm: p.rsPpm2324, conTrj: p.rsTrj2324, conCrv: p.rsCrv2324, conTerm: p.rsTerm2324||0, termActive: false,
     prodTip: `PPTS × coverage × position\n${ppts2324blend(p)} × ${p.rsCovM2324.toFixed(2)} × ${p.rsPosM2324.toFixed(2)} = ${p.rsProd2324.toFixed(1)}\ncoverage @ ${p.rsSrcN2324} src = ${p.rsCovM2324.toFixed(2)}`,
     conPpmTip: `PPTS/$M × coverage × wtPPTSM\n${rawPpPerMRS.toFixed(1)} × ${p.rsCovM2324.toFixed(2)} × ${draftWeights.wtPPTSM} = ${p.rsPpm2324.toFixed(1)}\ncoverage @ ${p.rsSrcN2324} src = ${p.rsCovM2324.toFixed(2)}`,
     conTrjTip: `Peak Trajectory × wtAge\n${p.rsYRaw2324.toFixed(1)} × ${draftWeights.wtAge} = ${p.rsTrj2324.toFixed(1)}\nPeak Trajectory @ age ${age} = ${p.rsYRaw2324.toFixed(1)}`,
     conCrvTip: `((PPTS × coverage) − curve baseline) × wtDeltaCurve\n((${ppts2324blend(p)} × ${p.rsCovM2324.toFixed(2)}) − ${(ppts2324blend(p)*p.rsCovM2324-p.rsDRaw2324).toFixed(1)}) × ${draftWeights.wtDeltaCurve} = ${p.rsCrv2324.toFixed(1)}\ncoverage @ ${p.rsSrcN2324} src = ${p.rsCovM2324.toFixed(2)}`,
-    conTermTip: 'Term bonus only shown in Draft Mode (Optimize-mode teams) — not part of the static Rank Players snapshot',
+    conTermTip: `Term-adjusted cap efficiency × wtTermValue\nValue: ${(p.rsTerm2324||0).toFixed(1)}\nReference only here — doesn't count toward Score outside Draft Mode (Optimize-mode teams)`,
     prospectTip: p.rsPros2324 > 0
       ? `Years × (PPTS × coverage / ELC expected pts) × wtProspect\n${prospectAgeScoreRS} × (${ppts2324blend(p)} × ${p.rsCovM2324.toFixed(2)} / ${prospectNormPtsRS}) × ${draftWeights.wtProspect} = ${p.rsPros2324.toFixed(1)}\nProspect Age @ ${posLetterRS} <= ${prospectMaxAgeRS}\nYears as prospect = ${prospectMaxAgeRS}+1-${age}=${prospectAgeScoreRS}\ncoverage @ ${p.rsSrcN2324} src = ${p.rsCovM2324.toFixed(2)}\nELC expected pts @ ${posLetterRS} = ${prospectNormPtsRS}`
       : 'No prospect bonus',
@@ -6368,7 +6368,7 @@ function rankPlayers2425(){
   for(const p of players){
     delete p.rank2425; delete p.rsProd2425; delete p.rsPros2425; delete p.rankScore2425;
     delete p.rsCovM2425; delete p.rsSrcN2425; delete p.rsPosM2425; delete p.rsYRaw2425; delete p.rsDRaw2425;
-    delete p.rsPpm2425; delete p.rsTrj2425; delete p.rsCrv2425; delete p.rsCrvBase2425;
+    delete p.rsPpm2425; delete p.rsTrj2425; delete p.rsCrv2425; delete p.rsCrvBase2425; delete p.rsTerm2425;
   }
   const eligible = players.filter(p=>getCap2425(p)>0 && ppts2425blend(p)>0);
 
@@ -6378,14 +6378,14 @@ function rankPlayers2425(){
       const r = _computeRankScore(p, {
         pg, pp: ppts2425blend(p), cap: getCap2425(p),
         calcAgeForSim: calcAge2425, contractYearAnchor: 2025, nextContractYrs: p.nextTerm2425||0,
-        curveFn: curveFns2425RS[pg], elcMax: ELC_MAX_2425, srcNFn: srcNFn2425, maxSrc: MAX_SRC_2425, draftWeights,
+        curveFn: curveFns2425RS[pg], elcMax: ELC_MAX_2425, srcNFn: srcNFn2425, maxSrc: MAX_SRC_2425, draftWeights, capLimit: CAP_LIMIT_2425,
       });
       return { p, r };
     })
     .sort((a, b) => b.r.score - a.r.score)
     .forEach(({ p, r }, i) => {
       p.rank2425 = i + 1;
-      p.rsProd2425 = r.prod; p.rsPros2425 = r.prospect; p.rankScore2425 = r.score;
+      p.rsProd2425 = r.prod; p.rsPros2425 = r.prospect; p.rankScore2425 = r.score; p.rsTerm2425 = r.term;
       p.rsCovM2425 = r.coverageMult; p.rsSrcN2425 = r.srcN; p.rsPosM2425 = r.posMult; p.rsYRaw2425 = r.youthRaw; p.rsDRaw2425 = r.deltaRaw;
       p.rsPpm2425 = r.ppm; p.rsTrj2425 = r.trj; p.rsCrv2425 = r.crv;
     });
@@ -6552,7 +6552,7 @@ function rankPlayers2324(){
   for(const p of players){
     delete p.rank2324; delete p.rsProd2324; delete p.rsPros2324; delete p.rankScore2324;
     delete p.rsCovM2324; delete p.rsSrcN2324; delete p.rsPosM2324; delete p.rsYRaw2324; delete p.rsDRaw2324;
-    delete p.rsPpm2324; delete p.rsTrj2324; delete p.rsCrv2324; delete p.rsCrvBase2324;
+    delete p.rsPpm2324; delete p.rsTrj2324; delete p.rsCrv2324; delete p.rsCrvBase2324; delete p.rsTerm2324;
   }
   const eligible = players.filter(p=>getCap2324(p)>0 && ppts2324blend(p)>0);
 
@@ -6562,14 +6562,14 @@ function rankPlayers2324(){
       const r = _computeRankScore(p, {
         pg, pp: ppts2324blend(p), cap: getCap2324(p),
         calcAgeForSim: calcAge2324, contractYearAnchor: 2024, nextContractYrs: p.nextTerm2324||0,
-        curveFn: curveFns2324RS[pg], elcMax: ELC_MAX_2324, srcNFn: srcNFn2324, maxSrc: MAX_SRC_2324, draftWeights,
+        curveFn: curveFns2324RS[pg], elcMax: ELC_MAX_2324, srcNFn: srcNFn2324, maxSrc: MAX_SRC_2324, draftWeights, capLimit: CAP_LIMIT_2324,
       });
       return { p, r };
     })
     .sort((a, b) => b.r.score - a.r.score)
     .forEach(({ p, r }, i) => {
       p.rank2324 = i + 1;
-      p.rsProd2324 = r.prod; p.rsPros2324 = r.prospect; p.rankScore2324 = r.score;
+      p.rsProd2324 = r.prod; p.rsPros2324 = r.prospect; p.rankScore2324 = r.score; p.rsTerm2324 = r.term;
       p.rsCovM2324 = r.coverageMult; p.rsSrcN2324 = r.srcN; p.rsPosM2324 = r.posMult; p.rsYRaw2324 = r.youthRaw; p.rsDRaw2324 = r.deltaRaw;
       p.rsPpm2324 = r.ppm; p.rsTrj2324 = r.trj; p.rsCrv2324 = r.crv;
     });
@@ -7997,7 +7997,7 @@ function _draftPressureState(players, allTeams, isAssignedFn, ppts, getCap){
 // the same tab had already fixed to 6. No pressure/fanBias/capUse/posAlloc here — those are
 // Draft-Mode-only concepts (live pick competition, team context) that don't apply to a standing
 // Rank Score.
-function _computeRankScore(p, { pg, pp, cap, calcAgeForSim, contractYearAnchor, nextContractYrs = 0, curveFn, elcMax, srcNFn, maxSrc, draftWeights }){
+function _computeRankScore(p, { pg, pp, cap, calcAgeForSim, contractYearAnchor, nextContractYrs = 0, curveFn, elcMax, srcNFn, maxSrc, draftWeights, capLimit }){
   const W = draftWeights;
   const pm = {F: W.multF||1, D: W.multD||1.26, G: W.multG||1};
   const srcN = srcNFn(p);
@@ -8022,6 +8022,12 @@ function _computeRankScore(p, { pg, pp, cap, calcAgeForSim, contractYearAnchor, 
   const prospectMaxAge = PROSPECT_MAX_AGE[pg] ?? 22;
   const prospectAgeScore = (age < 99 && age <= prospectMaxAge) ? prospectMaxAge + 1 - age : 0;
   const prospectNormPts = _elcExp(pg, W);
+  // Term value, reference-only outside Draft Mode (see conTermTip / termActive in _scoreCols2X2Y)
+  // — computed here so the Trm column shows a real greyed-out number on the Players view instead
+  // of a hardcoded 0, but deliberately excluded from `score` below since it only actually counts
+  // toward a live Optimize-mode draft pick, not a rostered player's static rank.
+  const { termGain } = _termValueCore(pg, ppEff, cap, age, yrsRaw, capLimit, W);
+  const term = termGain * (W.wtTermValue||0);
   // Rounded to 2dp here, at the source, since every consumer is a stored field (all 4
   // rankPlayers* functions persist these to localStorage) and every tooltip already displays
   // them at 1-2dp anyway — the raw chained-multiplication floats (e.g. 47.39999999999999
@@ -8030,7 +8036,7 @@ function _computeRankScore(p, { pg, pp, cap, calcAgeForSim, contractYearAnchor, 
   // rounding-then-resumming drift). Found live 2026-08-18 via a user-reported "near the 5MB
   // localStorage quota" report — 12 fields × 4 seasons was ~970KB unrounded.
   const r2 = x => Math.round(x * 100) / 100;
-  const prodR = r2(prod), ppmR = r2(ppm), trjR = r2(trj), crvR = r2(crv), prospectR = r2(prospect);
+  const prodR = r2(prod), ppmR = r2(ppm), trjR = r2(trj), crvR = r2(crv), prospectR = r2(prospect), termR = r2(term);
   const contractR = r2(ppmR + trjR + crvR);
   const coverageMultR = r2(coverageMult), deltaRawR = r2(deltaRaw);
   // curveBase is back-solved from pp (raw, unrounded) × coverageMultR (2dp — matches what the
@@ -8046,7 +8052,7 @@ function _computeRankScore(p, { pg, pp, cap, calcAgeForSim, contractYearAnchor, 
   const curveBaseR = deltaCurveBase!=null ? r2(pp * coverageMultR - deltaRawR) : null;
   return {
     score: r2(prodR + contractR + prospectR),
-    prod: prodR, ppm: ppmR, trj: trjR, crv: crvR, prospect: prospectR, contract: contractR,
+    prod: prodR, ppm: ppmR, trj: trjR, crv: crvR, prospect: prospectR, contract: contractR, term: termR,
     coverageMult: coverageMultR, srcN, posMult: r2(posMult), youthRaw: r2(youthRaw), deltaRaw: deltaRawR,
     curveBase: curveBaseR,
     ageRaw: age, ppPerM, pp, prospectAgeScore, prospectNormPts,
@@ -9314,7 +9320,7 @@ function rankPlayers2526(){
   for(const p of players){
     delete p.rank2526; delete p.rsProd2526; delete p.rsPros2526; delete p.rankScore2526;
     delete p.rsCovM2526; delete p.rsSrcN2526; delete p.rsPosM2526; delete p.rsYRaw2526; delete p.rsDRaw2526;
-    delete p.rsPpm2526; delete p.rsTrj2526; delete p.rsCrv2526; delete p.rsCrvBase2526;
+    delete p.rsPpm2526; delete p.rsTrj2526; delete p.rsCrv2526; delete p.rsCrvBase2526; delete p.rsTerm2526;
   }
   const eligible = players.filter(p=>getCap2526(p)>0 && ppts2526blend(p)>0);
 
@@ -9324,14 +9330,14 @@ function rankPlayers2526(){
       const r = _computeRankScore(p, {
         pg, pp: ppts2526blend(p), cap: getCap2526(p),
         calcAgeForSim: calcAge2526, contractYearAnchor: 2026, nextContractYrs: p.nextTerm2526||0,
-        curveFn: curveFns2526RS[pg], elcMax: ELC_MAX_2526, srcNFn: srcNFn2526, maxSrc: MAX_SRC_2526, draftWeights,
+        curveFn: curveFns2526RS[pg], elcMax: ELC_MAX_2526, srcNFn: srcNFn2526, maxSrc: MAX_SRC_2526, draftWeights, capLimit: CAP_LIMIT_2526,
       });
       return { p, r };
     })
     .sort((a, b) => b.r.score - a.r.score)
     .forEach(({ p, r }, i) => {
       p.rank2526 = i + 1;
-      p.rsProd2526 = r.prod; p.rsPros2526 = r.prospect; p.rankScore2526 = r.score;
+      p.rsProd2526 = r.prod; p.rsPros2526 = r.prospect; p.rankScore2526 = r.score; p.rsTerm2526 = r.term;
       p.rsCovM2526 = r.coverageMult; p.rsSrcN2526 = r.srcN; p.rsPosM2526 = r.posMult; p.rsYRaw2526 = r.youthRaw; p.rsDRaw2526 = r.deltaRaw;
       p.rsPpm2526 = r.ppm; p.rsTrj2526 = r.trj; p.rsCrv2526 = r.crv;
     });
