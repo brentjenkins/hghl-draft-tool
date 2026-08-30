@@ -791,6 +791,20 @@ def _pos_group(pos):
     return "F"
 
 
+def find_col(header, *names):
+    """Case-insensitive header lookup — returns the index of the first name found, or raises
+    ValueError naming what was expected. Source CSV exports (DTZ especially) have changed a
+    column's casing between seasons without warning (e.g. goalie "player" -> "Player" for
+    26-27) while an exact header.index() call breaks loudly as an unhandled 500, which the
+    client only ever sees as a cryptic "Unexpected token '<'" JSON-parse failure instead of a
+    real error message."""
+    lower = [h.strip().lower() for h in header]
+    for name in names:
+        if name.lower() in lower:
+            return lower.index(name.lower())
+    raise ValueError(f"none of {names!r} found in header {header!r}")
+
+
 # ── NHL roster status ─────────────────────────────────────────────────────────
 @app.route("/nhlrosters")
 def nhl_rosters():
@@ -1578,11 +1592,20 @@ def dtz_projections_2526():
             continue
         header = [h.strip() for h in rows[0]]
 
+        try:
+            if "Goals" in header and "Assists" in header:
+                col_name, col_pos = find_col(header, "Player"), find_col(header, "Pos")
+                col_g, col_a = find_col(header, "Goals"), find_col(header, "Assists")
+                col_ppp = find_col(header, "PP Points") if "PP Points" in header else None
+                col_gp  = find_col(header, "GP") if "GP" in header else None
+            elif "SV%" in header:
+                col_name, col_w, col_so = find_col(header, "player", "Player"), find_col(header, "W"), find_col(header, "SO")
+            else:
+                return jsonify({"error": f"Could not identify {f.filename} as a DTZ skater or goalie export"}), 400
+        except ValueError as e:
+            return jsonify({"error": f"{f.filename} is missing an expected column — DTZ may have changed their export format: {e}"}), 400
+
         if "Goals" in header and "Assists" in header:
-            col_name, col_pos = header.index("Player"), header.index("Pos")
-            col_g, col_a = header.index("Goals"), header.index("Assists")
-            col_ppp = header.index("PP Points") if "PP Points" in header else None
-            col_gp  = header.index("GP") if "GP" in header else None
             for row in rows[1:]:
                 if not row or not row[col_name].strip(): continue
                 name = row[col_name].strip()
@@ -1597,8 +1620,7 @@ def dtz_projections_2526():
                 all_players[key] = {"name": name, "pg": pg, "hghl_pts": hghl_pts, "ppp": ppp, "gp": gp}
                 _add_name_aliases(all_players, key, name, pg)
             parsed_kinds.append(f"skaters({f.filename})")
-        elif "SV%" in header:
-            col_name, col_w, col_so = header.index("player"), header.index("W"), header.index("SO")
+        else:
             for row in rows[1:]:
                 if not row or not row[col_name].strip(): continue
                 name = row[col_name].strip()
@@ -1608,8 +1630,6 @@ def dtz_projections_2526():
                 all_players[key] = {"name": name, "pg": "G", "hghl_pts": hghl_pts}
                 _add_name_aliases(all_players, key, name, "G")
             parsed_kinds.append(f"goalies({f.filename})")
-        else:
-            return jsonify({"error": f"Could not identify {f.filename} as a DTZ skater or goalie export"}), 400
 
     print(f"  DTZ 25-26 CSV: {', '.join(parsed_kinds)} → {len(all_players)} players parsed")
     return jsonify({"ok": True, "players": all_players, "count": len(all_players)})
@@ -1646,11 +1666,20 @@ def dtz_projections():
             continue
         header = [h.strip() for h in rows[0]]
 
+        try:
+            if "Goals" in header and "Assists" in header:
+                col_name, col_pos = find_col(header, "Player"), find_col(header, "Pos")
+                col_g, col_a = find_col(header, "Goals"), find_col(header, "Assists")
+                col_ppp = find_col(header, "PP Points") if "PP Points" in header else None
+                col_gp  = find_col(header, "GP") if "GP" in header else None
+            elif "SV%" in header:
+                col_name, col_w, col_so = find_col(header, "player", "Player"), find_col(header, "W"), find_col(header, "SO")
+            else:
+                return jsonify({"error": f"Could not identify {f.filename} as a DTZ skater or goalie export"}), 400
+        except ValueError as e:
+            return jsonify({"error": f"{f.filename} is missing an expected column — DTZ may have changed their export format: {e}"}), 400
+
         if "Goals" in header and "Assists" in header:
-            col_name, col_pos = header.index("Player"), header.index("Pos")
-            col_g, col_a = header.index("Goals"), header.index("Assists")
-            col_ppp = header.index("PP Points") if "PP Points" in header else None
-            col_gp  = header.index("GP") if "GP" in header else None
             for row in rows[1:]:
                 if not row or not row[col_name].strip(): continue
                 name = row[col_name].strip()
@@ -1665,8 +1694,7 @@ def dtz_projections():
                 all_players[key] = {"name": name, "pg": pg, "hghl_pts": hghl_pts, "ppp": ppp, "gp": gp}
                 _add_name_aliases(all_players, key, name, pg)
             parsed_kinds.append(f"skaters({f.filename})")
-        elif "SV%" in header:
-            col_name, col_w, col_so = header.index("player"), header.index("W"), header.index("SO")
+        else:
             for row in rows[1:]:
                 if not row or not row[col_name].strip(): continue
                 name = row[col_name].strip()
@@ -1676,8 +1704,6 @@ def dtz_projections():
                 all_players[key] = {"name": name, "pg": "G", "hghl_pts": hghl_pts}
                 _add_name_aliases(all_players, key, name, "G")
             parsed_kinds.append(f"goalies({f.filename})")
-        else:
-            return jsonify({"error": f"Could not identify {f.filename} as a DTZ skater or goalie export"}), 400
 
     print(f"  DTZ 26-27 CSV: {', '.join(parsed_kinds)} → {len(all_players)} players parsed")
     return jsonify({"ok": True, "players": all_players, "count": len(all_players)})
