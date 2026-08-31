@@ -3619,17 +3619,25 @@ function _scoreCols2627(p){
     const posLabel = {F:'forward',D:'defense',G:'goalie'}[posGroup(p.pos)] || posGroup(p.pos);
     const prospectMaxAge = PROSPECT_MAX_AGE[posGroup(p.pos)] ?? 22;
     const termIsActive = _draftModeFor(b.team) === 'optimize';
+    // Reference-only Trm display for Simulate-mode teams: _effectiveDraftWeights forces
+    // wtTermValue to 0 for Simulate teams so it can't affect their Score, which used to also
+    // zero out b.tTermValue itself and make the whole column look blank/dead. Recomputed here
+    // from termGain (the underlying, team-mode-agnostic contract-term math) × a reference weight
+    // so the column always shows a real number — same "always visible, reference only" pattern
+    // rankPlayers2627 already uses outside Draft Mode (rsTerm2627).
+    const termRefWeight = draftWeights.wtTermValue || 8;
+    const conTermDisplay = termIsActive ? b.tTermValue*mult : (b.termGain||0) * termRefWeight * mult;
     return {
       prod: b.tPPTS*mult, prospect: (b.tProspect*pw+b.tFanBias)*mult,
-      conPpm: b.tPPTSM*mult, conTrj: b.tYouth*mult, conCrv: b.tDelta*mult, conTerm: b.tTermValue*mult, termActive: termIsActive,
+      conPpm: b.tPPTSM*mult, conTrj: b.tYouth*mult, conCrv: b.tDelta*mult, conTerm: conTermDisplay, termActive: termIsActive,
       total: draftSubMode==='bestAvail' ? p._dsNormal : p._ds,
       prodTip: `PPTS × coverage × position × pressure\n${b.pp} × ${b.coverageMult.toFixed(2)} × ${b.posMult.toFixed(2)} × ${b.pressMult.toFixed(2)} = ${b.tPPTSBase.toFixed(1)}\ncoverage @ ${b.srcN} src = ${b.coverageMult.toFixed(2)}\npressure @ ${posGroup(p.pos)} = ${b.pressMult.toFixed(2)}${b.tCapUse>0?`\n(cap-use +${b.tCapUse.toFixed(1)})`:''}${mult!==1?`\n(× ${mult.toFixed(2)} pos-budget correction)`:''}`,
       conPpmTip: `PPTS/$M × coverage × wtPPTSM\n${(p.cap2627>0?b.pp/p.cap2627:0).toFixed(1)} × ${b.coverageMult.toFixed(2)} × ${draftWeights.wtPPTSM} = ${(b.tPPTSM*mult).toFixed(1)}\ncoverage @ ${b.srcN} src = ${b.coverageMult.toFixed(2)}${mult!==1?`\n(× ${mult.toFixed(2)} pos-budget correction)`:''}`,
       conTrjTip: `Peak Trajectory × wtAge\n${b.youthRaw.toFixed(1)} × ${draftWeights.wtAge} = ${(b.tYouth*mult).toFixed(1)}\nPeak Trajectory @ age ${b.ageRaw} = ${b.youthRaw.toFixed(1)}${mult!==1?`\n(× ${mult.toFixed(2)} pos-budget correction)`:''}`,
       conCrvTip: `((PPTS × coverage) − curve baseline) × wtDeltaCurve\n((${b.pp} × ${b.coverageMult.toFixed(2)}) − ${(b.curveBase!=null?b.pp*(Math.round(b.coverageMult*100)/100)-b.deltaRaw:0).toFixed(1)}) × ${draftWeights.wtDeltaCurve} = ${(b.tDelta*mult).toFixed(1)}\ncoverage @ ${b.srcN} src = ${b.coverageMult.toFixed(2)}${mult!==1?`\n(× ${mult.toFixed(2)} pos-budget correction)`:''}`,
       conTermTip: termIsActive
-        ? `Term-adjusted cap efficiency × wtTermValue (Optimize mode)\n${b.termYears||0} yr(s) of locked-in term → ${(b.tTermValue*mult).toFixed(1)}\nRewards a flat AAV that gets cheaper as the cap ceiling rises (hidden value not visible in PpM alone), adjusted for age trajectory: rising production pre-peak, flat through the prime window (peak to peak+${TRAJ_PRIME_WINDOW_YRS}), declining once past prime (age ${b.ageRaw}, ${posGroup(p.pos)} peak ${PEAK_AGE_BY_POS[posGroup(p.pos)]||27})${b.declineDampen>0?`\nStill-elite production dampens the past-prime decline by ${Math.round(b.declineDampen*100)}%`:''}${mult!==1?`\n(× ${mult.toFixed(2)} pos-budget correction)`:''}`
-        : `${b.team||'This team'} is in Simulate mode — Term bonus only applies to Optimize-mode teams`,
+        ? `Term-adjusted cap efficiency × wtTermValue (Optimize mode)\n${b.termYears||0} yr(s) of locked-in term → ${conTermDisplay.toFixed(1)}\nRewards a flat AAV that gets cheaper as the cap ceiling rises (hidden value not visible in PpM alone), adjusted for age trajectory: rising production pre-peak, flat through the prime window (peak to peak+${TRAJ_PRIME_WINDOW_YRS}), declining once past prime (age ${b.ageRaw}, ${posGroup(p.pos)} peak ${PEAK_AGE_BY_POS[posGroup(p.pos)]||27})${b.declineDampen>0?`\nStill-elite production dampens the past-prime decline by ${Math.round(b.declineDampen*100)}%`:''}${mult!==1?`\n(× ${mult.toFixed(2)} pos-budget correction)`:''}`
+        : `Term-adjusted cap efficiency × wtTermValue (reference only)\n${b.termYears||0} yr(s) of locked-in term → ${conTermDisplay.toFixed(1)}\n${b.team||'This team'} is in Simulate mode — doesn't count toward Score (Optimize-mode teams only)`,
       prospectTip: b.tProspect>0
         ? `Years × (PPTS × coverage / ELC expected pts) × wtProspect${b.tFanBias>0?' + Fan team bonus':''}\n${b.prospectAgeScore} × (${b.pp} × ${b.coverageMult.toFixed(2)} / ${b.prospectNormPts}) × ${draftWeights.wtProspect} = ${b.tProspect.toFixed(1)}\nProspect Age @ ${posGroup(p.pos)} <= ${prospectMaxAge}\nYears as prospect = ${prospectMaxAge}+1-${b.ageRaw}=${b.prospectAgeScore}\ncoverage @ ${b.srcN} src = ${b.coverageMult.toFixed(2)}\nELC expected pts @ ${posGroup(p.pos)} = ${b.prospectNormPts}${pw!==1?(pw===0?'\n(ignored — past round decay window)':`\n(× ${pw} round decay = ${(b.tProspect*pw).toFixed(1)})`):''}${b.tFanBias>0?`\nFan team bonus @ ${teamAbbr(b.team)} = ${b.tFanBias.toFixed(1)}`:''}${mult!==1?`\n(× ${mult.toFixed(2)} pos-budget correction)`:''}`
         : 'No prospect bonus',
@@ -3685,17 +3693,19 @@ function _scoreCols2526(p){
     const mult = b.posAllocMult;
     const prospectMaxAge = PROSPECT_MAX_AGE[posGroup(p.pos)] ?? 22;
     const termIsActive = _draftModeFor(b.team) === 'optimize';
+    const termRefWeight = draftWeights.wtTermValue || 8;
+    const conTermDisplay = termIsActive ? b.tTermValue*mult : (b.termGain||0) * termRefWeight * mult;
     return {
       prod: b.tPPTS*mult, prospect: (b.tProspect*pw+b.tFanBias)*mult,
-      conPpm: b.tPPTSM*mult, conTrj: b.tYouth*mult, conCrv: b.tDelta*mult, conTerm: b.tTermValue*mult, termActive: termIsActive,
+      conPpm: b.tPPTSM*mult, conTrj: b.tYouth*mult, conCrv: b.tDelta*mult, conTerm: conTermDisplay, termActive: termIsActive,
       total: draftSubMode2526==='bestAvail' ? p._ds2526Normal : p._ds2526,
       prodTip: `PPTS × coverage × position × pressure\n${b.pp} × ${b.coverageMult.toFixed(2)} × ${b.posMult.toFixed(2)} × ${b.pressMult.toFixed(2)} = ${b.tPPTSBase.toFixed(1)}\ncoverage @ ${b.srcN} src = ${b.coverageMult.toFixed(2)}\npressure @ ${posGroup(p.pos)} = ${b.pressMult.toFixed(2)}${b.tCapUse>0?`\n(cap-use +${b.tCapUse.toFixed(1)})`:''}${mult!==1?`\n(× ${mult.toFixed(2)} pos-budget correction)`:''}`,
       conPpmTip: `PPTS/$M × coverage × wtPPTSM\n${(getCap2526(p)>0?b.pp/getCap2526(p):0).toFixed(1)} × ${b.coverageMult.toFixed(2)} × ${draftWeights.wtPPTSM} = ${(b.tPPTSM*mult).toFixed(1)}\ncoverage @ ${b.srcN} src = ${b.coverageMult.toFixed(2)}${mult!==1?`\n(× ${mult.toFixed(2)} pos-budget correction)`:''}`,
       conTrjTip: `Peak Trajectory × wtAge\n${b.youthRaw.toFixed(1)} × ${draftWeights.wtAge} = ${(b.tYouth*mult).toFixed(1)}\nPeak Trajectory @ age ${b.ageRaw} = ${b.youthRaw.toFixed(1)}${mult!==1?`\n(× ${mult.toFixed(2)} pos-budget correction)`:''}`,
       conCrvTip: `((PPTS × coverage) − curve baseline) × wtDeltaCurve\n((${b.pp} × ${b.coverageMult.toFixed(2)}) − ${(b.curveBase!=null?b.pp*(Math.round(b.coverageMult*100)/100)-b.deltaRaw:0).toFixed(1)}) × ${draftWeights.wtDeltaCurve} = ${(b.tDelta*mult).toFixed(1)}\ncoverage @ ${b.srcN} src = ${b.coverageMult.toFixed(2)}${mult!==1?`\n(× ${mult.toFixed(2)} pos-budget correction)`:''}`,
       conTermTip: termIsActive
-        ? `Term-adjusted cap efficiency × wtTermValue (Optimize mode)\n${b.termYears||0} yr(s) of locked-in term → ${(b.tTermValue*mult).toFixed(1)}\nRewards a flat AAV that gets cheaper as the cap ceiling rises (hidden value not visible in PpM alone), adjusted for age trajectory: rising production pre-peak, flat through the prime window (peak to peak+${TRAJ_PRIME_WINDOW_YRS}), declining once past prime (age ${b.ageRaw}, ${posGroup(p.pos)} peak ${PEAK_AGE_BY_POS[posGroup(p.pos)]||27})${b.declineDampen>0?`\nStill-elite production dampens the past-prime decline by ${Math.round(b.declineDampen*100)}%`:''}${mult!==1?`\n(× ${mult.toFixed(2)} pos-budget correction)`:''}`
-        : `${b.team||'This team'} is in Simulate mode — Term bonus only applies to Optimize-mode teams`,
+        ? `Term-adjusted cap efficiency × wtTermValue (Optimize mode)\n${b.termYears||0} yr(s) of locked-in term → ${conTermDisplay.toFixed(1)}\nRewards a flat AAV that gets cheaper as the cap ceiling rises (hidden value not visible in PpM alone), adjusted for age trajectory: rising production pre-peak, flat through the prime window (peak to peak+${TRAJ_PRIME_WINDOW_YRS}), declining once past prime (age ${b.ageRaw}, ${posGroup(p.pos)} peak ${PEAK_AGE_BY_POS[posGroup(p.pos)]||27})${b.declineDampen>0?`\nStill-elite production dampens the past-prime decline by ${Math.round(b.declineDampen*100)}%`:''}${mult!==1?`\n(× ${mult.toFixed(2)} pos-budget correction)`:''}`
+        : `Term-adjusted cap efficiency × wtTermValue (reference only)\n${b.termYears||0} yr(s) of locked-in term → ${conTermDisplay.toFixed(1)}\n${b.team||'This team'} is in Simulate mode — doesn't count toward Score (Optimize-mode teams only)`,
       prospectTip: b.tProspect>0
         ? `Years × (PPTS × coverage / ELC expected pts) × wtProspect${b.tFanBias>0?' + Fan team bonus':''}\n${b.prospectAgeScore} × (${b.pp} × ${b.coverageMult.toFixed(2)} / ${b.prospectNormPts}) × ${draftWeights.wtProspect} = ${b.tProspect.toFixed(1)}\nProspect Age @ ${posGroup(p.pos)} <= ${prospectMaxAge}\nYears as prospect = ${prospectMaxAge}+1-${b.ageRaw}=${b.prospectAgeScore}\ncoverage @ ${b.srcN} src = ${b.coverageMult.toFixed(2)}\nELC expected pts @ ${posGroup(p.pos)} = ${b.prospectNormPts}${pw!==1?(pw===0?'\n(ignored — past round decay window)':`\n(× ${pw} round decay = ${(b.tProspect*pw).toFixed(1)})`):''}${b.tFanBias>0?`\nFan team bonus @ ${teamAbbr(b.team)} = ${b.tFanBias.toFixed(1)}`:''}${mult!==1?`\n(× ${mult.toFixed(2)} pos-budget correction)`:''}`
         : 'No prospect bonus',
@@ -3743,17 +3753,19 @@ function _scoreCols2425(p){
     const mult = b.posAllocMult;
     const prospectMaxAge = PROSPECT_MAX_AGE[posGroup(p.pos)] ?? 22;
     const termIsActive = _draftModeFor(b.team) === 'optimize';
+    const termRefWeight = draftWeights.wtTermValue || 8;
+    const conTermDisplay = termIsActive ? b.tTermValue*mult : (b.termGain||0) * termRefWeight * mult;
     return {
       prod: b.tPPTS*mult, prospect: (b.tProspect*pw+b.tFanBias)*mult,
-      conPpm: b.tPPTSM*mult, conTrj: b.tYouth*mult, conCrv: b.tDelta*mult, conTerm: b.tTermValue*mult, termActive: termIsActive,
+      conPpm: b.tPPTSM*mult, conTrj: b.tYouth*mult, conCrv: b.tDelta*mult, conTerm: conTermDisplay, termActive: termIsActive,
       total: draftSubMode2425==='bestAvail' ? p._ds2425Normal : p._ds2425,
       prodTip: `PPTS × coverage × position × pressure\n${b.pp} × ${b.coverageMult.toFixed(2)} × ${b.posMult.toFixed(2)} × ${b.pressMult.toFixed(2)} = ${b.tPPTSBase.toFixed(1)}\ncoverage @ ${b.srcN} src = ${b.coverageMult.toFixed(2)}\npressure @ ${posGroup(p.pos)} = ${b.pressMult.toFixed(2)}${b.tCapUse>0?`\n(cap-use +${b.tCapUse.toFixed(1)})`:''}${mult!==1?`\n(× ${mult.toFixed(2)} pos-budget correction)`:''}`,
       conPpmTip: `PPTS/$M × coverage × wtPPTSM\n${(getCap2425(p)>0?b.pp/getCap2425(p):0).toFixed(1)} × ${b.coverageMult.toFixed(2)} × ${draftWeights.wtPPTSM} = ${(b.tPPTSM*mult).toFixed(1)}\ncoverage @ ${b.srcN} src = ${b.coverageMult.toFixed(2)}${mult!==1?`\n(× ${mult.toFixed(2)} pos-budget correction)`:''}`,
       conTrjTip: `Peak Trajectory × wtAge\n${b.youthRaw.toFixed(1)} × ${draftWeights.wtAge} = ${(b.tYouth*mult).toFixed(1)}\nPeak Trajectory @ age ${b.ageRaw} = ${b.youthRaw.toFixed(1)}${mult!==1?`\n(× ${mult.toFixed(2)} pos-budget correction)`:''}`,
       conCrvTip: `((PPTS × coverage) − curve baseline) × wtDeltaCurve\n((${b.pp} × ${b.coverageMult.toFixed(2)}) − ${(b.curveBase!=null?b.pp*(Math.round(b.coverageMult*100)/100)-b.deltaRaw:0).toFixed(1)}) × ${draftWeights.wtDeltaCurve} = ${(b.tDelta*mult).toFixed(1)}\ncoverage @ ${b.srcN} src = ${b.coverageMult.toFixed(2)}${mult!==1?`\n(× ${mult.toFixed(2)} pos-budget correction)`:''}`,
       conTermTip: termIsActive
-        ? `Term-adjusted cap efficiency × wtTermValue (Optimize mode)\n${b.termYears||0} yr(s) of locked-in term → ${(b.tTermValue*mult).toFixed(1)}\nRewards a flat AAV that gets cheaper as the cap ceiling rises (hidden value not visible in PpM alone), adjusted for age trajectory: rising production pre-peak, flat through the prime window (peak to peak+${TRAJ_PRIME_WINDOW_YRS}), declining once past prime (age ${b.ageRaw}, ${posGroup(p.pos)} peak ${PEAK_AGE_BY_POS[posGroup(p.pos)]||27})${b.declineDampen>0?`\nStill-elite production dampens the past-prime decline by ${Math.round(b.declineDampen*100)}%`:''}${mult!==1?`\n(× ${mult.toFixed(2)} pos-budget correction)`:''}`
-        : `${b.team||'This team'} is in Simulate mode — Term bonus only applies to Optimize-mode teams`,
+        ? `Term-adjusted cap efficiency × wtTermValue (Optimize mode)\n${b.termYears||0} yr(s) of locked-in term → ${conTermDisplay.toFixed(1)}\nRewards a flat AAV that gets cheaper as the cap ceiling rises (hidden value not visible in PpM alone), adjusted for age trajectory: rising production pre-peak, flat through the prime window (peak to peak+${TRAJ_PRIME_WINDOW_YRS}), declining once past prime (age ${b.ageRaw}, ${posGroup(p.pos)} peak ${PEAK_AGE_BY_POS[posGroup(p.pos)]||27})${b.declineDampen>0?`\nStill-elite production dampens the past-prime decline by ${Math.round(b.declineDampen*100)}%`:''}${mult!==1?`\n(× ${mult.toFixed(2)} pos-budget correction)`:''}`
+        : `Term-adjusted cap efficiency × wtTermValue (reference only)\n${b.termYears||0} yr(s) of locked-in term → ${conTermDisplay.toFixed(1)}\n${b.team||'This team'} is in Simulate mode — doesn't count toward Score (Optimize-mode teams only)`,
       prospectTip: b.tProspect>0
         ? `Years × (PPTS × coverage / ELC expected pts) × wtProspect${b.tFanBias>0?' + Fan team bonus':''}\n${b.prospectAgeScore} × (${b.pp} × ${b.coverageMult.toFixed(2)} / ${b.prospectNormPts}) × ${draftWeights.wtProspect} = ${b.tProspect.toFixed(1)}\nProspect Age @ ${posGroup(p.pos)} <= ${prospectMaxAge}\nYears as prospect = ${prospectMaxAge}+1-${b.ageRaw}=${b.prospectAgeScore}\ncoverage @ ${b.srcN} src = ${b.coverageMult.toFixed(2)}\nELC expected pts @ ${posGroup(p.pos)} = ${b.prospectNormPts}${pw!==1?(pw===0?'\n(ignored — past round decay window)':`\n(× ${pw} round decay = ${(b.tProspect*pw).toFixed(1)})`):''}${b.tFanBias>0?`\nFan team bonus @ ${teamAbbr(b.team)} = ${b.tFanBias.toFixed(1)}`:''}${mult!==1?`\n(× ${mult.toFixed(2)} pos-budget correction)`:''}`
         : 'No prospect bonus',
@@ -3801,17 +3813,19 @@ function _scoreCols2324(p){
     const mult = b.posAllocMult;
     const prospectMaxAge = PROSPECT_MAX_AGE[posGroup(p.pos)] ?? 22;
     const termIsActive = _draftModeFor(b.team) === 'optimize';
+    const termRefWeight = draftWeights.wtTermValue || 8;
+    const conTermDisplay = termIsActive ? b.tTermValue*mult : (b.termGain||0) * termRefWeight * mult;
     return {
       prod: b.tPPTS*mult, prospect: (b.tProspect*pw+b.tFanBias)*mult,
-      conPpm: b.tPPTSM*mult, conTrj: b.tYouth*mult, conCrv: b.tDelta*mult, conTerm: b.tTermValue*mult, termActive: termIsActive,
+      conPpm: b.tPPTSM*mult, conTrj: b.tYouth*mult, conCrv: b.tDelta*mult, conTerm: conTermDisplay, termActive: termIsActive,
       total: draftSubMode2324==='bestAvail' ? p._ds2324Normal : p._ds2324,
       prodTip: `PPTS × coverage × position × pressure\n${b.pp} × ${b.coverageMult.toFixed(2)} × ${b.posMult.toFixed(2)} × ${b.pressMult.toFixed(2)} = ${b.tPPTSBase.toFixed(1)}\ncoverage @ ${b.srcN} src = ${b.coverageMult.toFixed(2)}\npressure @ ${posGroup(p.pos)} = ${b.pressMult.toFixed(2)}${b.tCapUse>0?`\n(cap-use +${b.tCapUse.toFixed(1)})`:''}${mult!==1?`\n(× ${mult.toFixed(2)} pos-budget correction)`:''}`,
       conPpmTip: `PPTS/$M × coverage × wtPPTSM\n${(getCap2324(p)>0?b.pp/getCap2324(p):0).toFixed(1)} × ${b.coverageMult.toFixed(2)} × ${draftWeights.wtPPTSM} = ${(b.tPPTSM*mult).toFixed(1)}\ncoverage @ ${b.srcN} src = ${b.coverageMult.toFixed(2)}${mult!==1?`\n(× ${mult.toFixed(2)} pos-budget correction)`:''}`,
       conTrjTip: `Peak Trajectory × wtAge\n${b.youthRaw.toFixed(1)} × ${draftWeights.wtAge} = ${(b.tYouth*mult).toFixed(1)}\nPeak Trajectory @ age ${b.ageRaw} = ${b.youthRaw.toFixed(1)}${mult!==1?`\n(× ${mult.toFixed(2)} pos-budget correction)`:''}`,
       conCrvTip: `((PPTS × coverage) − curve baseline) × wtDeltaCurve\n((${b.pp} × ${b.coverageMult.toFixed(2)}) − ${(b.curveBase!=null?b.pp*(Math.round(b.coverageMult*100)/100)-b.deltaRaw:0).toFixed(1)}) × ${draftWeights.wtDeltaCurve} = ${(b.tDelta*mult).toFixed(1)}\ncoverage @ ${b.srcN} src = ${b.coverageMult.toFixed(2)}${mult!==1?`\n(× ${mult.toFixed(2)} pos-budget correction)`:''}`,
       conTermTip: termIsActive
-        ? `Term-adjusted cap efficiency × wtTermValue (Optimize mode)\n${b.termYears||0} yr(s) of locked-in term → ${(b.tTermValue*mult).toFixed(1)}\nRewards a flat AAV that gets cheaper as the cap ceiling rises (hidden value not visible in PpM alone), adjusted for age trajectory: rising production pre-peak, flat through the prime window (peak to peak+${TRAJ_PRIME_WINDOW_YRS}), declining once past prime (age ${b.ageRaw}, ${posGroup(p.pos)} peak ${PEAK_AGE_BY_POS[posGroup(p.pos)]||27})${b.declineDampen>0?`\nStill-elite production dampens the past-prime decline by ${Math.round(b.declineDampen*100)}%`:''}${mult!==1?`\n(× ${mult.toFixed(2)} pos-budget correction)`:''}`
-        : `${b.team||'This team'} is in Simulate mode — Term bonus only applies to Optimize-mode teams`,
+        ? `Term-adjusted cap efficiency × wtTermValue (Optimize mode)\n${b.termYears||0} yr(s) of locked-in term → ${conTermDisplay.toFixed(1)}\nRewards a flat AAV that gets cheaper as the cap ceiling rises (hidden value not visible in PpM alone), adjusted for age trajectory: rising production pre-peak, flat through the prime window (peak to peak+${TRAJ_PRIME_WINDOW_YRS}), declining once past prime (age ${b.ageRaw}, ${posGroup(p.pos)} peak ${PEAK_AGE_BY_POS[posGroup(p.pos)]||27})${b.declineDampen>0?`\nStill-elite production dampens the past-prime decline by ${Math.round(b.declineDampen*100)}%`:''}${mult!==1?`\n(× ${mult.toFixed(2)} pos-budget correction)`:''}`
+        : `Term-adjusted cap efficiency × wtTermValue (reference only)\n${b.termYears||0} yr(s) of locked-in term → ${conTermDisplay.toFixed(1)}\n${b.team||'This team'} is in Simulate mode — doesn't count toward Score (Optimize-mode teams only)`,
       prospectTip: b.tProspect>0
         ? `Years × (PPTS × coverage / ELC expected pts) × wtProspect${b.tFanBias>0?' + Fan team bonus':''}\n${b.prospectAgeScore} × (${b.pp} × ${b.coverageMult.toFixed(2)} / ${b.prospectNormPts}) × ${draftWeights.wtProspect} = ${b.tProspect.toFixed(1)}\nProspect Age @ ${posGroup(p.pos)} <= ${prospectMaxAge}\nYears as prospect = ${prospectMaxAge}+1-${b.ageRaw}=${b.prospectAgeScore}\ncoverage @ ${b.srcN} src = ${b.coverageMult.toFixed(2)}\nELC expected pts @ ${posGroup(p.pos)} = ${b.prospectNormPts}${pw!==1?(pw===0?'\n(ignored — past round decay window)':`\n(× ${pw} round decay = ${(b.tProspect*pw).toFixed(1)})`):''}${b.tFanBias>0?`\nFan team bonus @ ${teamAbbr(b.team)} = ${b.tFanBias.toFixed(1)}`:''}${mult!==1?`\n(× ${mult.toFixed(2)} pos-budget correction)`:''}`
         : 'No prospect bonus',
@@ -3977,7 +3991,7 @@ function render(){
         // tCapUse/posAllocMult are mode-specific (both always no-op in prospect mode, only ever
         // real in bestAvail) - so the tooltip needs BOTH breakdowns and picks whichever matches
         // draftSubMode, not just the prospect one every time.
-        const toParts = (x) => ({tPPTS:x.tPPTS,tPPTSM:x.tPPTSM,yrsRaw:x.yrsRaw,youthRaw:x.youthRaw,tYouth:x.tYouth,ageRaw:x.ageRaw,tProspect:x.tProspect,round:focusRound2627,srcN:x.srcN,coverageMult:x.coverageMult,tDelta:x.tDelta,tFanBias:x.tFanBias,pressRaw:x.pressRaw,pressMult:x.pressMult,posMult:x.posMult,posAllocMult:x.posAllocMult,tCapUse:x.tCapUse,tTermValue:x.tTermValue,termYears:x.termYears,declineDampen:x.declineDampen,pp:x.pp,tPPTSBase:x.tPPTSBase,ppPerM:x.ppPerM,deltaRaw:x.deltaRaw,curveBase:x.curveBase,prospectAgeScore:x.prospectAgeScore,prospectNormPts:x.prospectNormPts,team:viewTeam});
+        const toParts = (x) => ({tPPTS:x.tPPTS,tPPTSM:x.tPPTSM,yrsRaw:x.yrsRaw,youthRaw:x.youthRaw,tYouth:x.tYouth,ageRaw:x.ageRaw,tProspect:x.tProspect,round:focusRound2627,srcN:x.srcN,coverageMult:x.coverageMult,tDelta:x.tDelta,tFanBias:x.tFanBias,pressRaw:x.pressRaw,pressMult:x.pressMult,posMult:x.posMult,posAllocMult:x.posAllocMult,tCapUse:x.tCapUse,tTermValue:x.tTermValue,termGain:x.termGain,termYears:x.termYears,declineDampen:x.declineDampen,pp:x.pp,tPPTSBase:x.tPPTSBase,ppPerM:x.ppPerM,deltaRaw:x.deltaRaw,curveBase:x.curveBase,prospectAgeScore:x.prospectAgeScore,prospectNormPts:x.prospectNormPts,team:viewTeam});
         return Object.assign({},p,{_ds,_dsNormal,_dsParts:toParts(b),_dsPartsNormal:toParts(bNormal)});
       });
     const dsField = sortCol==='prod'?'prod':sortCol==='con_ppm'?'conPpm':sortCol==='con_trj'?'conTrj':sortCol==='con_crv'?'conCrv':sortCol==='con_term'?'conTerm':sortCol==='prospect'?'prospect':sortCol==='score'?'total':null;
@@ -4319,6 +4333,7 @@ const POSTDROP_ROSTER_2627 = {
   'john carlson_D': 'Muller Time!',
   'carter yakemchuk_D': 'Muller Time!',
   'karel vejmelka_G': 'Muller Time!',
+  'jacob fowler_G': 'Muller Time!',
   'bryan rust_F': 'Muller Time!',
   'tim stutzle_F': 'Pernicious Puckers',
   'nick suzuki_F': 'Pernicious Puckers',
@@ -6730,7 +6745,7 @@ function render2425(){
       const _ds2425=prospectScore.score, _ds2425Normal=normalScore.score;
       // Same field names as 26-27's toParts (not suffixed) so _scoreCols2425 can share its
       // draft-mode branch structure with _scoreCols2627 - see the matching 25-26 fix comment.
-      const toParts2425 = (b) => ({tPPTS:b.tPPTS,tPPTSM:b.tPPTSM,yrsRaw:b.yrsRaw,youthRaw:b.youthRaw,tYouth:b.tYouth,ageRaw:b.ageRaw,tProspect:b.tProspect,round:genericRound,srcN:b.srcN,coverageMult:b.coverageMult,tDelta:b.tDelta,tFanBias:b.tFanBias,pressRaw:b.pressRaw,pressMult:b.pressMult,posMult:b.posMult,posAllocMult:b.posAllocMult,tCapUse:b.tCapUse,tTermValue:b.tTermValue,termYears:b.termYears,declineDampen:b.declineDampen,pp:b.pp,tPPTSBase:b.tPPTSBase,ppPerM:b.ppPerM,deltaRaw:b.deltaRaw,curveBase:b.curveBase,prospectAgeScore:b.prospectAgeScore,prospectNormPts:b.prospectNormPts,team:viewTeam2425});
+      const toParts2425 = (b) => ({tPPTS:b.tPPTS,tPPTSM:b.tPPTSM,yrsRaw:b.yrsRaw,youthRaw:b.youthRaw,tYouth:b.tYouth,ageRaw:b.ageRaw,tProspect:b.tProspect,round:genericRound,srcN:b.srcN,coverageMult:b.coverageMult,tDelta:b.tDelta,tFanBias:b.tFanBias,pressRaw:b.pressRaw,pressMult:b.pressMult,posMult:b.posMult,posAllocMult:b.posAllocMult,tCapUse:b.tCapUse,tTermValue:b.tTermValue,termGain:b.termGain,termYears:b.termYears,declineDampen:b.declineDampen,pp:b.pp,tPPTSBase:b.tPPTSBase,ppPerM:b.ppPerM,deltaRaw:b.deltaRaw,curveBase:b.curveBase,prospectAgeScore:b.prospectAgeScore,prospectNormPts:b.prospectNormPts,team:viewTeam2425});
       return Object.assign({},p,{_ds2425,_ds2425Normal,_dsParts2425:toParts2425(prospectScore),_dsPartsNormal2425:toParts2425(normalScore)});
     });
     rows = lastAllScored2425.filter(p=>{
@@ -7216,7 +7231,7 @@ function render2324(){
       const _ds2324=prospectScore.score, _ds2324Normal=normalScore.score;
       // Same field names as 26-27's toParts (not suffixed) so _scoreCols2324 can share its
       // draft-mode branch structure with _scoreCols2627 - see the matching 25-26 fix comment.
-      const toParts2324 = (b) => ({tPPTS:b.tPPTS,tPPTSM:b.tPPTSM,yrsRaw:b.yrsRaw,youthRaw:b.youthRaw,tYouth:b.tYouth,ageRaw:b.ageRaw,tProspect:b.tProspect,round:genericRound2324,srcN:b.srcN,coverageMult:b.coverageMult,tDelta:b.tDelta,tFanBias:b.tFanBias,pressRaw:b.pressRaw,pressMult:b.pressMult,posMult:b.posMult,posAllocMult:b.posAllocMult,tCapUse:b.tCapUse,tTermValue:b.tTermValue,termYears:b.termYears,declineDampen:b.declineDampen,pp:b.pp,tPPTSBase:b.tPPTSBase,ppPerM:b.ppPerM,deltaRaw:b.deltaRaw,curveBase:b.curveBase,prospectAgeScore:b.prospectAgeScore,prospectNormPts:b.prospectNormPts,team:viewTeam2324});
+      const toParts2324 = (b) => ({tPPTS:b.tPPTS,tPPTSM:b.tPPTSM,yrsRaw:b.yrsRaw,youthRaw:b.youthRaw,tYouth:b.tYouth,ageRaw:b.ageRaw,tProspect:b.tProspect,round:genericRound2324,srcN:b.srcN,coverageMult:b.coverageMult,tDelta:b.tDelta,tFanBias:b.tFanBias,pressRaw:b.pressRaw,pressMult:b.pressMult,posMult:b.posMult,posAllocMult:b.posAllocMult,tCapUse:b.tCapUse,tTermValue:b.tTermValue,termGain:b.termGain,termYears:b.termYears,declineDampen:b.declineDampen,pp:b.pp,tPPTSBase:b.tPPTSBase,ppPerM:b.ppPerM,deltaRaw:b.deltaRaw,curveBase:b.curveBase,prospectAgeScore:b.prospectAgeScore,prospectNormPts:b.prospectNormPts,team:viewTeam2324});
       return Object.assign({},p,{_ds2324,_ds2324Normal,_dsParts2324:toParts2324(prospectScore),_dsPartsNormal2324:toParts2324(normalScore)});
     });
     rows = lastAllScored2324.filter(p=>{
@@ -8197,7 +8212,7 @@ function _scoreDraftCandidate(p, { pg, pp, cap0, pressure, mode, round, draftWei
       }
     }
   }
-  return { score, tPPTS, tPPTSM, yrsRaw, youthRaw, tYouth, ageRaw: age, tProspect: prospect, srcN, coverageMult, tDelta, tCapUse, tFanBias, tTermValue, termYears, declineDampen, pressRaw: pressure[pg], pressMult, posMult, posAllocMult, pp, tPPTSBase, ppPerM, deltaRaw, curveBase: deltaCurveBase, prospectAgeScore, prospectNormPts };
+  return { score, tPPTS, tPPTSM, yrsRaw, youthRaw, tYouth, ageRaw: age, tProspect: prospect, srcN, coverageMult, tDelta, tCapUse, tFanBias, tTermValue, termGain, termYears, declineDampen, pressRaw: pressure[pg], pressMult, posMult, posAllocMult, pp, tPPTSBase, ppPerM, deltaRaw, curveBase: deltaCurveBase, prospectAgeScore, prospectNormPts };
 }
 
 // ── Fully-uncontested batch drafting ─────────────────────────────────────────
@@ -9599,7 +9614,7 @@ function render2526(){
         // tPPTSBase/ppPerM/deltaRaw/prospectAgeScore/prospectNormPts entirely and used
         // inconsistent per-field suffixes (ageRaw2526/tProspect2526/srcN2526d/coverageMult2526/
         // pressMult2526/pressRaw2526) that nothing else in the codebase matched.
-        const toParts2526 = (x) => ({tPPTS:x.tPPTS,tPPTSM:x.tPPTSM,yrsRaw:x.yrsRaw,youthRaw:x.youthRaw,tYouth:x.tYouth,ageRaw:x.ageRaw,tProspect:x.tProspect,round:focusRound2526,srcN:x.srcN,coverageMult:x.coverageMult,tDelta:x.tDelta,tFanBias:x.tFanBias,pressRaw:x.pressRaw,pressMult:x.pressMult,posMult:x.posMult,posAllocMult:x.posAllocMult,tCapUse:x.tCapUse,tTermValue:x.tTermValue,termYears:x.termYears,declineDampen:x.declineDampen,pp:x.pp,tPPTSBase:x.tPPTSBase,ppPerM:x.ppPerM,deltaRaw:x.deltaRaw,curveBase:x.curveBase,prospectAgeScore:x.prospectAgeScore,prospectNormPts:x.prospectNormPts,team:viewTeam2526});
+        const toParts2526 = (x) => ({tPPTS:x.tPPTS,tPPTSM:x.tPPTSM,yrsRaw:x.yrsRaw,youthRaw:x.youthRaw,tYouth:x.tYouth,ageRaw:x.ageRaw,tProspect:x.tProspect,round:focusRound2526,srcN:x.srcN,coverageMult:x.coverageMult,tDelta:x.tDelta,tFanBias:x.tFanBias,pressRaw:x.pressRaw,pressMult:x.pressMult,posMult:x.posMult,posAllocMult:x.posAllocMult,tCapUse:x.tCapUse,tTermValue:x.tTermValue,termGain:x.termGain,termYears:x.termYears,declineDampen:x.declineDampen,pp:x.pp,tPPTSBase:x.tPPTSBase,ppPerM:x.ppPerM,deltaRaw:x.deltaRaw,curveBase:x.curveBase,prospectAgeScore:x.prospectAgeScore,prospectNormPts:x.prospectNormPts,team:viewTeam2526});
         return Object.assign({},p,{_ds2526,_ds2526Normal,_dsParts2526:toParts2526(b),_dsPartsNormal2526:toParts2526(bNormal)});
       });
     const dsField2526 = sortCol2526==='prod2526'?'prod':sortCol2526==='con_ppm2526'?'conPpm':sortCol2526==='con_trj2526'?'conTrj':sortCol2526==='con_crv2526'?'conCrv':sortCol2526==='con_term2526'?'conTerm':sortCol2526==='prospect2526'?'prospect':sortCol2526==='score2526'?'total':null;
