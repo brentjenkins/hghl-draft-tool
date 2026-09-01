@@ -930,13 +930,13 @@ tr:hover td{background:#fafaf8}
   <div>
     <div class="section-label">Projections <span class="section-line"></span><span class="section-desc">Confidence weight per projection source when blending PPTS/PPP (higher = trusted more). Defaults derived from a 2026-07-13 backtest of each source's 25-26 preseason projection vs actual 25-26 results — Athletic/DFO tracked actuals most closely, ESPN least.</span></div>
     <div style="display:flex;flex-wrap:wrap;gap:10px">
-      <label style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:#9ca3af" title="Backtest: r=0.74, MAE=12.4 (common pool)">Athletic<input type="number" id="s-wAthletic" value="1.2" min="0" max="3" step="0.1" onchange="updateProjWeight('athletic',+this.value)" style="width:64px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center;color:#1a1a18"></label>
-      <label style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:#9ca3af" title="Backtest: r=0.74, MAE=12.5 (common pool)">DFO<input type="number" id="s-wDFO" value="1.2" min="0" max="3" step="0.1" onchange="updateProjWeight('dfo',+this.value)" style="width:64px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center;color:#1a1a18"></label>
-      <label style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:#9ca3af" title="Backtest: r=0.757, MAE=12.4 (common pool)">DTZ<input type="number" id="s-wDTZ" value="1.2" min="0" max="3" step="0.1" onchange="updateProjWeight('dtz',+this.value)" style="width:64px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center;color:#1a1a18"></label>
-      <label style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:#9ca3af" title="Backtest: r=0.71, MAE=14.4 (common pool)">CBS<input type="number" id="s-wCBS" value="0.9" min="0" max="3" step="0.1" onchange="updateProjWeight('cbs',+this.value)" style="width:64px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center;color:#1a1a18"></label>
-      <label style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:#9ca3af" title="Backtest: r=0.73, MAE=13.9 (common pool)">NHL.com<input type="number" id="s-wNHL" value="0.9" min="0" max="3" step="0.1" onchange="updateProjWeight('nhl',+this.value)" style="width:64px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center;color:#1a1a18"></label>
-      <label style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:#9ca3af" title="Backtest: r=0.64, MAE=15.2 (common pool)">ESPN<input type="number" id="s-wESPN" value="0.8" min="0" max="3" step="0.1" onchange="updateProjWeight('espn',+this.value)" style="width:64px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center;color:#1a1a18"></label>
-      <label style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:#9ca3af" title="Backtest (2023-24, only season with data so far): r=0.747, MAE=14.03 (common pool) — last of 4 there, though full-pool r=0.828 is stronger; goalies notably weak (r=0.612)">Dobbers<input type="number" id="s-wDOB" value="0.9" min="0" max="3" step="0.1" onchange="updateProjWeight('dob',+this.value)" style="width:64px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center;color:#1a1a18"></label>
+      <label style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:#9ca3af" title="Pooled backtest (23-24/24-25/25-26): r=0.820, MAE=10.93, n=1861">Athletic<input type="number" id="s-wAthletic" value="1.24" min="0" max="3" step="0.1" onchange="updateProjWeight('athletic',+this.value)" style="width:64px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center;color:#1a1a18"></label>
+      <label style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:#9ca3af" title="Pooled backtest (24-25/25-26 — no 23-24 source file): r=0.813, MAE=10.87, n=1263">DFO<input type="number" id="s-wDFO" value="1.26" min="0" max="3" step="0.1" onchange="updateProjWeight('dfo',+this.value)" style="width:64px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center;color:#1a1a18"></label>
+      <label style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:#9ca3af" title="Pooled backtest (23-24/24-25/25-26): r=0.826, MAE=11.10, n=2161">DTZ<input type="number" id="s-wDTZ" value="1.21" min="0" max="3" step="0.1" onchange="updateProjWeight('dtz',+this.value)" style="width:64px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center;color:#1a1a18"></label>
+      <label style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:#9ca3af" title="Backtest (25-26 only season with a baked source): r=0.783, MAE=12.93, n=767">CBS<input type="number" id="s-wCBS" value="0.89" min="0" max="3" step="0.1" onchange="updateProjWeight('cbs',+this.value)" style="width:64px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center;color:#1a1a18"></label>
+      <label style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:#9ca3af" title="Pooled backtest (23-24/24-25/25-26) — worst source in all 3 individual seasons (r=0.719/0.722/0.714): r=0.716, MAE=15.48, n=1036">NHL.com<input type="number" id="s-wNHL" value="0.62" min="0" max="3" step="0.1" onchange="updateProjWeight('nhl',+this.value)" style="width:64px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center;color:#1a1a18"></label>
+      <label style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:#9ca3af" title="Backtest (25-26 only season with a baked source): r=0.723, MAE=14.73, n=428">ESPN<input type="number" id="s-wESPN" value="0.69" min="0" max="3" step="0.1" onchange="updateProjWeight('espn',+this.value)" style="width:64px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center;color:#1a1a18"></label>
+      <label style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:#9ca3af" title="Backtest (2023-24, still only season with a source file): r=0.812, MAE=11.66, n=753 — directly comparable to ATH/DTZ's own 23-24 numbers (0.812/0.822) on the same pooled methodology">Dobbers<input type="number" id="s-wDOB" value="1.09" min="0" max="3" step="0.1" onchange="updateProjWeight('dob',+this.value)" style="width:64px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center;color:#1a1a18"></label>
       <label style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:#9ca3af" title="Once 26-27 games exist, PPTS = banked actual points (certain — drops/draft apply retroactively) + this-weighted blend of preseason rate vs actual pace for games remaining. Small on purpose — 14 games is a noisy sample.">Early pace wt<input type="number" id="s-earlyPaceWeight" value="0.2" min="0" max="1" step="0.05" onchange="updateSetting('earlyPaceWeight',+this.value)" style="width:64px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center;color:#1a1a18"></label>
     </div>
   </div>
@@ -2165,14 +2165,23 @@ function dedup(){
 }
 
 // Per-source confidence weights for blending PPTS/PPP across projection sources.
-// Derived 2026-07-13 by backtesting each source's 25-26 preseason projection against
-// actual 25-26 results (r, MAE, RMSE on a common player pool covered by all 5 sources).
-// Athletic/DFO were the clear top tier, ESPN the clear bottom tier, CBS/NHL.com mid —
-// weights are inverse-MAE-squared (precision weighting), normalized to mean=1, rounded.
-// DTZ added 2026-07-19 after the same backtest (r=0.834 full pool / 0.757 common pool,
-// tying Athletic for best correlation with the lowest bias of any source) — same tier as
-// Athletic/DFO. Tunable live in Settings > Projections.
-let PROJ_SOURCE_WEIGHTS = { athletic: 1.2, dfo: 1.2, dtz: 1.2, cbs: 0.9, nhl: 0.9, espn: 0.8, dob: 0.9 };
+// Re-derived 2026-09-02 by backtesting every (season, source) pair where we actually have
+// both a preseason projection and real season-end actuals — pooled across all of 23-24,
+// 24-25, and 25-26 where available, not just a single season's snapshot. Weights are
+// inverse-MAE-squared (precision weighting) on the pooled proj/actual pairs, normalized to
+// mean=1, rounded to 2dp. Coverage varies by source: ATH/DTZ/NHL.com have all 3 seasons
+// validated (n=1861/2161/1036 pooled); DFO has 2 (24-25/25-26 only, n=1263); CBS/ESPN/DOB
+// each have just 1 season on file (n=767/428/753) — no raw source files exist for the other
+// years, so those three remain thinner evidence than the rest.
+// Biggest mover: NHL.com was tied with CBS at 0.9, but is the single worst source in every
+// one of the 3 seasons tested (r=0.719/0.722/0.714, remarkably consistent) — dropped to
+// 0.62. DOB moved up from 0.9 to 1.09 once directly compared on the same footing as the
+// other sources' own 23-24 numbers (0.812 vs ATH's 0.812/DTZ's 0.822 that same year), rather
+// than the earlier, lower 0.747 figure it had been carrying. Full breakdown: ATH r=0.820
+// (n=1861), DFO r=0.813 (n=1263), DTZ r=0.826 (n=2161), CBS r=0.783 (n=767), ESPN r=0.723
+// (n=428), NHL.com r=0.716 (n=1036), DOB r=0.812 (n=753). Tunable live in Settings >
+// Projections.
+let PROJ_SOURCE_WEIGHTS = { athletic: 1.24, dfo: 1.26, dtz: 1.21, cbs: 0.89, nhl: 0.62, espn: 0.69, dob: 1.09 };
 
 // Shared 26-27 source-coverage counter (draft-confidence minSrcCoverage floor) — used to be
 // redefined inline at 4 separate call sites, 3 of which agreed (6 sources, maxSrc=6) while
