@@ -1455,8 +1455,9 @@ def cbs_projections():
 
 _NHL_PROJ_URLS = {
     "2526": "https://www.nhl.com/news/nhl-fantasy-hockey-projections-forward-defenseman-points-2025-26",
-    "2627": "https://www.nhl.com/news/nhl-fantasy-hockey-projections-forward-defenseman-points-2026-27",
+    "2627": "https://www.nhl.com/news/nhl-points-projections-fantasy-hockey-2026-27",
 }
+_NHL_GOALIE_WIN_PROJ_URL_2627 = "https://www.nhl.com/news/topic/fantasy/2026-2027-fantasy-hockey-goalie-win-projections"
 
 def _parse_nhl_proj_page(html: str) -> dict:
     """Parse NHL.com fantasy projections page text into {normName_pos: pts}."""
@@ -1496,6 +1497,56 @@ def nhl_projections_2627():
                             headers={"User-Agent": "Mozilla/5.0"})
         resp.raise_for_status()
         players = _parse_nhl_proj_page(resp.content.decode("utf-8"))
+        return jsonify({"ok": True, "players": players, "count": len(players)})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+def _parse_nhl_goalie_win_page(html: str) -> dict:
+    """Parse NHL.com's goalie win-projections article into {normName_G: pts}.
+
+    The article only gives raw projected wins (no GAA/SV%/SO breakdown), unlike
+    the other projection sources' goalie numbers which are already a fantasy-
+    points equivalent (see e.g. the CBS goalie formula, W*2+SO*3) - so wins are
+    converted here the same way, estimating shutouts at 1 per 10 wins (user-
+    specified 2026-09-01): pts = W*2 + W*0.1*3.
+
+    Some lines split one team's win total across a timeshare, e.g. "Alex Lyon or
+    Colten Ellis, G, BUF: 18" - applied 80/20 to the first/second-named goalie
+    (user-specified). A few lines also omit the team code entirely (e.g. "Samuel
+    Ersson, G or Leevi Merilainen, G: 12"), so team isn't relied on for parsing -
+    only the name(s) before the first comma of each "or"-split chunk.
+    """
+    text = html.replace('\\n', '\n')
+    start = text.find('GOALIE WIN PROJECTIONS')
+    end = text.find('TEAM WIN PROJECTIONS')
+    if start < 0:
+        return {}
+    section = text[start:end if end > start else None]
+    pattern = re.compile(r'^(?:<[^>]+>)*(.+?):\s*(\d+)\s*$', re.MULTILINE)
+    players = {}
+    for m in pattern.finditer(section):
+        descriptor, wins = m.group(1).strip(), int(m.group(2))
+        if not re.match(r'^[A-Z]', descriptor):
+            continue
+        chunks = descriptor.split(' or ') if ' or ' in descriptor else [descriptor]
+        names = [c.split(',')[0].strip() for c in chunks]
+        shares = [wins * 0.8, wins * 0.2] if len(names) == 2 else [wins]
+        for name, w in zip(names, shares):
+            pts = round(w * 2 + w * 0.1 * 3, 1)
+            key = f"{normalize_name(name).lower()}_G"
+            players[key] = pts
+    return players
+
+
+@app.route("/nhl-goalie-projections-2627")
+def nhl_goalie_projections_2627():
+    """Fetch NHL.com 2026-27 goalie win projections, converted to fantasy points."""
+    try:
+        resp = requests.get(_NHL_GOALIE_WIN_PROJ_URL_2627, timeout=15,
+                            headers={"User-Agent": "Mozilla/5.0"})
+        resp.raise_for_status()
+        players = _parse_nhl_goalie_win_page(resp.content.decode("utf-8"))
         return jsonify({"ok": True, "players": players, "count": len(players)})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500

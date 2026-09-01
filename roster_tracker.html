@@ -610,7 +610,7 @@ tr:hover td{background:#fafaf8}
       <button class="btn btn-dob" id="dobBtn" onclick="document.getElementById('dobFileInput').click()" title="Import Dobbers 2026-27 projections — select both the skater and goalie CSV exports together. Currently 100% of preseason PPTS (not blended with other sources) until backtested against a real season, then folded into PROJ_SOURCE_WEIGHTS.">📈 DOB 26-27</button>
       <button class="btn btn-espn" id="espnBtn" onclick="syncESPN()" title="Pull latest ESPN 2026-27 projections (G+A for skaters, W×2+SO×3 for goalies) (~30s)">📈 ESPN 26-27</button>
       <button class="btn btn-cbs" id="cbsBtn" onclick="syncCBS()" title="Scrape CBS Sports 2026-27 projections (G+A for skaters, W×2+SO×3 for goalies) (~25s)">📈 CBS 26-27</button>
-      <button class="btn btn-nhl" id="nhlProj2627Btn" onclick="syncNHLProj2627()" title="Pull NHL.com 2026-27 forward &amp; defenseman point projections (available ~Oct 2026)" style="opacity:.5">📈 NHL 26-27</button>
+      <button class="btn btn-nhl" id="nhlProj2627Btn" onclick="syncNHLProj2627()" title="Pull NHL.com 2026-27 forward &amp; defenseman point projections">📈 NHL 26-27</button>
     </div>
     </div>
     <div style="display:flex;align-items:center;gap:6px">
@@ -1998,10 +1998,17 @@ function _reportUnmatchedSourceEntries(sourceLabel, sourceDict){
   const unmatched = [];
   for(const key in sourceDict){
     const entry = sourceDict[key];
-    if(!entry || seen.has(entry)) continue;
-    seen.add(entry);
+    if(entry == null) continue;
+    // Most sources store {name, ...} objects (multiple alias keys can share one object
+    // reference, hence dedup-by-reference below), but the NHL.com projections dict
+    // (points/win-derived pts) just stores a bare number per key - no .name to read and
+    // no alias-object sharing, so derive the name from the key itself and skip dedup
+    // (each key's already unique) rather than crash on entry.name.
+    const isObj = typeof entry === 'object';
+    if(isObj){ if(seen.has(entry)) continue; seen.add(entry); }
     const pos = key.slice(key.lastIndexOf('_')+1);
-    if(!findPlayerByNamePos(entry.name, pos)) unmatched.push({name: entry.name, pos});
+    const name = isObj ? entry.name : key.slice(0, key.lastIndexOf('_'));
+    if(!findPlayerByNamePos(name, pos)) unmatched.push({name, pos});
   }
   if(unmatched.length){
     console.log(`[${sourceLabel}] ${unmatched.length} source player(s) not found in the live pool (deep prospects are expected here, but it's worth a glance for name-matching bugs):`);
@@ -3506,11 +3513,18 @@ async function syncNHLProj2627(){
   const btn = document.getElementById('nhlProj2627Btn');
   btn.disabled=true; btn.innerHTML='<span class="spinner"></span>Fetching…';
   try {
-    const d = await fetch('/nhl-projections-2627').then(r=>r.json());
+    const [d, g] = await Promise.all([
+      fetch('/nhl-projections-2627').then(r=>r.json()),
+      fetch('/nhl-goalie-projections-2627').then(r=>r.json()),
+    ]);
     if(!d.ok) throw new Error(d.error);
+    if(!g.ok) throw new Error(g.error);
+    // F/D points and goalie win-projection-derived points share the same normName_pos key
+    // convention (_dictLookupPos) so they merge into one lookup without collision.
+    const combined = {...d.players, ...g.players};
     let matched=0, unmatched=0;
     for(const p of players){
-      const v = _dictLookupPos(p.name, p.pos, d.players);
+      const v = _dictLookupPos(p.name, p.pos, combined);
       p.proj2627.nhl = (v > 0) ? v : null;
       if(v > 0) matched++; else unmatched++;
     }
@@ -3518,7 +3532,7 @@ async function syncNHLProj2627(){
     lsSet(LS_PLAYERS, players);
     render();
     toast(`NHL 26-27 synced! ${matched} matched, ${unmatched} unmatched.`);
-    _reportUnmatchedSourceEntries('NHL Proj 26-27', d.players);
+    _reportUnmatchedSourceEntries('NHL Proj 26-27', combined);
   } catch(e){ toast('NHL 26-27 sync failed: '+e.message); }
   finally { btn.disabled=false; btn.innerHTML='📈 NHL 26-27'; }
 }
