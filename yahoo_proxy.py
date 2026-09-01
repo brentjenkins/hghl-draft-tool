@@ -38,7 +38,7 @@ if not CLIENT_ID or not CLIENT_SECRET:
         "        YAHOO_CLIENT_SECRET=your_client_secret\n\n"
         "    Or export them as environment variables before running."
     )
-LEAGUE_KEY = os.environ.get("YAHOO_LEAGUE_KEY", "465.l.97882")
+LEAGUE_KEY = os.environ.get("YAHOO_LEAGUE_KEY", "477.l.62019")
 REDIRECT_URI = "https://localhost:8100/callback"
 TOKEN_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".yahoo_tokens.json")
 CERT_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".localhost_cert.pem")
