@@ -607,7 +607,7 @@ tr:hover td{background:#fafaf8}
       <input type="file" id="dtzFileInput" accept=".csv" multiple style="display:none" onchange="syncDTZ(this)">
       <button class="btn btn-dtz" id="dtzBtn" onclick="document.getElementById('dtzFileInput').click()" title="Import DTZ 2026-27 projections — select both the skater and goalie CSV exports together (once DTZ publishes 26-27 data)">📈 DTZ 26-27</button>
       <input type="file" id="dobFileInput" accept=".csv" multiple style="display:none" onchange="syncDOB(this)">
-      <button class="btn btn-dob" id="dobBtn" onclick="document.getElementById('dobFileInput').click()" title="Import Dobbers 2026-27 projections — select both the skater and goalie CSV exports together. Currently 100% of preseason PPTS (not blended with other sources) until backtested against a real season, then folded into PROJ_SOURCE_WEIGHTS.">📈 DOB 26-27</button>
+      <button class="btn btn-dob" id="dobBtn" onclick="document.getElementById('dobFileInput').click()" title="Import Dobbers 2026-27 projections — select both the skater and goalie CSV exports together.">📈 DOB 26-27</button>
       <button class="btn btn-espn" id="espnBtn" onclick="syncESPN()" title="Pull latest ESPN 2026-27 projections (G+A for skaters, W×2+SO×3 for goalies) (~30s)">📈 ESPN 26-27</button>
       <button class="btn btn-cbs" id="cbsBtn" onclick="syncCBS()" title="Scrape CBS Sports 2026-27 projections (G+A for skaters, W×2+SO×3 for goalies) (~25s)">📈 CBS 26-27</button>
       <button class="btn btn-nhl" id="nhlProj2627Btn" onclick="syncNHLProj2627()" title="Pull NHL.com 2026-27 forward &amp; defenseman point projections">📈 NHL 26-27</button>
@@ -687,7 +687,7 @@ tr:hover td{background:#fafaf8}
   <th onclick="setSortCol('ptsAth')" style="color:#185FA5;text-align:right;font-size:10px;padding:9px 2px;border-left:2px solid #e5e7eb" title="Athletic 2026-27 projection">ATH <span id="sort-ptsAth"></span></th>
   <th onclick="setSortCol('ptsDFO')" style="color:#185FA5;text-align:right;font-size:10px;padding:9px 2px" title="DFO/5v5hockey 2026-27 projection">DFO <span id="sort-ptsDFO"></span></th>
   <th onclick="setSortCol('ptsDTZ')" style="color:#185FA5;text-align:right;font-size:10px;padding:9px 2px" title="DTZ 2026-27 projection">DTZ <span id="sort-ptsDTZ"></span></th>
-  <th onclick="setSortCol('ptsDOB')" style="color:#185FA5;text-align:right;font-size:10px;padding:9px 2px" title="Dobbers 2026-27 projection — currently 100% of preseason PPTS for matched players (not yet blended)">DOB <span id="sort-ptsDOB"></span></th>
+  <th onclick="setSortCol('ptsDOB')" style="color:#185FA5;text-align:right;font-size:10px;padding:9px 2px" title="Dobbers 2026-27 projection">DOB <span id="sort-ptsDOB"></span></th>
   <th onclick="setSortCol('ptsESPN')" style="color:#185FA5;text-align:right;font-size:10px;padding:9px 2px" title="ESPN 2026-27 projection">ESPN <span id="sort-ptsESPN"></span></th>
   <th onclick="setSortCol('ptsCBS')" style="color:#185FA5;text-align:right;font-size:10px;padding:9px 2px" title="CBS Sports 2026-27 projection">CBS <span id="sort-ptsCBS"></span></th>
   <th onclick="setSortCol('ptsNHL')" style="color:#185FA5;text-align:right;font-size:10px;padding:9px 2px" title="NHL.com 2026-27 forward/defenseman point projection">NHL <span id="sort-ptsNHL"></span></th>
@@ -1093,8 +1093,8 @@ tr:hover td{background:#fafaf8}
                 <input type="number" id="s-wtCoverageDiscount" value="0.25" min="0" max="1" step="0.05" onchange="updateDraftWeight('wtCoverageDiscount',+this.value)" style="width:70px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center">
               </div>
               <div style="display:flex;flex-direction:column;gap:3px">
-                <span style="font-size:11px;color:#9ca3af" title="Hard floor: a free agent needs coverage from at least this fraction of that season's available projection sources to be draft-eligible at all (not just discounted). Backtested 2026-07-28 against all 3 real drafts: real GMs never drafted below ~1/3 coverage in any season (23-24 w/ 3 sources, 24-25 w/ 4, 25-26 w/ 6), while the algo's own 25-26 misses were 100% single-source (all CBS). 0-source players are already unscoreable (ppts=0) so this only bites the 'has SOME points, but from a lone uncorroborated source' case. Shared across all 4 seasons — 26-27 no longer has its own separate override; raise toward 0.33 as more 26-27 sources publish (expected mid-September), all the way up before the real draft.">Min source coverage (<span style="font-family:monospace;color:#b0b0ac">minSrcCoverage</span>)</span>
-                <input type="number" id="s-minSrcCoverage" value="0.28" min="0" max="1" step="0.01" onchange="updateDraftWeight('minSrcCoverage',+this.value)" style="width:70px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center">
+                <span style="font-size:11px;color:#9ca3af" title="Hard floor: a free agent needs coverage from at least this fraction of that season's available projection sources to be draft-eligible at all (not just discounted). Backtested 2026-07-28 against all 3 real drafts: real GMs never drafted below ~1/3 coverage in any season (23-24 w/ 3 sources, 24-25 w/ 4, 25-26 w/ 6), while the algo's own 25-26 misses were 100% single-source (all CBS). 0-source players are already unscoreable (ppts=0) so this only bites the 'has SOME points, but from a lone uncorroborated source' case. Shared across all 4 seasons — raised to 0.33 on 2026-09-01 once 26-27 reached 6 sources (parity with 25-26's precedent).">Min source coverage (<span style="font-family:monospace;color:#b0b0ac">minSrcCoverage</span>)</span>
+                <input type="number" id="s-minSrcCoverage" value="0.33" min="0" max="1" step="0.01" onchange="updateDraftWeight('minSrcCoverage',+this.value)" style="width:70px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center">
               </div>
             </div>
 
@@ -1378,7 +1378,7 @@ let sortColSignings = 'sign_date', sortDirSignings = -1;
 // side (7/21 otherwise-unexplained "GM kept a below-curve player forever" cases matched the
 // GM's fan team, ~10x the ~3% chance baseline) and explicitly flagged then to revisit for draft
 // accuracy too. See GM_FAN_TEAM / project_gm_nhl_affiliation memory.
-let draftWeights = { multF: 1.0, multD: 1.26, multG: 1.0, wtPPTSM: 0.75, wtAge: 1, wtProspect: 12, wtCoverageDiscount: 0.25, wtPressure: 0.3, wtDeltaCurve: 8, elcExpF: 41, elcExpD: 26, elcExpG: 35, wtPosAlloc: 1.0, minSrcCoverage: 0.28, wtCapUse: 0, wtFanBias: 0, wtTermValue: 0 };
+let draftWeights = { multF: 1.0, multD: 1.26, multG: 1.0, wtPPTSM: 0.75, wtAge: 1, wtProspect: 12, wtCoverageDiscount: 0.25, wtPressure: 0.3, wtDeltaCurve: 8, elcExpF: 41, elcExpD: 26, elcExpG: 35, wtPosAlloc: 1.0, minSrcCoverage: 0.33, wtCapUse: 0, wtFanBias: 0, wtTermValue: 0 };
 // Knapsack-optimal cap fractions: F=58%, D=35%, G=7% (derived from 26-27 player pool, $104M cap)
 const OPT_POS_FRACS = {F: 0.58, D: 0.35, G: 0.07};
 
@@ -1871,8 +1871,8 @@ const KNOWN_NAME_OVERRIDE_PAIRS = [
   ['alexander nylander', 'alexandre nylander'],
   ['alexander wennberg', 'alexandre wennberg'],
   // Dobbers' 2026-27 goalie export spells him "Sergei Bobrovski" (missing the final "y") —
-  // without this override his ptsDOB never matches, silently falling back to the multi-source
-  // blend instead of the 100% Dobbers override every other matched player gets. Found 2026-08-05.
+  // without this override his ptsDOB never matches and Dobbers silently drops out of his
+  // multi-source blend. Found 2026-08-05.
   ['sergei bobrovski', 'sergei bobrovsky'],
   // Same hyphen-vs-space normalization gap as Charles-Alexis Legault above: normName() strips
   // hyphens with no space substitution, so Dobbers' "Sandin-Pellikka" normalizes to
@@ -2782,12 +2782,9 @@ async function syncDTZ(input){
   }
 }
 
-// Loads Dobbers 26-27 projections into ptsDOB/gpDOB, currently used as 100% of the 26-27
-// preseason projection (see reblendPts) rather than blended with the other sources — an
-// explicit 2026-08-04 call while backtest data (prior-year Dobbers vs real outcomes) is still
-// being gathered. Once vetted, folding it into the normal PROJ_SOURCE_WEIGHTS blend at an
-// appropriate weight is a small, separate follow-up (the same process DTZ went through before
-// being trusted — see project_weighted_proj_blend memory).
+// Loads Dobbers 26-27 projections into ptsDOB/gpDOB. Folded into the normal weighted blend
+// (PROJ_SOURCE_WEIGHTS.dob=0.9, see reblendPts) since 2026-08-19 — same process DTZ went
+// through before being trusted, see project_weighted_proj_blend memory.
 async function syncDOB(input){
   const files = Array.from(input.files); if(!files.length) return; input.value='';
   if(!proxyOk){ toast('Start the proxy first.'); return; }
@@ -2813,7 +2810,7 @@ async function syncDOB(input){
     applyBlendedPts();
     lsSet(LS_PLAYERS, players);
     render();
-    toast(`Dobbers 26-27 synced! ${matched} matched, ${unmatched} unmatched. (Now 100% of preseason PPTS for matched players.)`);
+    toast(`Dobbers 26-27 synced! ${matched} matched, ${unmatched} unmatched.`);
     _reportUnmatchedSourceEntries('Dobbers 26-27', d.players);
   } catch(e){
     toast('Dobbers 26-27 import failed: '+e.message);
@@ -4976,7 +4973,7 @@ function syncSettings(){
   set('s-wtProspect', W.wtProspect);
   set('s-elcExpF', W.elcExpF); set('s-elcExpD', W.elcExpD); set('s-elcExpG', W.elcExpG);
   set('s-wtCoverageDiscount', W.wtCoverageDiscount);
-  set('s-minSrcCoverage', W.minSrcCoverage??0.28);
+  set('s-minSrcCoverage', W.minSrcCoverage??0.33);
   set('s-wtPressure', W.wtPressure);
   set('s-wtDeltaCurve', W.wtDeltaCurve);
   set('s-wtTermValue', W.wtTermValue??8);
@@ -5000,7 +4997,7 @@ function syncSettings(){
 function updateDraftWeight(key, val){
   if(draftWeights.wtProspect === undefined) draftWeights.wtProspect = 12;
   if(draftWeights.wtCoverageDiscount === undefined) draftWeights.wtCoverageDiscount = 0.25;
-  if(draftWeights.minSrcCoverage === undefined) draftWeights.minSrcCoverage = 0.28;
+  if(draftWeights.minSrcCoverage === undefined) draftWeights.minSrcCoverage = 0.33;
   if(draftWeights.wtPressure === undefined) draftWeights.wtPressure = 0.3;
   if(draftWeights.wtDeltaCurve === undefined) draftWeights.wtDeltaCurve = 8;
   if(draftWeights.wtTermValue === undefined) draftWeights.wtTermValue = 0;
