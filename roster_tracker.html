@@ -269,7 +269,7 @@ tr:hover td{background:#fafaf8}
 <div class="stats-grid" id="statCards2425"></div>
 
 <div class="controls" style="margin-top:.5rem">
-  <input type="text" id="search2425" placeholder="Search name, team, fantasy team…" oninput="render2425()">
+  <input type="text" id="search2425" placeholder="Search name…" oninput="debouncedRender(render2425)">
   <select id="filterPos2425" onchange="render2425()">
     <option value="">All positions</option>
     <option value="F">Forwards</option>
@@ -368,7 +368,7 @@ tr:hover td{background:#fafaf8}
 <div class="stats-grid" id="statCards2324"></div>
 
 <div class="controls" style="margin-top:.5rem">
-  <input type="text" id="search2324" placeholder="Search name, team, fantasy team…" oninput="render2324()">
+  <input type="text" id="search2324" placeholder="Search name…" oninput="debouncedRender(render2324)">
   <select id="filterPos2324" onchange="render2324()">
     <option value="">All positions</option>
     <option value="F">Forwards</option>
@@ -475,7 +475,7 @@ tr:hover td{background:#fafaf8}
 <div class="stats-grid" id="statCards2526"></div>
 
 <div class="controls" style="margin-top:.5rem">
-  <input type="text" id="search2526" placeholder="Search name, team, fantasy team…" oninput="render2526()">
+  <input type="text" id="search2526" placeholder="Search name…" oninput="debouncedRender(render2526)">
   <select id="filterPos2526" onchange="render2526()">
     <option value="">All positions</option>
     <option value="F">Forwards</option>
@@ -642,7 +642,7 @@ tr:hover td{background:#fafaf8}
 </div>
 
 <div class="controls" style="margin-top:.5rem">
-  <input type="text" id="search" placeholder="Search name, team, fantasy team…" oninput="render()">
+  <input type="text" id="search" placeholder="Search name…" oninput="debouncedRender(render)">
   <select id="filterPos" onchange="render()">
     <option value="">All positions</option>
     <option value="F">Forwards</option>
@@ -655,12 +655,6 @@ tr:hover td{background:#fafaf8}
   </select>
   <select id="filterFantasy" onchange="render()">
     <option value="">All 26-27 Y! teams</option>
-  </select>
-  <select id="filterSource" onchange="render()">
-    <option value="">All sources</option>
-    <option value="y">Yahoo</option>
-    <option value="n">NHL API</option>
-    <option value="m">Manual</option>
   </select>
   <button class="btn" onclick="clearFilters()" style="flex-shrink:0;font-size:12px;padding:0 10px;height:32px;margin-left:auto;color:#9ca3af;border-color:#e5e7eb">✕ Clear filters</button>
 </div>
@@ -1766,6 +1760,16 @@ const DRAFT_RESERVE_2627 = 1.5 * (ELC_MAX_2627 - 0.175); // cap to reserve per d
 
 const posGroup = p => ['C','LW','RW','F','Util'].includes(p) ? 'F' : p === 'D' ? 'D' : p === 'G' ? 'G' : 'F';
 const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+// Debounces the search boxes' oninput handlers (render()/render2X2Y() each redo the full
+// drop-preview/ABP/curve-fit computation, not just the row filter — see computeDrops in
+// render() — so firing on every single keystroke means every character typed pays that full
+// cost). Waits for a short pause in typing instead of running once per character.
+let _searchDebounceTimer = null;
+function debouncedRender(fn, delay = 200){
+  clearTimeout(_searchDebounceTimer);
+  _searchDebounceTimer = setTimeout(fn, delay);
+}
 
 // In draft mode, every row is an undrafted free agent so the "current Team" column is
 // always blank — hide it to free up horizontal space for the Draft button.
@@ -3880,15 +3884,13 @@ function render(){
   const q=document.getElementById('search').value.toLowerCase();
   const fp=document.getElementById('filterPos').value;
   const ft=document.getElementById('filterTeam').value;
-  const fs=document.getElementById('filterSource').value;
   const ff=document.getElementById('filterFantasy').value;
   const ff2526=document.getElementById('filterFantasy2526').value;
 
   let rows=players.filter(p=>{
-    if(q&&![p.name,p.team2627,p.start2627||'',p.end2526||''].some(s=>s.toLowerCase().includes(q))) return false;
+    if(q&&!p.name.toLowerCase().includes(q)) return false;
     if(fp&&posGroup(p.pos)!==fp) return false;
     if(ft&&p.team2627!==ft) return false;
-    if(fs&&(p.source||'m')!==fs) return false;
     if(ff === '__any__' && !p.start2627) return false;
     else if(ff === '__none__' && p.start2627) return false;
     else if(ff && ff !== '__none__' && ff !== '__any__' && (p.start2627||'')!==ff) return false;
@@ -4959,7 +4961,6 @@ function toggleDraftMode(){
     document.getElementById('filterTeam').value='';
     document.getElementById('filterFantasy2526').value='';
     document.getElementById('filterFantasy').value='';
-    document.getElementById('filterSource').value='';
     sortCol='score'; sortDir=-1;
     startDraftTimer();
   } else {
@@ -6702,7 +6703,7 @@ function render2425(){
   const abpMap2425 = computeABP2425(players);
 
   let rows=players.filter(p=>{
-    if(q&&![p.name,p.team2627,p.end2324||'',p.start2425||''].some(s=>s.toLowerCase().includes(q))) return false;
+    if(q&&!p.name.toLowerCase().includes(q)) return false;
     if(fp && posGroup(p.pos)!==fp) return false;
     if(ft && p.team2627!==ft) return false;
     if(ft2425v==='__any__' && !(p.end2324||'')) return false;
@@ -6787,7 +6788,7 @@ function render2425(){
       if(ft && p.team2627!==ft) return false;
       if(ft2425v==='__any__' && !(p.end2324||'')) return false;
       else if(ft2425v && ft2425v!=='__any__' && (p.end2324||'')!==ft2425v) return false;
-      if(q && ![p.name,p.team2627,p.end2324||'',p.start2425||''].some(s=>s.toLowerCase().includes(q))) return false;
+      if(q && !p.name.toLowerCase().includes(q)) return false;
       return true;
     });
     if(sortCol2425==='ppts2425blend'){
@@ -7196,7 +7197,7 @@ function render2324(){
   const abpMap2324 = computeABP2324(players);
 
   let rows=players.filter(p=>{
-    if(q&&![p.name,p.team2627,p.end2223||'',p.start2324||''].some(s=>s.toLowerCase().includes(q))) return false;
+    if(q&&!p.name.toLowerCase().includes(q)) return false;
     if(fp && posGroup(p.pos)!==fp) return false;
     if(ft && p.team2627!==ft) return false;
     if(ft2324v==='__any__' && !(p.end2223||'')) return false;
@@ -7273,7 +7274,7 @@ function render2324(){
       if(ft && p.team2627!==ft) return false;
       if(ft2324v==='__any__' && !(p.end2223||'')) return false;
       else if(ft2324v && ft2324v!=='__any__' && (p.end2223||'')!==ft2324v) return false;
-      if(q && ![p.name,p.team2627,p.end2223||'',p.start2324||''].some(s=>s.toLowerCase().includes(q))) return false;
+      if(q && !p.name.toLowerCase().includes(q)) return false;
       return true;
     });
     if(sortCol2324==='ppts2324blend'){
@@ -9568,7 +9569,7 @@ function render2526(){
   };
 
   let rows = players.filter(p=>{
-    if(q&&![p.name,p.team2627,p.end2425||'',p.end2526||''].some(s=>s.toLowerCase().includes(q))) return false;
+    if(q&&!p.name.toLowerCase().includes(q)) return false;
     if(fp && posGroup(p.pos)!==fp) return false;
     if(ft && p.team2627!==ft) return false;
     if(ft2425 === '__any__' && !(p.end2425||'')) return false;
@@ -10311,7 +10312,6 @@ function clearFilters(){
   document.getElementById('filterTeam').value = '';
   document.getElementById('filterFantasy2526').value = '';
   document.getElementById('filterFantasy').value = '';
-  document.getElementById('filterSource').value = '';
   render();
 }
 
