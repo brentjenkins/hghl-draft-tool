@@ -8,3 +8,9 @@ __pycache__/
 node_modules/
 /package-lock.json
 ClaudeHGHL_prompts.txt
+
+# Raw projection source exports (ATH/DFO/DTZ/DOB/NHL_Proj) - re-downloadable/re-purchasable,
+# not meant to be committed; used locally for backtests (see project_weighted_proj_blend memory)
+*_Proj.csv
+*_Proj.xlsx
+*_Proj.numbers
