@@ -2385,7 +2385,7 @@ function algoDrops(){
     ppts: p => p.proj2627.blend||0, getCap: p => p.cap2627||0,
     capLimit: CAP_LIMIT, draftReserve: DRAFT_RESERVE_2627,
     elcMax: ELC_MAX_2627, calcAgeForSim: calcAge,
-    elcMandatorySet: _computeElcMandatoryDrops(TRADE_DEADLINE_2526, ELC_MAX_2526, xactions2526), injurySet: INJURY_DROPS_2627,
+    elcMandatorySet: _computeElcMandatoryDrops(TRADE_DEADLINE_2526, ELC_MAX_2526, xactions2526), injurySet: INJURY_DROPS_2627, injuryMissStartSet: INJURY_DROPS_2627_MISS_START,
     computeABPFn: computeABP,
     useRebalBonus: true, useMinEnforcement: true, emptyMarker: '',
     srcNFn: srcNFn2627, maxSrc: MAX_SRC_2627, contractYearAnchor: NHL_SEASON_YEAR,
@@ -3603,7 +3603,7 @@ function computeDrops(allPlayers){
     ppts: p => p.proj2627.blend||0, getCap: p => p.cap2627||0,
     capLimit: CAP_LIMIT, draftReserve: DRAFT_RESERVE_2627,
     elcMax: ELC_MAX_2627, calcAgeForSim: calcAge,
-    elcMandatorySet: _computeElcMandatoryDrops(TRADE_DEADLINE_2526, ELC_MAX_2526, xactions2526), injurySet: INJURY_DROPS_2627,
+    elcMandatorySet: _computeElcMandatoryDrops(TRADE_DEADLINE_2526, ELC_MAX_2526, xactions2526), injurySet: INJURY_DROPS_2627, injuryMissStartSet: INJURY_DROPS_2627_MISS_START,
     computeABPFn: computeABP,
     useRebalBonus: true, useMinEnforcement: true, emptyMarker: '',
     srcNFn: srcNFn2627, maxSrc: MAX_SRC_2627, contractYearAnchor: NHL_SEASON_YEAR,
@@ -4239,6 +4239,20 @@ function _computeElcMandatoryDrops(deadlineDate, elcMax, xactions){
 // the live zero-out script, not a source-only fix.
 const INJURY_DROPS_2627 = new Set(['marcus johansson']);
 
+// Expected-to-return injuries in 26-27 — distinct from INJURY_DROPS_2627 above (which is for
+// players who won't play again this season at all): these are known short/medium-term absences
+// where the drop decision is a real judgment call, not automatic. Only strips the weaker
+// isHighVal/isUntouchable escape hatches in _runAlgoDrops — a genuinely elite player still keeps
+// UNTOUCHABLE_ELITE_PTS protection and is kept regardless; only an already-marginal player who
+// was surviving purely on the ABP=0/floor/positive-delta escape becomes a for-sure drop. Stays
+// fully draftable by other teams (no _runAlgoDraft exclusion) since they're expected back.
+// Frederik Andersen (EDM, G): set to miss training camp — confirmed 2026-08-31
+// (cbssports.com/fantasy/hockey/news/oilers-frederik-andersen-set-to-miss-training-camp).
+// Seth Jarvis (CAR, F): to miss beginning of 2026-27 season after shoulder surgery — confirmed
+// 2026-09-01 (nhl.com/news/seth-jarvis-to-miss-beginning-of-2026-2027-season-for-hurricanes-
+// after-shoulder-surgery).
+const INJURY_DROPS_2627_MISS_START = new Set(['frederik andersen', 'seth jarvis']);
+
 // Actual pre-draft 26-27 rosters (after drops, before draft picks). Populated once managers submit.
 // PREDICTED as of 2026-08-04, not real yet: Algo Drops baseline + each GM's own hunch-based
 // overrides on top (collected directly from the user, team by team). Replace wholesale with the
@@ -4372,6 +4386,13 @@ const POSTDROP_ROSTER_2627 = {
   'alexander nikishin_D': 'Silence of the Lamb',
   'logan thompson_G': 'Silence of the Lamb',
   'scott wedgewood_G': 'Silence of the Lamb',
+
+  // Explicit known drops (null, not just omitted) — see INJURY_DROPS_2627_MISS_START for the
+  // injury sourcing. Predicted drop for Damage Inc./Killer Whales given the injury; not a
+  // confirmed real GM decision yet, same "predicted, not real yet" status as the rest of this
+  // dict per the top-of-file comment.
+  'frederik andersen_G': null,
+  'seth jarvis_F': null,
 };
 
 // POSTDRAFT_ROSTER_2627 moved to data_2627.js (2026-08-25) — was a placeholder empty object here
@@ -5895,7 +5916,7 @@ function algoDrops2526(){
 // compares the result to the real POSTDROP_ROSTER_2X2Y outcome, and renders the modal;
 // each season's compareDrops2X2Y() wrapper just supplies config.
 function _runCompareDrops({ season, guards, predropRoster, postdropRoster, predropStubs, stubExtraFields,
-  startField, ppts, getCap, capLimit, draftReserve, elcMax, calcAgeForSim, elcMandatorySet, injurySet,
+  startField, ppts, getCap, capLimit, draftReserve, elcMax, calcAgeForSim, elcMandatorySet, injurySet, injuryMissStartSet,
   computeABPFn, useRebalBonus, useMinEnforcement, midseasonDrops, midseasonReadds, resultsKey, teamField = 'team2627',
   srcNFn, maxSrc, contractYearAnchor, nextContractField }){
   for(const g of guards){ if(g.fail()){ toast(g.msg); return; } }
@@ -5930,7 +5951,7 @@ function _runCompareDrops({ season, guards, predropRoster, postdropRoster, predr
   _runAlgoDrops({
     players: vp, teams, startField,
     ppts, getCap, capLimit, draftReserve, elcMax, calcAgeForSim,
-    elcMandatorySet, injurySet, computeABPFn, useRebalBonus, useMinEnforcement, emptyMarker: null, teamField,
+    elcMandatorySet, injurySet, injuryMissStartSet, computeABPFn, useRebalBonus, useMinEnforcement, emptyMarker: null, teamField,
     srcNFn, maxSrc, contractYearAnchor, nextContractField,
   });
 
@@ -6076,7 +6097,7 @@ function compareDrops2627(){
     stubExtraFields: { cap2627: null, proj2627: {blend: 0} },
     startField: 'start2627', ppts: p => p.proj2627.blend||0, getCap: p => p.cap2627||0,
     capLimit: CAP_LIMIT, draftReserve: DRAFT_RESERVE_2627, elcMax: ELC_MAX_2627, calcAgeForSim: calcAge,
-    elcMandatorySet: _computeElcMandatoryDrops(TRADE_DEADLINE_2526, ELC_MAX_2526, xactions2526), injurySet: INJURY_DROPS_2627, computeABPFn: computeABP,
+    elcMandatorySet: _computeElcMandatoryDrops(TRADE_DEADLINE_2526, ELC_MAX_2526, xactions2526), injurySet: INJURY_DROPS_2627, injuryMissStartSet: INJURY_DROPS_2627_MISS_START, computeABPFn: computeABP,
     useRebalBonus: true, useMinEnforcement: true,
     midseasonDrops: MIDSEASON_DROPS_2627, midseasonReadds: MIDSEASON_READDS_2627,
     resultsKey: 'lastCompareResults2627',
@@ -7633,7 +7654,7 @@ function algoDraft2526(){
 // drops correctly (found 2026-07-22 via Blue Line Bangers/Mason Marchment in 24-25).
 // Mutates only p[startField] on the given `players` array; every other side effect (persistence,
 // rendering, toasts) stays in each season's own wrapper function, called after this returns.
-function _runAlgoDrops({ players, teams, startField, ppts, getCap, capLimit, draftReserve, elcMax, calcAgeForSim, elcMandatorySet, injurySet = new Set(), computeABPFn, useRebalBonus = false, useMinEnforcement = false, emptyMarker = null, teamField = 'team2627', srcNFn, maxSrc, contractYearAnchor, nextContractField = 'nextTerm2627', debugLog = false }){
+function _runAlgoDrops({ players, teams, startField, ppts, getCap, capLimit, draftReserve, elcMax, calcAgeForSim, elcMandatorySet, injurySet = new Set(), injuryMissStartSet = new Set(), computeABPFn, useRebalBonus = false, useMinEnforcement = false, emptyMarker = null, teamField = 'team2627', srcNFn, maxSrc, contractYearAnchor, nextContractField = 'nextTerm2627', debugLog = false }){
   // Tags every dropped player with which numbered cut they were (this run's dropList order)
   // and why, so the reasoning is inspectable later (e.g. on the team curve modal) instead of
   // only visible transiently via console.log while the run is happening. Field names are
@@ -7747,9 +7768,18 @@ function _runAlgoDrops({ players, teams, startField, ppts, getCap, capLimit, dra
   // higher escape hatch for genuine elite scorers, since the curve fit is thin/unreliable at the
   // very top of the cap range (few $11M+ data points) and a big negative delta there is as
   // likely a curve-fitting artifact as a real "overpaid" signal.
+  // Expected-to-return injury (INJURY_DROPS_2X2Y_MISS_START, see roster_tracker.html) — unlike
+  // injurySet's unconditional Pass 2 force-drop (players who won't play again this season at
+  // all), this is meant as a real GM's judgment call: an already-marginal player who was only
+  // surviving on a weaker escape hatch (positive delta, ABP=0, raw-pts floor) loses that shield
+  // and becomes a for-sure drop, but a genuinely elite player (UNTOUCHABLE_ELITE_PTS) is kept
+  // without question either way — so only the weaker escapes are stripped, not the elite-pts
+  // one. User-specified 2026-09-01 (Frederik Andersen/Seth Jarvis, both expected back in-season).
+  const isInjuryMissStart = p => injuryMissStartSet.has(normName(p.name).toLowerCase());
   const isHighVal = p => {
     const pp = ppts(p);
     if(pp >= UNTOUCHABLE_ELITE_PTS) return true;
+    if(isInjuryMissStart(p)) return false;
     if(deltaOf(p) >= 0) return true;
     // Both remaining escapes (ABP=0, raw-pts floor) require the same delta floor as
     // isUntouchable — an unconditional ABP=0 branch here was the exact same gap just fixed on
@@ -7758,6 +7788,10 @@ function _runAlgoDrops({ players, teams, startField, ppts, getCap, capLimit, dra
     return (abpMap.get(p.id)??99)===0 || pp>=dropValueFloor;
   };
   const isUntouchable = p => {
+    // isHighVal's UNTOUCHABLE_ELITE_PTS branch above already protects genuine elite production
+    // independent of ABP, so disabling this whole (ABP=0-gated) tier for a miss-start injury
+    // doesn't lose that protection — only the weaker "no alternative found" escape.
+    if(isInjuryMissStart(p)) return false;
     if((abpMap.get(p.id)??99)!==0) return false;
     const pp = ppts(p);
     if(pp >= UNTOUCHABLE_ELITE_PTS) return true;
