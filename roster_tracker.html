@@ -3781,13 +3781,13 @@ function _scoreColsHtml2627(p){
   if(!c) return `<td style="color:#9ca3af;text-align:right;font-size:10px;padding:9px 2px">—</td>`.repeat(7);
   const termColor = c.termActive ? '#0d9488' : '#c4c4c0';
   const prospectColor = draftMode ? '#475569' : '#c4c4c0';
-  return `<td style="color:#185FA5;text-align:right;font-variant-numeric:tabular-nums;font-size:10px;padding:9px 2px;cursor:default" title="${esc(c.prodTip)}">${c.prod.toFixed(1)}</td>`+
-    `<td style="color:#0d9488;text-align:right;font-variant-numeric:tabular-nums;font-size:10px;padding:9px 2px;cursor:default" title="${esc(c.conPpmTip)}">${c.conPpm.toFixed(1)}</td>`+
-    `<td style="color:#0d9488;text-align:right;font-variant-numeric:tabular-nums;font-size:10px;padding:9px 2px;cursor:default" title="${esc(c.conCrvTip)}">${c.conCrv.toFixed(1)}</td>`+
-    `<td style="color:${termColor};text-align:right;font-variant-numeric:tabular-nums;font-size:10px;padding:9px 2px;cursor:default" title="${esc(c.conTermTip)}">${c.conTerm.toFixed(1)}</td>`+
-    `<td style="color:#475569;text-align:right;font-variant-numeric:tabular-nums;font-size:10px;padding:9px 2px;cursor:default" title="${esc(c.conTrjTip)}">${c.conTrj.toFixed(1)}</td>`+
-    `<td style="color:${prospectColor};text-align:right;font-variant-numeric:tabular-nums;font-size:10px;padding:9px 2px;cursor:default" title="${esc(c.prospectTip)}">${c.prospect.toFixed(1)}</td>`+
-    `<td style="color:#111827;font-weight:700;text-align:right;font-variant-numeric:tabular-nums;font-size:10px;padding:9px 2px">${c.total.toFixed(1)}</td>`;
+  return `<td style="color:#185FA5;text-align:right;font-variant-numeric:tabular-nums;font-size:10px;padding:9px 2px;cursor:default" title="${esc(c.prodTip)}">${Math.round(c.prod)}</td>`+
+    `<td style="color:#0d9488;text-align:right;font-variant-numeric:tabular-nums;font-size:10px;padding:9px 2px;cursor:default" title="${esc(c.conPpmTip)}">${Math.round(c.conPpm)}</td>`+
+    `<td style="color:#0d9488;text-align:right;font-variant-numeric:tabular-nums;font-size:10px;padding:9px 2px;cursor:default" title="${esc(c.conCrvTip)}">${Math.round(c.conCrv)}</td>`+
+    `<td style="color:${termColor};text-align:right;font-variant-numeric:tabular-nums;font-size:10px;padding:9px 2px;cursor:default" title="${esc(c.conTermTip)}">${Math.round(c.conTerm)}</td>`+
+    `<td style="color:#475569;text-align:right;font-variant-numeric:tabular-nums;font-size:10px;padding:9px 2px;cursor:default" title="${esc(c.conTrjTip)}">${Math.round(c.conTrj)}</td>`+
+    `<td style="color:${prospectColor};text-align:right;font-variant-numeric:tabular-nums;font-size:10px;padding:9px 2px;cursor:default" title="${esc(c.prospectTip)}">${Math.round(c.prospect)}</td>`+
+    `<td style="color:#111827;font-weight:700;text-align:right;font-variant-numeric:tabular-nums;font-size:10px;padding:9px 2px">${Math.round(c.total)}</td>`;
 }
 
 // 25-26's counterpart to _scoreCols2627/_scoreColsHtml2627 above — same shape (draftMode2526
@@ -3844,13 +3844,13 @@ function _scoreColsHtml2526(p){
   if(!c) return `<td style="color:#9ca3af;text-align:right;font-size:10px;padding:9px 2px">—</td>`.repeat(7);
   const termColor = c.termActive ? '#0d9488' : '#c4c4c0';
   const prospectColor = draftMode2526 ? '#475569' : '#c4c4c0';
-  return `<td style="color:#185FA5;text-align:right;font-variant-numeric:tabular-nums;font-size:10px;padding:9px 2px;cursor:default" title="${esc(c.prodTip)}">${c.prod.toFixed(1)}</td>`+
-    `<td style="color:#0d9488;text-align:right;font-variant-numeric:tabular-nums;font-size:10px;padding:9px 2px;cursor:default" title="${esc(c.conPpmTip)}">${c.conPpm.toFixed(1)}</td>`+
-    `<td style="color:#0d9488;text-align:right;font-variant-numeric:tabular-nums;font-size:10px;padding:9px 2px;cursor:default" title="${esc(c.conCrvTip)}">${c.conCrv.toFixed(1)}</td>`+
-    `<td style="color:${termColor};text-align:right;font-variant-numeric:tabular-nums;font-size:10px;padding:9px 2px;cursor:default" title="${esc(c.conTermTip)}">${c.conTerm.toFixed(1)}</td>`+
-    `<td style="color:#475569;text-align:right;font-variant-numeric:tabular-nums;font-size:10px;padding:9px 2px;cursor:default" title="${esc(c.conTrjTip)}">${c.conTrj.toFixed(1)}</td>`+
-    `<td style="color:${prospectColor};text-align:right;font-variant-numeric:tabular-nums;font-size:10px;padding:9px 2px;cursor:default" title="${esc(c.prospectTip)}">${c.prospect.toFixed(1)}</td>`+
-    `<td style="color:#111827;font-weight:700;text-align:right;font-variant-numeric:tabular-nums;font-size:10px;padding:9px 2px">${c.total.toFixed(1)}</td>`;
+  return `<td style="color:#185FA5;text-align:right;font-variant-numeric:tabular-nums;font-size:10px;padding:9px 2px;cursor:default" title="${esc(c.prodTip)}">${Math.round(c.prod)}</td>`+
+    `<td style="color:#0d9488;text-align:right;font-variant-numeric:tabular-nums;font-size:10px;padding:9px 2px;cursor:default" title="${esc(c.conPpmTip)}">${Math.round(c.conPpm)}</td>`+
+    `<td style="color:#0d9488;text-align:right;font-variant-numeric:tabular-nums;font-size:10px;padding:9px 2px;cursor:default" title="${esc(c.conCrvTip)}">${Math.round(c.conCrv)}</td>`+
+    `<td style="color:${termColor};text-align:right;font-variant-numeric:tabular-nums;font-size:10px;padding:9px 2px;cursor:default" title="${esc(c.conTermTip)}">${Math.round(c.conTerm)}</td>`+
+    `<td style="color:#475569;text-align:right;font-variant-numeric:tabular-nums;font-size:10px;padding:9px 2px;cursor:default" title="${esc(c.conTrjTip)}">${Math.round(c.conTrj)}</td>`+
+    `<td style="color:${prospectColor};text-align:right;font-variant-numeric:tabular-nums;font-size:10px;padding:9px 2px;cursor:default" title="${esc(c.prospectTip)}">${Math.round(c.prospect)}</td>`+
+    `<td style="color:#111827;font-weight:700;text-align:right;font-variant-numeric:tabular-nums;font-size:10px;padding:9px 2px">${Math.round(c.total)}</td>`;
 }
 
 function _scoreCols2425(p){
@@ -3904,13 +3904,13 @@ function _scoreColsHtml2425(p){
   if(!c) return `<td style="color:#9ca3af;text-align:right;font-size:10px;padding:9px 2px">—</td>`.repeat(7);
   const termColor = c.termActive ? '#0d9488' : '#c4c4c0';
   const prospectColor = draftMode2425 ? '#475569' : '#c4c4c0';
-  return `<td style="color:#185FA5;text-align:right;font-variant-numeric:tabular-nums;font-size:10px;padding:9px 2px;cursor:default" title="${esc(c.prodTip)}">${c.prod.toFixed(1)}</td>`+
-    `<td style="color:#0d9488;text-align:right;font-variant-numeric:tabular-nums;font-size:10px;padding:9px 2px;cursor:default" title="${esc(c.conPpmTip)}">${c.conPpm.toFixed(1)}</td>`+
-    `<td style="color:#0d9488;text-align:right;font-variant-numeric:tabular-nums;font-size:10px;padding:9px 2px;cursor:default" title="${esc(c.conCrvTip)}">${c.conCrv.toFixed(1)}</td>`+
-    `<td style="color:${termColor};text-align:right;font-variant-numeric:tabular-nums;font-size:10px;padding:9px 2px;cursor:default" title="${esc(c.conTermTip)}">${c.conTerm.toFixed(1)}</td>`+
-    `<td style="color:#475569;text-align:right;font-variant-numeric:tabular-nums;font-size:10px;padding:9px 2px;cursor:default" title="${esc(c.conTrjTip)}">${c.conTrj.toFixed(1)}</td>`+
-    `<td style="color:${prospectColor};text-align:right;font-variant-numeric:tabular-nums;font-size:10px;padding:9px 2px;cursor:default" title="${esc(c.prospectTip)}">${c.prospect.toFixed(1)}</td>`+
-    `<td style="color:#111827;font-weight:700;text-align:right;font-variant-numeric:tabular-nums;font-size:10px;padding:9px 2px">${c.total.toFixed(1)}</td>`;
+  return `<td style="color:#185FA5;text-align:right;font-variant-numeric:tabular-nums;font-size:10px;padding:9px 2px;cursor:default" title="${esc(c.prodTip)}">${Math.round(c.prod)}</td>`+
+    `<td style="color:#0d9488;text-align:right;font-variant-numeric:tabular-nums;font-size:10px;padding:9px 2px;cursor:default" title="${esc(c.conPpmTip)}">${Math.round(c.conPpm)}</td>`+
+    `<td style="color:#0d9488;text-align:right;font-variant-numeric:tabular-nums;font-size:10px;padding:9px 2px;cursor:default" title="${esc(c.conCrvTip)}">${Math.round(c.conCrv)}</td>`+
+    `<td style="color:${termColor};text-align:right;font-variant-numeric:tabular-nums;font-size:10px;padding:9px 2px;cursor:default" title="${esc(c.conTermTip)}">${Math.round(c.conTerm)}</td>`+
+    `<td style="color:#475569;text-align:right;font-variant-numeric:tabular-nums;font-size:10px;padding:9px 2px;cursor:default" title="${esc(c.conTrjTip)}">${Math.round(c.conTrj)}</td>`+
+    `<td style="color:${prospectColor};text-align:right;font-variant-numeric:tabular-nums;font-size:10px;padding:9px 2px;cursor:default" title="${esc(c.prospectTip)}">${Math.round(c.prospect)}</td>`+
+    `<td style="color:#111827;font-weight:700;text-align:right;font-variant-numeric:tabular-nums;font-size:10px;padding:9px 2px">${Math.round(c.total)}</td>`;
 }
 
 function _scoreCols2324(p){
@@ -3964,13 +3964,13 @@ function _scoreColsHtml2324(p){
   if(!c) return `<td style="color:#9ca3af;text-align:right;font-size:10px;padding:9px 2px">—</td>`.repeat(7);
   const termColor = c.termActive ? '#0d9488' : '#c4c4c0';
   const prospectColor = draftMode2324 ? '#475569' : '#c4c4c0';
-  return `<td style="color:#185FA5;text-align:right;font-variant-numeric:tabular-nums;font-size:10px;padding:9px 2px;cursor:default" title="${esc(c.prodTip)}">${c.prod.toFixed(1)}</td>`+
-    `<td style="color:#0d9488;text-align:right;font-variant-numeric:tabular-nums;font-size:10px;padding:9px 2px;cursor:default" title="${esc(c.conPpmTip)}">${c.conPpm.toFixed(1)}</td>`+
-    `<td style="color:#0d9488;text-align:right;font-variant-numeric:tabular-nums;font-size:10px;padding:9px 2px;cursor:default" title="${esc(c.conCrvTip)}">${c.conCrv.toFixed(1)}</td>`+
-    `<td style="color:${termColor};text-align:right;font-variant-numeric:tabular-nums;font-size:10px;padding:9px 2px;cursor:default" title="${esc(c.conTermTip)}">${c.conTerm.toFixed(1)}</td>`+
-    `<td style="color:#475569;text-align:right;font-variant-numeric:tabular-nums;font-size:10px;padding:9px 2px;cursor:default" title="${esc(c.conTrjTip)}">${c.conTrj.toFixed(1)}</td>`+
-    `<td style="color:${prospectColor};text-align:right;font-variant-numeric:tabular-nums;font-size:10px;padding:9px 2px;cursor:default" title="${esc(c.prospectTip)}">${c.prospect.toFixed(1)}</td>`+
-    `<td style="color:#111827;font-weight:700;text-align:right;font-variant-numeric:tabular-nums;font-size:10px;padding:9px 2px">${c.total.toFixed(1)}</td>`;
+  return `<td style="color:#185FA5;text-align:right;font-variant-numeric:tabular-nums;font-size:10px;padding:9px 2px;cursor:default" title="${esc(c.prodTip)}">${Math.round(c.prod)}</td>`+
+    `<td style="color:#0d9488;text-align:right;font-variant-numeric:tabular-nums;font-size:10px;padding:9px 2px;cursor:default" title="${esc(c.conPpmTip)}">${Math.round(c.conPpm)}</td>`+
+    `<td style="color:#0d9488;text-align:right;font-variant-numeric:tabular-nums;font-size:10px;padding:9px 2px;cursor:default" title="${esc(c.conCrvTip)}">${Math.round(c.conCrv)}</td>`+
+    `<td style="color:${termColor};text-align:right;font-variant-numeric:tabular-nums;font-size:10px;padding:9px 2px;cursor:default" title="${esc(c.conTermTip)}">${Math.round(c.conTerm)}</td>`+
+    `<td style="color:#475569;text-align:right;font-variant-numeric:tabular-nums;font-size:10px;padding:9px 2px;cursor:default" title="${esc(c.conTrjTip)}">${Math.round(c.conTrj)}</td>`+
+    `<td style="color:${prospectColor};text-align:right;font-variant-numeric:tabular-nums;font-size:10px;padding:9px 2px;cursor:default" title="${esc(c.prospectTip)}">${Math.round(c.prospect)}</td>`+
+    `<td style="color:#111827;font-weight:700;text-align:right;font-variant-numeric:tabular-nums;font-size:10px;padding:9px 2px">${Math.round(c.total)}</td>`;
 }
 
 function render(){
@@ -8501,9 +8501,17 @@ function _rankFACandidates(team, round, mode, ctx){
   const roomAvailable = capLimit - (teamCap[team]||0);
   // Total held back for anything other than THIS pick — the generic estimate for other
   // still-undecided future picks, plus the exact amount already promised to deferred
-  // targets — jointly capped (not subtracted twice) so at least elcMax always remains
-  // affordable for the player being chosen right now.
-  const totalReserve = Math.min(genericFutureReserve + reservedCap, Math.max(0, roomAvailable - elcMax));
+  // targets — jointly capped (not subtracted twice) so at least the real max ELC-tier cap
+  // hit (elcMax × ELC_SIGNING_BONUS_WIGGLE, matching isProspect's own affordability ceiling
+  // elsewhere) always remains affordable for the player being chosen right now. Using bare
+  // elcMax here was too tight — a real ELC signing-bonus cap hit routinely runs 5-10% above
+  // it (e.g. $1.07M vs elcMax's $1.025M), so a cap-strapped team's floor would land BELOW a
+  // legitimately affordable, better-scoring prospect while still clearing a cheaper, worse
+  // one — silently excluding the better prospect from the candidate pool entirely rather
+  // than just scoring it lower. Found live 2026-09-02: Roman Kantserov ($1.07M, real
+  // top-scoring prospect) getting excluded in favor of James Hagens ($0.98M, real score 165
+  // vs Kantserov's 221) for every cap-tight team hitting this exact floor.
+  const totalReserve = Math.min(genericFutureReserve + reservedCap, Math.max(0, roomAvailable - elcMax*ELC_SIGNING_BONUS_WIGGLE));
   const maxPickCapAdj = roomAvailable - totalReserve;
 
   // Hard coverage floor: real GMs never draft a player backed by less than ~1/3 of that
