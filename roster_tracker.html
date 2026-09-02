@@ -1149,7 +1149,7 @@ tr:hover td{background:#fafaf8}
               <div style="font-size:11px;color:#6b7280;font-family:monospace;margin-bottom:8px">avg FUTURE curve-delta (floored at 0) × wtTermValue</div>
               <div style="display:flex;flex-direction:column;gap:3px">
                 <span style="font-size:11px;color:#9ca3af" title="Averages the projected production-vs-AAV curve delta across a contract's remaining years — rewards a deal that keeps providing value going forward, whether that's because production is improving or just staying good on a flat AAV against a rising cap. Floored at 0, never penalizes a worsening deal. 0 for a 1-year-left deal, maxes out at CAP_GROWTH_TERM_CAP (5) years. Simulate-mode teams always show 0/grayed out.">Term value weight (<span style="font-family:monospace;color:#b0b0ac">wtTermValue</span>)</span>
-                <input type="number" id="s-wtTermValue" value="8" min="0" max="20" step="0.5" onchange="updateDraftWeight('wtTermValue',+this.value)" style="width:64px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center">
+                <input type="number" id="s-wtTermValue" value="2" min="0" max="20" step="0.5" onchange="updateDraftWeight('wtTermValue',+this.value)" style="width:64px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center">
               </div>
             </div>
 
@@ -1372,7 +1372,7 @@ let sortColSignings = 'sign_date', sortDirSignings = -1;
 // side (7/21 otherwise-unexplained "GM kept a below-curve player forever" cases matched the
 // GM's fan team, ~10x the ~3% chance baseline) and explicitly flagged then to revisit for draft
 // accuracy too. See GM_FAN_TEAM / project_gm_nhl_affiliation memory.
-let draftWeights = { multF: 1.0, multD: 1.26, multG: 1.0, wtPPTSM: 0.75, wtAge: 1, wtProspect: 12, wtCoverageDiscount: 0.25, wtPressure: 0.3, wtDeltaCurve: 8, elcExpF: 41, elcExpD: 26, elcExpG: 35, wtPosAlloc: 1.0, minSrcCoverage: 0.33, wtCapUse: 0, wtFanBias: 0, wtTermValue: 8 };
+let draftWeights = { multF: 1.0, multD: 1.26, multG: 1.0, wtPPTSM: 0.75, wtAge: 1, wtProspect: 12, wtCoverageDiscount: 0.25, wtPressure: 0.3, wtDeltaCurve: 8, elcExpF: 41, elcExpD: 26, elcExpG: 35, wtPosAlloc: 1.0, minSrcCoverage: 0.33, wtCapUse: 0, wtFanBias: 0, wtTermValue: 2 };
 // Knapsack-optimal cap fractions: F=58%, D=35%, G=7% (derived from 26-27 player pool, $104M cap)
 const OPT_POS_FRACS = {F: 0.58, D: 0.35, G: 0.07};
 
@@ -1597,9 +1597,16 @@ function _termValueCore(pg, ppEff, cap0, age, yrsRaw, capLimit0, w, contractYear
   // exclude it here so the loop only projects TRUE future years. The current year's curve position
   // is already captured by tDelta; scoring it again here would double-count it.
   const futureYears = Math.max(0, termYears - 1);
-  let sumFutureDelta = 0, yearsScored = 0;
+  // Sum, don't average — and the sign of the FIRST future year sets the mode:
+  //  - starts above curve (will eventually decline below it): sum only the leading run of positive
+  //    years and stop at the first year he'd dip below curve, since a real GM drops him right there —
+  //    the negative years he'd never actually roster shouldn't drag the score down.
+  //  - starts below curve (on his way to being a bargain, e.g. a young player growing into his deal):
+  //    sum every year including the negative ones, since a real GM holds through the dip to get the
+  //    later payoff, so the early cost should net against it.
+  let sumDelta = 0;
   if(futureYears > 0 && canScoreCurve){
-    let trajMult = 1;
+    let trajMult = 1, mode = null;
     for(let y = 1; y <= futureYears; y++){
       const rawYearMult = _trajYearMult(age < 99 ? age + y : null, pg);
       const yearMult = rawYearMult < 1 ? 1 - (1 - rawYearMult) * (1 - declineDampen) : rawYearMult;
@@ -1610,11 +1617,13 @@ function _termValueCore(pg, ppEff, cap0, age, yrsRaw, capLimit0, w, contractYear
       // This year's AAV, translated to its equivalent position on TODAY's curve — a flat dollar
       // buys a shrinking share of production value as $/pt rises, not as the cap ceiling rises.
       const effectiveCap = yearCap / Math.pow(POINT_COST_GROWTH_RATE_ASSUMED, y);
-      sumFutureDelta += projPts - curveFn(effectiveCap);
-      yearsScored++;
+      const delta = projPts - curveFn(effectiveCap);
+      if(mode === null) mode = delta >= 0 ? 'declining' : 'improving';
+      if(mode === 'declining' && delta < 0) break;
+      sumDelta += delta;
     }
   }
-  const termGain = yearsScored > 0 ? Math.max(0, sumFutureDelta / yearsScored) : 0;
+  const termGain = Math.max(0, sumDelta);
   return { termGain, termYears, declineDampen };
 }
 
@@ -1680,7 +1689,7 @@ function _effectiveDraftWeights(team, draftWeightsBase){
   const teamMode = _draftModeFor(team);
   return teamMode === 'simulate'
     ? { ...draftWeightsBase, elcExpF: 35, elcExpD: 25, wtCapUse: 0, wtFanBias: draftWeightsBase.wtFanBias || 5, wtTermValue: 0 }
-    : { ...draftWeightsBase, wtCapUse: draftWeightsBase.wtCapUse || 0.15, wtFanBias: 0, wtTermValue: draftWeightsBase.wtTermValue || 8 };
+    : { ...draftWeightsBase, wtCapUse: draftWeightsBase.wtCapUse || 0.15, wtFanBias: 0, wtTermValue: draftWeightsBase.wtTermValue || 2 };
 }
 let ptsTarget = 1200; // historically the real points needed to win the championship, apart from last year
 let minDropF = 1, minDropD = 1; // every team must drop at least this many F and D (G excluded)
@@ -2382,7 +2391,7 @@ function rankPlayers(){
       const r = _computeRankScore(p, {
         pg, pp: p.proj2627.blend, cap: p.cap2627,
         calcAgeForSim: calcAge, contractYearAnchor: NHL_SEASON_YEAR, nextContractField: 'nextTerm2627',
-        curveFn: curveFns2627RS[pg], elcMax: ELC_MAX_2627, srcNFn: srcNFn2627, maxSrc: MAX_SRC_2627, draftWeights: {...draftWeights, wtTermValue: draftWeights.wtTermValue || 8}, capLimit: CAP_LIMIT,
+        curveFn: curveFns2627RS[pg], elcMax: ELC_MAX_2627, srcNFn: srcNFn2627, maxSrc: MAX_SRC_2627, draftWeights: {...draftWeights, wtTermValue: draftWeights.wtTermValue || 2}, capLimit: CAP_LIMIT,
       });
       return { p, r };
     })
@@ -3724,7 +3733,7 @@ function _scoreCols2627(p){
     // from termGain (the underlying, team-mode-agnostic contract-term math) × a reference weight
     // so the column always shows a real number — same "always visible, reference only" pattern
     // rankPlayers2627 already uses outside Draft Mode (rsTerm2627).
-    const termRefWeight = draftWeights.wtTermValue || 8;
+    const termRefWeight = draftWeights.wtTermValue || 2;
     const conTermDisplay = termIsActive ? b.tTermValue*mult : (b.termGain||0) * termRefWeight * mult;
     return {
       prod: b.tPPTS*mult, prospect: (b.tProspect*pw+b.tFanBias)*mult,
@@ -3792,7 +3801,7 @@ function _scoreCols2526(p){
     const mult = b.posAllocMult;
     const prospectMaxAge = PROSPECT_MAX_AGE[posGroup(p.pos)] ?? 22;
     const termIsActive = _draftModeFor(b.team) === 'optimize';
-    const termRefWeight = draftWeights.wtTermValue || 8;
+    const termRefWeight = draftWeights.wtTermValue || 2;
     const conTermDisplay = termIsActive ? b.tTermValue*mult : (b.termGain||0) * termRefWeight * mult;
     return {
       prod: b.tPPTS*mult, prospect: (b.tProspect*pw+b.tFanBias)*mult,
@@ -3852,7 +3861,7 @@ function _scoreCols2425(p){
     const mult = b.posAllocMult;
     const prospectMaxAge = PROSPECT_MAX_AGE[posGroup(p.pos)] ?? 22;
     const termIsActive = _draftModeFor(b.team) === 'optimize';
-    const termRefWeight = draftWeights.wtTermValue || 8;
+    const termRefWeight = draftWeights.wtTermValue || 2;
     const conTermDisplay = termIsActive ? b.tTermValue*mult : (b.termGain||0) * termRefWeight * mult;
     return {
       prod: b.tPPTS*mult, prospect: (b.tProspect*pw+b.tFanBias)*mult,
@@ -3912,7 +3921,7 @@ function _scoreCols2324(p){
     const mult = b.posAllocMult;
     const prospectMaxAge = PROSPECT_MAX_AGE[posGroup(p.pos)] ?? 22;
     const termIsActive = _draftModeFor(b.team) === 'optimize';
-    const termRefWeight = draftWeights.wtTermValue || 8;
+    const termRefWeight = draftWeights.wtTermValue || 2;
     const conTermDisplay = termIsActive ? b.tTermValue*mult : (b.termGain||0) * termRefWeight * mult;
     return {
       prod: b.tPPTS*mult, prospect: (b.tProspect*pw+b.tFanBias)*mult,
@@ -5082,7 +5091,7 @@ function syncSettings(){
   set('s-minSrcCoverage', W.minSrcCoverage??0.33);
   set('s-wtPressure', W.wtPressure);
   set('s-wtDeltaCurve', W.wtDeltaCurve);
-  set('s-wtTermValue', W.wtTermValue??8);
+  set('s-wtTermValue', W.wtTermValue??2);
   set('s-wtPosAlloc', W.wtPosAlloc??1.0);
   set('s-draftProspectRounds', draftProspectRounds);
   set('s-minDropsPreseason', minDropsPreseason); set('s-maxDropsPreseason', maxDropsPreseason);
@@ -5106,7 +5115,7 @@ function updateDraftWeight(key, val){
   if(draftWeights.minSrcCoverage === undefined) draftWeights.minSrcCoverage = 0.33;
   if(draftWeights.wtPressure === undefined) draftWeights.wtPressure = 0.3;
   if(draftWeights.wtDeltaCurve === undefined) draftWeights.wtDeltaCurve = 8;
-  if(draftWeights.wtTermValue === undefined) draftWeights.wtTermValue = 8;
+  if(draftWeights.wtTermValue === undefined) draftWeights.wtTermValue = 2;
   if(draftWeights.elcExpF === undefined) draftWeights.elcExpF = 35;
   if(draftWeights.elcExpD === undefined) draftWeights.elcExpD = 25;
   if(draftWeights.elcExpG === undefined) draftWeights.elcExpG = 35;
@@ -6510,7 +6519,7 @@ function rankPlayers2425(){
       const r = _computeRankScore(p, {
         pg, pp: ppts2425blend(p), cap: getCap2425(p),
         calcAgeForSim: calcAge2425, contractYearAnchor: 2025, nextContractField: 'nextTerm2425',
-        curveFn: curveFns2425RS[pg], elcMax: ELC_MAX_2425, srcNFn: srcNFn2425, maxSrc: MAX_SRC_2425, draftWeights: {...draftWeights, wtTermValue: draftWeights.wtTermValue || 8}, capLimit: CAP_LIMIT_2425,
+        curveFn: curveFns2425RS[pg], elcMax: ELC_MAX_2425, srcNFn: srcNFn2425, maxSrc: MAX_SRC_2425, draftWeights: {...draftWeights, wtTermValue: draftWeights.wtTermValue || 2}, capLimit: CAP_LIMIT_2425,
       });
       return { p, r };
     })
@@ -6694,7 +6703,7 @@ function rankPlayers2324(){
       const r = _computeRankScore(p, {
         pg, pp: ppts2324blend(p), cap: getCap2324(p),
         calcAgeForSim: calcAge2324, contractYearAnchor: 2024, nextContractField: 'nextTerm2324',
-        curveFn: curveFns2324RS[pg], elcMax: ELC_MAX_2324, srcNFn: srcNFn2324, maxSrc: MAX_SRC_2324, draftWeights: {...draftWeights, wtTermValue: draftWeights.wtTermValue || 8}, capLimit: CAP_LIMIT_2324,
+        curveFn: curveFns2324RS[pg], elcMax: ELC_MAX_2324, srcNFn: srcNFn2324, maxSrc: MAX_SRC_2324, draftWeights: {...draftWeights, wtTermValue: draftWeights.wtTermValue || 2}, capLimit: CAP_LIMIT_2324,
       });
       return { p, r };
     })
@@ -9475,7 +9484,7 @@ function rankPlayers2526(){
       const r = _computeRankScore(p, {
         pg, pp: ppts2526blend(p), cap: getCap2526(p),
         calcAgeForSim: calcAge2526, contractYearAnchor: 2026, nextContractField: 'nextTerm2526',
-        curveFn: curveFns2526RS[pg], elcMax: ELC_MAX_2526, srcNFn: srcNFn2526, maxSrc: MAX_SRC_2526, draftWeights: {...draftWeights, wtTermValue: draftWeights.wtTermValue || 8}, capLimit: CAP_LIMIT_2526,
+        curveFn: curveFns2526RS[pg], elcMax: ELC_MAX_2526, srcNFn: srcNFn2526, maxSrc: MAX_SRC_2526, draftWeights: {...draftWeights, wtTermValue: draftWeights.wtTermValue || 2}, capLimit: CAP_LIMIT_2526,
       });
       return { p, r };
     })
