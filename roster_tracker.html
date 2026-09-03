@@ -1055,7 +1055,7 @@ tr:hover td{background:#fafaf8}
       <div style="border:1px solid #bfdbfe;border-radius:8px;padding:8px 10px;background:#eff6ff">
         <div style="font-size:10px;font-weight:700;color:#1d4ed8;letter-spacing:.02em">PASS 8 — PROTECTION <span style="font-weight:400;color:#6b7280">Before a Pass 3/5/6 drop happens, skip it entirely (nothing is ever dropped-then-undone) if the player would likely be re-drafted early by someone anyway.</span></div>
         <div style="display:flex;flex-direction:column;gap:4px;max-width:220px;margin-top:6px">
-          <span style="font-size:11px;color:#9ca3af" title="Past the minimum, don't spend an optional drop on a player who'd rank in the top N of the WHOLE leaguewide draftable pool (kept players and free agents together) by the same Optimize-mode formula the draft engine uses — they're a near-lock to be rostered by someone, possibly you. Defaults to teams × full roster size (e.g. 9 × 20 = 180).">Early re-draft protection: top N leaguewide (<span style="font-family:monospace;color:#b0b0ac">earlyRedraftTopN</span>)</span>
+          <span style="font-size:11px;color:#9ca3af" title="Past the minimum, don't spend an optional drop on a player who'd rank in the top N of the WHOLE leaguewide draftable pool (kept players and free agents together) by the same Optimize-mode formula the draft engine uses — they're a near-lock to be rostered by someone, possibly you. Defaults to teams × full roster size (e.g. 9 × 20 = 180) — backtested via Compare Drops 2026-09-02: a lower 160 tied or lost to 180 in every one of the 3 completed seasons, never won.">Early re-draft protection: top N leaguewide (<span style="font-family:monospace;color:#b0b0ac">earlyRedraftTopN</span>)</span>
           <input type="number" id="s-earlyRedraftTopN" value="180" min="0" max="500" step="1" onchange="updateSetting('earlyRedraftTopN',+this.value)" style="width:80px;height:32px;border:1px solid #ddd;border-radius:8px;padding:0 8px;font-size:13px;text-align:center">
         </div>
       </div>
@@ -7801,8 +7801,11 @@ function _runAlgoDrops({ players, teams, startField, ppts, getCap, capLimit, dra
   // formula to this whole-pool N=earlyRedraftTopN one on 2026-09-02, per the user's own math:
   // the old default (teams×4 rounds≈36 free agents) was already roughly equivalent to ~162 in
   // whole-league terms once a typical ~14-keeper×9-team baseline is added back — close to the
-  // full league roster capacity (9×20=180) this now defaults to directly, just reframed as one
-  // consistent rank check instead of two separately-reasoned pools.
+  // full league roster capacity (9×20=180), just reframed as one consistent rank check instead
+  // of two separately-reasoned pools. Backtested against 160 via Compare Drops across all 3
+  // completed seasons (2026-09-02): 180 tied or beat 160 in every season (23-24 147/180 vs
+  // 145/180, 24-25 and 25-26 identical) — real GMs protect even more of their roster than a
+  // top-160 cutoff predicts, so 180 stayed the default.
   // The last prospect-mode round (draftProspectRounds itself, live setting — not hardcoded),
   // not a "representative middle round" of the window — matches how the live SCORE column
   // actually evaluates an early pick, which gets the full position multiplier + uncapped
