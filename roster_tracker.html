@@ -1055,8 +1055,8 @@ tr:hover td{background:#fafaf8}
       <div style="border:1px solid #bfdbfe;border-radius:8px;padding:8px 10px;background:#eff6ff">
         <div style="font-size:10px;font-weight:700;color:#1d4ed8;letter-spacing:.02em">PASS 8 — PROTECTION <span style="font-weight:400;color:#6b7280">Before a Pass 3/5/6 drop happens, skip it entirely (nothing is ever dropped-then-undone) if the player would likely be re-drafted early by someone anyway.</span></div>
         <div style="display:flex;flex-direction:column;gap:4px;max-width:220px;margin-top:6px">
-          <span style="font-size:11px;color:#9ca3af" title="Past the minimum, don't spend an optional drop on a player who'd rank in the top (teams × this many rounds) of the true open market by the same formula the draft engine uses — they're a near-lock to get scooped up early by someone, possibly you.">Early re-draft protection rounds (<span style="font-family:monospace;color:#b0b0ac">earlyRedraftRounds</span>)</span>
-          <input type="number" id="s-earlyRedraftRounds" value="3" min="0" max="10" step="1" onchange="updateSetting('earlyRedraftRounds',+this.value)" style="width:80px;height:32px;border:1px solid #ddd;border-radius:8px;padding:0 8px;font-size:13px;text-align:center">
+          <span style="font-size:11px;color:#9ca3af" title="Past the minimum, don't spend an optional drop on a player who'd rank in the top N of the WHOLE leaguewide draftable pool (kept players and free agents together) by the same Optimize-mode formula the draft engine uses — they're a near-lock to be rostered by someone, possibly you. Defaults to teams × full roster size (e.g. 9 × 20 = 180).">Early re-draft protection: top N leaguewide (<span style="font-family:monospace;color:#b0b0ac">earlyRedraftTopN</span>)</span>
+          <input type="number" id="s-earlyRedraftTopN" value="180" min="0" max="500" step="1" onchange="updateSetting('earlyRedraftTopN',+this.value)" style="width:80px;height:32px;border:1px solid #ddd;border-radius:8px;padding:0 8px;font-size:13px;text-align:center">
         </div>
       </div>
 
@@ -1654,10 +1654,11 @@ let draftFocusTeam = null;   // team whose picks to show in 26-27 draft mode
 let draftFocusTeam2526 = null; // team whose picks to show in 25-26 draft mode
 let minDropsPreseason = 5, maxDropsPreseason = 20;
 // Once minDropsPreseason (and position mins) are met, an additional drop is only made if the
-// candidate ISN'T a near-lock to be re-drafted in the first earlyRedraftRounds rounds by SOMEONE
-// (see _runAlgoDrops' earlyRedraftRiskIds) — losing a player you'll likely just spend an early
-// pick getting back isn't a good trade once the required floor is already satisfied.
-let earlyRedraftRounds = 4;
+// candidate ISN'T a near-lock to rank in the top earlyRedraftTopN of the WHOLE leaguewide
+// draftable pool (kept players + free agents, same Optimize-mode formula the draft engine
+// uses) — losing a player that good isn't a good trade once the required floor is already
+// satisfied, since someone (possibly you) will just take them back soon anyway.
+let earlyRedraftTopN = 180;
 let draftProspectRounds = 1;
 // Per-team Algo Draft mode: 'simulate' (default) tunes toward matching what that team's real
 // GM will actually pick — useful for realistic opponent behavior. 'optimize' drops the
@@ -5095,7 +5096,7 @@ function syncSettings(){
   set('s-wtPosAlloc', W.wtPosAlloc??1.0);
   set('s-draftProspectRounds', draftProspectRounds);
   set('s-minDropsPreseason', minDropsPreseason); set('s-maxDropsPreseason', maxDropsPreseason);
-  set('s-earlyRedraftRounds', earlyRedraftRounds);
+  set('s-earlyRedraftTopN', earlyRedraftTopN);
   set('s-ptsTarget', ptsTarget);
   set('s-minDropF', minDropF); set('s-minDropD', minDropD);
   set('s-dropValueFloor', dropValueFloor);
@@ -5157,7 +5158,7 @@ function updateSetting(key, val){
   if(key === 'draftProspectRounds') draftProspectRounds = val;
   else if(key === 'minDropsPreseason')     minDropsPreseason = val;
   else if(key === 'maxDropsPreseason') maxDropsPreseason = val;
-  else if(key === 'earlyRedraftRounds') earlyRedraftRounds = val;
+  else if(key === 'earlyRedraftTopN') earlyRedraftTopN = val;
   else if(key === 'minDropF')     minDropF = val;
   else if(key === 'minDropD')     minDropD = val;
   else if(key === 'ptsTarget')    ptsTarget = val;
@@ -7781,22 +7782,27 @@ function _runAlgoDrops({ players, teams, startField, ppts, getCap, capLimit, dra
     if(pg in basePoolByPos) basePoolByPos[pg].push({x: getCap(p), y: ppts(p)});
   }
 
-  // Early re-draft risk: would this dropped player likely be scooped back up in the first
-  // earlyRedraftRounds rounds by SOMEONE (possibly the same team that dropped them)? Scored
-  // with the exact same formula _runAlgoDraft itself uses (via _scoreDraftCandidate). A drop
-  // candidate is currently ROSTERED, so it can't be ranked directly against the true free-agent
-  // pool (it isn't in it yet) — instead this computes a SCORE THRESHOLD from the TRUE pre-drop
-  // free-agent pool (the score of its Nth-best member, N = teams.length × earlyRedraftRounds,
-  // matching basePoolByPos's own "no team's still-undecided drops leak into this" philosophy
-  // just above, since a real look-ahead draft simulation would be circular — other teams' drops
-  // aren't finalized yet either), and any candidate whose OWN score (computed the identical way)
-  // clears that bar is flagged: they'd outrank at least N players already known to be available,
-  // a near-lock to go early regardless of this team's own curve-delta read on them. See
+  // Early re-draft risk: would this dropped player likely rank in the top earlyRedraftTopN of
+  // the WHOLE leaguewide draftable pool — kept players and free agents together, not just free
+  // agents (comparing only to free agents implicitly assumed every currently-kept player
+  // already outranks the threshold, exactly the assumption this check exists to question)?
+  // Scored with the exact same Optimize-mode formula _runAlgoDraft itself uses (via
+  // _scoreDraftCandidate, forced-Optimize weights — see
+  // redraftOptimizeWeights above). A drop candidate is currently ROSTERED, so this computes a
+  // SCORE THRESHOLD from the pool (the score of its Nth-best member, N = earlyRedraftTopN,
+  // directly adjustable in Settings), and any candidate whose OWN score (computed the identical
+  // way) clears that bar is flagged: they'd outrank at least N players leaguewide, a near-lock
+  // to be rostered by someone regardless of this team's own curve-delta read on them. See
   // minDropsPreseason use below, where this only overrides an otherwise-droppable pick once the
   // required minimum is already satisfied. Added 2026-08-06 after the user noticed Algo Drops
   // repeatedly cutting Miro Heiskanen/Aliaksei Protas/Bryan Rust/Oliver Kapanen-caliber players
   // that Algo Draft then consistently re-drafted within the first 3 rounds — a signal the
-  // curve-delta-only drop logic had no way to see.
+  // curve-delta-only drop logic had no way to see. Widened from a free-agent-only N=teams×rounds
+  // formula to this whole-pool N=earlyRedraftTopN one on 2026-09-02, per the user's own math:
+  // the old default (teams×4 rounds≈36 free agents) was already roughly equivalent to ~162 in
+  // whole-league terms once a typical ~14-keeper×9-team baseline is added back — close to the
+  // full league roster capacity (9×20=180) this now defaults to directly, just reframed as one
+  // consistent rank check instead of two separately-reasoned pools.
   // The last prospect-mode round (draftProspectRounds itself, live setting — not hardcoded),
   // not a "representative middle round" of the window — matches how the live SCORE column
   // actually evaluates an early pick, which gets the full position multiplier + uncapped
@@ -7822,21 +7828,30 @@ function _runAlgoDrops({ players, teams, startField, ppts, getCap, capLimit, dra
   // league-wide, versus the live UI's mid-draft press=0.98→pressMult=1.29 read from teams that
   // actually have open needs by then.
   const redraftPressure = {F:0.5, D:0.5, G:0.5};
+  // Forced Optimize weights, not the raw base draftWeights — this is a "would a rational,
+  // cap-optimal GM actually value this player enough to draft them early" test, so it should
+  // match what a real Optimize team's own SCORE would be, not an unlabeled hybrid that happens
+  // to omit wtCapUse's real 0.15 default (raw draftWeights.wtCapUse is 0, not the Optimize
+  // branch's `|| 0.15` fallback, since this bypassed _effectiveDraftWeights entirely). Can't
+  // just call _effectiveDraftWeights(null, draftWeights) — team:null resolves to 'simulate' via
+  // _draftModeFor's own fallback, the opposite of what's wanted here. Found live 2026-09-02:
+  // user's concern was "I wouldn't want to keep a player that would only get picked by Simulate
+  // and not Optimize" — this check needs to be a true Optimize-everywhere test to answer that.
+  const redraftOptimizeWeights = { ...draftWeights, wtCapUse: draftWeights.wtCapUse || 0.15, wtFanBias: 0, wtTermValue: draftWeights.wtTermValue || 2 };
   const redraftScoreOf = p => _scoreDraftCandidate(p, {
     pg: posGroup(p.pos), pp: ppts(p), cap0: getCap(p)||0, pressure: redraftPressure, mode: redraftMode, round: redraftRound,
-    draftWeights, calcAgeForSim, contractYearAnchor, nextContractField,
+    draftWeights: redraftOptimizeWeights, calcAgeForSim, contractYearAnchor, nextContractField,
     curveFns, elcMax, srcNFn, maxSrc, team: null, teamField, capLimit0: capLimit,
   }).score;
   const earlyRedraftScoreThreshold = (() => {
-    if(!(earlyRedraftRounds > 0)) return Infinity;
-    const truePool = players.filter(p => !p[startField] && ppts(p) > 0 && (getCap(p)||0) > 0);
-    if(!truePool.length) return Infinity;
-    const earlyRedraftN = teams.length * earlyRedraftRounds;
-    const scores = truePool.map(redraftScoreOf).sort((a,b) => b-a);
-    // Fewer true free agents than the whole round window means the market's already thin —
-    // use the worst score in the (undersized) pool as the bar, erring toward protecting more
-    // rather than fewer candidates in that case.
-    return scores[Math.min(earlyRedraftN, scores.length) - 1];
+    if(!(earlyRedraftTopN > 0)) return Infinity;
+    const wholePool = players.filter(p => ppts(p) > 0 && (getCap(p)||0) > 0);
+    if(!wholePool.length) return Infinity;
+    const scores = wholePool.map(redraftScoreOf).sort((a,b) => b-a);
+    // Fewer real players leaguewide than the cutoff means the pool's already thin — use the
+    // worst score in the (undersized) pool as the bar, erring toward protecting more rather
+    // than fewer candidates in that case.
+    return scores[Math.min(earlyRedraftTopN, scores.length) - 1];
   })();
 
   const isProspect = p => { const a = calcAgeForSim(p) ?? 99; const mx = PROSPECT_MAX_AGE[posGroup(p.pos)] ?? 22; return a<=mx && (getCap(p)||0)<=elcMax*ELC_SIGNING_BONUS_WIGGLE; };
@@ -8006,8 +8021,8 @@ function _runAlgoDrops({ players, teams, startField, ppts, getCap, capLimit, dra
       const isValuable = isHighVal(p) || isProspect(p);
       if(isValuable && numDropped >= minDropsPreseason && posMinsMet && capOk) break;
       // Past the required minimum, skip (not break — other candidates further down may still
-      // be worth dropping) anyone who'd likely be re-drafted in the first earlyRedraftRounds
-      // rounds regardless of their curve-delta read — see earlyRedraftScoreThreshold above. Uses
+      // be worth dropping) anyone who'd likely rank in the top earlyRedraftTopN leaguewide
+      // regardless of their curve-delta read — see earlyRedraftScoreThreshold above. Uses
       // posOwnMinMet (this candidate's OWN position quota only), not the combined posMinsMet —
       // found live 2026-08-06 via Muller Time!/Aliaksei Protas: posMinsMet requires BOTH an F
       // AND a D drop, so a team that happens to reach several F candidates before its first D
@@ -8020,7 +8035,7 @@ function _runAlgoDrops({ players, teams, startField, ppts, getCap, capLimit, dra
       // but dropped anyway (floor/position quota not yet clear) tags that explicitly instead of
       // silently looking identical to a genuinely low-demand cut.
       let earlyRedraftFlag = false;
-      if(earlyRedraftRounds > 0){
+      if(earlyRedraftTopN > 0){
         const posOwnMinMet = pg==='D' ? droppedD >= minDropD : pg==='F' ? droppedF >= minDropF : true;
         const pastFloor = numDropped >= minDropsPreseason && posOwnMinMet && capOk;
         const pScore = redraftScoreOf(p);
