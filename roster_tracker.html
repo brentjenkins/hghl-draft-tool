@@ -2331,6 +2331,15 @@ function _weightedBlend(pairs){ // pairs: [[value, weight], ...] — only pairs 
 // projection on top. See project_early_season_nowcast memory for the 2026-07-17
 // design discussion.
 function reblendPts(p){
+  // Retired/known-unavailable players (INJURY_DROPS_2627, e.g. a real retirement) always blend
+  // to 0, overriding even a manual override or the pts2526 carry-forward fallback below — a
+  // player with zero real 26-27 relevance shouldn't show a phantom PPTS just because they had a
+  // real season last year (or someone's stale manual entry survived from before). Wiring this in
+  // directly replaces the old "live zero-out script" pattern (see INJURY_DROPS_2627's own
+  // comment re: Marcus Johansson) with something that survives a fresh Sync/Proj re-run instead
+  // of needing to be manually re-applied every time. Found live 2026-09-06 via Anze Kopitar
+  // showing a $1M cap + 38 phantom PPTS carried forward from his real 25-26 season.
+  if(INJURY_DROPS_2627.has(normName(p.name).toLowerCase())){ p.proj2627.blend = 0; return; }
   if(p.ptsMan) return;
   const W = PROJ_SOURCE_WEIGHTS;
   // Dobbers (ptsDOB) folded into the normal weighted blend at W.dob=0.9 (2026-08-19) — backtested
@@ -4333,7 +4342,11 @@ function _computeElcMandatoryDrops(deadlineDate, elcMax, xactions){
 // him from being drafted by anyone else. His own team's drop decision needs his projection
 // zeroed too (stale pre-signing data would otherwise still show him as a normal producer) — see
 // the live zero-out script, not a source-only fix.
-const INJURY_DROPS_2627 = new Set(['marcus johansson']);
+// Anze Kopitar: retired ahead of 26-27 — same "dead roster spot, not an injury" logic as the
+// 23-24/24-25 retirements above. His stale team2627 (LAK) and real 25-26 pts2526 (38) otherwise
+// carry forward as a phantom PPTS via reblendPts' pts2526 fallback, since no live source
+// projects a retired player. Found live 2026-09-06.
+const INJURY_DROPS_2627 = new Set(['marcus johansson', 'anze kopitar']);
 
 // Expected-to-return injuries in 26-27 — distinct from INJURY_DROPS_2627 above (which is for
 // players who won't play again this season at all): these are known short/medium-term absences
