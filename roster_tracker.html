@@ -601,6 +601,7 @@ tr:hover td{background:#fafaf8}
     </div>
     <div style="display:flex;align-items:center;gap:6px">
       <span style="font-size:10px;font-weight:600;color:#bbb;text-transform:uppercase;letter-spacing:.06em;line-height:1.3">26-27<br>Projections</span>
+      <span id="proj2627HwmLabel" style="font-size:9px;color:#9ca3af;white-space:nowrap"></span>
       <input type="file" id="athleticFileInput" accept=".xlsx,.xls" style="display:none" onchange="syncAthletic(this)">
       <button class="btn btn-athletic" id="athleticBtn" onclick="document.getElementById('athleticFileInput').click()" title="Import Athletic 26-27 projections from Excel file (The List sheet: G+A for skaters, W×2+SO×3 for goalies)">📈 ATH 26-27</button>
       <button class="btn btn-dfo" id="dfo2627Btn" onclick="syncDFO2627()" title="Scrape DFO/5v5hockey 2026-27 projections (Points league, G+A for skaters, W×2+SO×3 for goalies)">📈 DFO 26-27</button>
@@ -1347,6 +1348,21 @@ const LS_TX      = 'nhl_transactions_v2';
 const LS_LOGOS   = 'hghl_team_logos';
 const LS_DROPS        = 'hghl_drops_simulated';
 const LS_SIGNINGS_HWM = 'hghl_signings_hwm'; // YYYY-MM-DD high-water mark for incremental signings
+// YYYY-MM-DD date of the last time ANY 26-27 projection source was scraped/uploaded — not
+// per-source, just a single "how fresh is this data overall" marker, kept deliberately simple
+// per the user's own framing (2026-09-08).
+const LS_PROJ2627_HWM = 'hghl_proj2627_hwm';
+function markProj2627Synced(){
+  localStorage.setItem(LS_PROJ2627_HWM, new Date().toISOString().slice(0,10));
+  updateProj2627HwmDisplay();
+}
+function updateProj2627HwmDisplay(){
+  const el = document.getElementById('proj2627HwmLabel');
+  if(!el) return;
+  const hwm = localStorage.getItem(LS_PROJ2627_HWM);
+  el.textContent = hwm ? `(last updated ${hwm})` : '';
+  el.title = hwm ? `26-27 projections last scraped/uploaded ${hwm}` : 'No 26-27 projection sync recorded yet';
+}
 const LS_SIGNINGS_RAW = 'hghl_signings_raw_v1'; // all contracts grouped by player key
 const LS_XACTIONS_2425 = 'hghl_xactions_2425';
 const LS_XACTIONS_2526 = 'hghl_xactions_2526';
@@ -2771,6 +2787,7 @@ async function syncESPN(){
     applyBlendedPts();
     lsSet(LS_PLAYERS, players);
     render();
+    markProj2627Synced();
     toast(`ESPN synced! ${matched} matched, ${unmatched} unmatched. ${d.errors.length?d.errors.length+' errors.':''}`);
     _reportUnmatchedSourceEntries('ESPN 26-27', d.players);
     if(d.errors.length) console.warn('ESPN errors:', d.errors);
@@ -2805,6 +2822,7 @@ async function syncCBS(){
     applyBlendedPts();
     lsSet(LS_PLAYERS, players);
     render();
+    markProj2627Synced();
     toast(`CBS synced! ${matched} matched, ${unmatched} unmatched. ${d.errors.length?d.errors.length+' errors.':''}`);
     _reportUnmatchedSourceEntries('CBS 26-27', d.players);
     if(d.errors.length) console.warn('CBS errors:', d.errors);
@@ -2844,6 +2862,7 @@ async function syncAthletic(input){
     applyBlendedPts();
     lsSet(LS_PLAYERS, players);
     render();
+    markProj2627Synced();
     toast(`ATH 26-27 synced! ${matched} matched, ${unmatched} unmatched.`);
     _reportUnmatchedSourceEntries('Athletic 26-27', d.players);
   } catch(e){
@@ -2879,6 +2898,7 @@ async function syncDTZ(input){
     applyBlendedPts();
     lsSet(LS_PLAYERS, players);
     render();
+    markProj2627Synced();
     toast(`DTZ 26-27 synced! ${matched} matched, ${unmatched} unmatched.`);
     _reportUnmatchedSourceEntries('DTZ 26-27', d.players);
   } catch(e){
@@ -2917,6 +2937,7 @@ async function syncDOB(input){
     applyBlendedPts();
     lsSet(LS_PLAYERS, players);
     render();
+    markProj2627Synced();
     toast(`Dobbers 26-27 synced! ${matched} matched, ${unmatched} unmatched.`);
     _reportUnmatchedSourceEntries('Dobbers 26-27', d.players);
   } catch(e){
@@ -3520,6 +3541,7 @@ async function syncDFO2627(){
     applyBlendedPts();
     lsSet(LS_PLAYERS, players);
     render();
+    markProj2627Synced();
     toast(`DFO 26-27 synced! ${matched} matched, ${unmatched} unmatched.`);
     _reportUnmatchedSourceEntries('DFO 26-27', d.players);
     // Sanity check: 5v5hockey's projections page has no season marker to scrape, so if it
@@ -3635,6 +3657,7 @@ async function syncNHLProj2627(){
     applyBlendedPts();
     lsSet(LS_PLAYERS, players);
     render();
+    markProj2627Synced();
     toast(`NHL 26-27 synced! ${matched} matched, ${unmatched} unmatched.`);
     _reportUnmatchedSourceEntries('NHL Proj 26-27', combined);
   } catch(e){ toast('NHL 26-27 sync failed: '+e.message); }
@@ -3780,7 +3803,7 @@ function _scoreCols2627(p){
     conPpmTip: `PPTS/$M × coverage × wtPPTSM\n${rawPpPerMRS.toFixed(1)} × ${p.rsCovM2627.toFixed(2)} × ${draftWeights.wtPPTSM} = ${p.rsPpm2627.toFixed(1)}\ncoverage @ ${p.rsSrcN2627} src = ${p.rsCovM2627.toFixed(2)}`,
     conTrjTip: `Peak Trajectory × wtAge\n${p.rsYRaw2627.toFixed(1)} × ${draftWeights.wtAge} = ${p.rsTrj2627.toFixed(1)}\nPeak Trajectory @ age ${age} = ${p.rsYRaw2627.toFixed(1)}`,
     conCrvTip: `((PPTS × coverage) − curve baseline) × wtDeltaCurve\n((${p.proj2627.blend} × ${p.rsCovM2627.toFixed(2)}) − ${(p.proj2627.blend*p.rsCovM2627-p.rsDRaw2627).toFixed(1)}) × ${draftWeights.wtDeltaCurve} = ${p.rsCrv2627.toFixed(1)}\ncoverage @ ${p.rsSrcN2627} src = ${p.rsCovM2627.toFixed(2)}`,
-    conTermTip: `Avg FUTURE curve-delta × wtTermValue\nValue: ${(p.rsTerm2627||0).toFixed(1)}\nReference only here — doesn't count toward Score outside Draft Mode (Optimize-mode teams)`,
+    conTermTip: `Avg FUTURE curve-delta × wtTermValue\nValue: ${(p.rsTerm2627||0).toFixed(1)}\nReference only here — Score only counts in Optimize mode`,
     prospectTip: p.rsPros2627 > 0
       ? `Years × (PPTS × coverage / ELC expected pts) × wtProspect\n${prospectAgeScoreRS} × (${p.proj2627.blend} × ${p.rsCovM2627.toFixed(2)} / ${prospectNormPtsRS}) × ${draftWeights.wtProspect} = ${p.rsPros2627.toFixed(1)}\nProspect Age @ ${posLetterRS} <= ${prospectMaxAgeRS}\nYears as prospect = ${prospectMaxAgeRS}+1-${age}=${prospectAgeScoreRS}\ncoverage @ ${p.rsSrcN2627} src = ${p.rsCovM2627.toFixed(2)}\nELC expected pts @ ${posLetterRS} = ${prospectNormPtsRS}`
       : 'No prospect bonus',
@@ -3843,7 +3866,7 @@ function _scoreCols2526(p){
     conPpmTip: `PPTS/$M × coverage × wtPPTSM\n${rawPpPerMRS.toFixed(1)} × ${p.rsCovM2526.toFixed(2)} × ${draftWeights.wtPPTSM} = ${p.rsPpm2526.toFixed(1)}\ncoverage @ ${p.rsSrcN2526} src = ${p.rsCovM2526.toFixed(2)}`,
     conTrjTip: `Peak Trajectory × wtAge\n${p.rsYRaw2526.toFixed(1)} × ${draftWeights.wtAge} = ${p.rsTrj2526.toFixed(1)}\nPeak Trajectory @ age ${age} = ${p.rsYRaw2526.toFixed(1)}`,
     conCrvTip: `((PPTS × coverage) − curve baseline) × wtDeltaCurve\n((${ppts2526blend(p)} × ${p.rsCovM2526.toFixed(2)}) − ${(ppts2526blend(p)*p.rsCovM2526-p.rsDRaw2526).toFixed(1)}) × ${draftWeights.wtDeltaCurve} = ${p.rsCrv2526.toFixed(1)}\ncoverage @ ${p.rsSrcN2526} src = ${p.rsCovM2526.toFixed(2)}`,
-    conTermTip: `Avg FUTURE curve-delta × wtTermValue\nValue: ${(p.rsTerm2526||0).toFixed(1)}\nReference only here — doesn't count toward Score outside Draft Mode (Optimize-mode teams)`,
+    conTermTip: `Avg FUTURE curve-delta × wtTermValue\nValue: ${(p.rsTerm2526||0).toFixed(1)}\nReference only here — Score only counts in Optimize mode`,
     prospectTip: p.rsPros2526 > 0
       ? `Years × (PPTS × coverage / ELC expected pts) × wtProspect\n${prospectAgeScoreRS} × (${ppts2526blend(p)} × ${p.rsCovM2526.toFixed(2)} / ${prospectNormPtsRS}) × ${draftWeights.wtProspect} = ${p.rsPros2526.toFixed(1)}\nProspect Age @ ${posLetterRS} <= ${prospectMaxAgeRS}\nYears as prospect = ${prospectMaxAgeRS}+1-${age}=${prospectAgeScoreRS}\ncoverage @ ${p.rsSrcN2526} src = ${p.rsCovM2526.toFixed(2)}\nELC expected pts @ ${posLetterRS} = ${prospectNormPtsRS}`
       : 'No prospect bonus',
@@ -3903,7 +3926,7 @@ function _scoreCols2425(p){
     conPpmTip: `PPTS/$M × coverage × wtPPTSM\n${rawPpPerMRS.toFixed(1)} × ${p.rsCovM2425.toFixed(2)} × ${draftWeights.wtPPTSM} = ${p.rsPpm2425.toFixed(1)}\ncoverage @ ${p.rsSrcN2425} src = ${p.rsCovM2425.toFixed(2)}`,
     conTrjTip: `Peak Trajectory × wtAge\n${p.rsYRaw2425.toFixed(1)} × ${draftWeights.wtAge} = ${p.rsTrj2425.toFixed(1)}\nPeak Trajectory @ age ${age} = ${p.rsYRaw2425.toFixed(1)}`,
     conCrvTip: `((PPTS × coverage) − curve baseline) × wtDeltaCurve\n((${ppts2425blend(p)} × ${p.rsCovM2425.toFixed(2)}) − ${(ppts2425blend(p)*p.rsCovM2425-p.rsDRaw2425).toFixed(1)}) × ${draftWeights.wtDeltaCurve} = ${p.rsCrv2425.toFixed(1)}\ncoverage @ ${p.rsSrcN2425} src = ${p.rsCovM2425.toFixed(2)}`,
-    conTermTip: `Avg FUTURE curve-delta × wtTermValue\nValue: ${(p.rsTerm2425||0).toFixed(1)}\nReference only here — doesn't count toward Score outside Draft Mode (Optimize-mode teams)`,
+    conTermTip: `Avg FUTURE curve-delta × wtTermValue\nValue: ${(p.rsTerm2425||0).toFixed(1)}\nReference only here — Score only counts in Optimize mode`,
     prospectTip: p.rsPros2425 > 0
       ? `Years × (PPTS × coverage / ELC expected pts) × wtProspect\n${prospectAgeScoreRS} × (${ppts2425blend(p)} × ${p.rsCovM2425.toFixed(2)} / ${prospectNormPtsRS}) × ${draftWeights.wtProspect} = ${p.rsPros2425.toFixed(1)}\nProspect Age @ ${posLetterRS} <= ${prospectMaxAgeRS}\nYears as prospect = ${prospectMaxAgeRS}+1-${age}=${prospectAgeScoreRS}\ncoverage @ ${p.rsSrcN2425} src = ${p.rsCovM2425.toFixed(2)}\nELC expected pts @ ${posLetterRS} = ${prospectNormPtsRS}`
       : 'No prospect bonus',
@@ -3963,7 +3986,7 @@ function _scoreCols2324(p){
     conPpmTip: `PPTS/$M × coverage × wtPPTSM\n${rawPpPerMRS.toFixed(1)} × ${p.rsCovM2324.toFixed(2)} × ${draftWeights.wtPPTSM} = ${p.rsPpm2324.toFixed(1)}\ncoverage @ ${p.rsSrcN2324} src = ${p.rsCovM2324.toFixed(2)}`,
     conTrjTip: `Peak Trajectory × wtAge\n${p.rsYRaw2324.toFixed(1)} × ${draftWeights.wtAge} = ${p.rsTrj2324.toFixed(1)}\nPeak Trajectory @ age ${age} = ${p.rsYRaw2324.toFixed(1)}`,
     conCrvTip: `((PPTS × coverage) − curve baseline) × wtDeltaCurve\n((${ppts2324blend(p)} × ${p.rsCovM2324.toFixed(2)}) − ${(ppts2324blend(p)*p.rsCovM2324-p.rsDRaw2324).toFixed(1)}) × ${draftWeights.wtDeltaCurve} = ${p.rsCrv2324.toFixed(1)}\ncoverage @ ${p.rsSrcN2324} src = ${p.rsCovM2324.toFixed(2)}`,
-    conTermTip: `Avg FUTURE curve-delta × wtTermValue\nValue: ${(p.rsTerm2324||0).toFixed(1)}\nReference only here — doesn't count toward Score outside Draft Mode (Optimize-mode teams)`,
+    conTermTip: `Avg FUTURE curve-delta × wtTermValue\nValue: ${(p.rsTerm2324||0).toFixed(1)}\nReference only here — Score only counts in Optimize mode`,
     prospectTip: p.rsPros2324 > 0
       ? `Years × (PPTS × coverage / ELC expected pts) × wtProspect\n${prospectAgeScoreRS} × (${ppts2324blend(p)} × ${p.rsCovM2324.toFixed(2)} / ${prospectNormPtsRS}) × ${draftWeights.wtProspect} = ${p.rsPros2324.toFixed(1)}\nProspect Age @ ${posLetterRS} <= ${prospectMaxAgeRS}\nYears as prospect = ${prospectMaxAgeRS}+1-${age}=${prospectAgeScoreRS}\ncoverage @ ${p.rsSrcN2324} src = ${p.rsCovM2324.toFixed(2)}\nELC expected pts @ ${posLetterRS} = ${prospectNormPtsRS}`
       : 'No prospect bonus',
@@ -10705,6 +10728,7 @@ updateSigningsBtn();
 renderDraftModeSettings();
 updateYahooDropBtnTooltips();
 toggleSyncProjRow(syncProjCollapsed);
+updateProj2627HwmDisplay();
 updateDraftTab();
 
 // Cross-tab live sync: when another tab (e.g. the one actually making draft
