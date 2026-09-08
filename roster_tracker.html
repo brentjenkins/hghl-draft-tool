@@ -601,7 +601,6 @@ tr:hover td{background:#fafaf8}
     </div>
     <div style="display:flex;align-items:center;gap:6px">
       <span style="font-size:10px;font-weight:600;color:#bbb;text-transform:uppercase;letter-spacing:.06em;line-height:1.3">26-27<br>Projections</span>
-      <span id="proj2627HwmLabel" style="font-size:9px;color:#9ca3af;white-space:nowrap"></span>
       <input type="file" id="athleticFileInput" accept=".xlsx,.xls" style="display:none" onchange="syncAthletic(this)">
       <button class="btn btn-athletic" id="athleticBtn" onclick="document.getElementById('athleticFileInput').click()" title="Import Athletic 26-27 projections from Excel file (The List sheet: G+A for skaters, W×2+SO×3 for goalies)">📈 ATH 26-27</button>
       <button class="btn btn-dfo" id="dfo2627Btn" onclick="syncDFO2627()" title="Scrape DFO/5v5hockey 2026-27 projections (Points league, G+A for skaters, W×2+SO×3 for goalies)">📈 DFO 26-27</button>
@@ -1348,20 +1347,32 @@ const LS_TX      = 'nhl_transactions_v2';
 const LS_LOGOS   = 'hghl_team_logos';
 const LS_DROPS        = 'hghl_drops_simulated';
 const LS_SIGNINGS_HWM = 'hghl_signings_hwm'; // YYYY-MM-DD high-water mark for incremental signings
-// YYYY-MM-DD date of the last time ANY 26-27 projection source was scraped/uploaded — not
-// per-source, just a single "how fresh is this data overall" marker, kept deliberately simple
-// per the user's own framing (2026-09-08).
+// Per-source YYYY-MM-DD dates of the last time EACH 26-27 projection source was scraped/
+// uploaded — JSON object keyed by source (ath/dfo/dtz/dob/espn/cbs/nhl). Originally a single
+// shared date across all 7 (2026-09-08), switched to per-source the same day once it became
+// clear a shared date on each button's own tooltip was actively misleading — syncing only DFO
+// shouldn't make CBS's tooltip claim it was updated too.
 const LS_PROJ2627_HWM = 'hghl_proj2627_hwm';
-function markProj2627Synced(){
-  localStorage.setItem(LS_PROJ2627_HWM, new Date().toISOString().slice(0,10));
+const PROJ2627_HWM_BTN_IDS = {ath:'athleticBtn', dfo:'dfo2627Btn', dtz:'dtzBtn', dob:'dobBtn', espn:'espnBtn', cbs:'cbsBtn', nhl:'nhlProj2627Btn'};
+function _readProj2627Hwm(){
+  try { return JSON.parse(localStorage.getItem(LS_PROJ2627_HWM) || '{}'); } catch(e) { return {}; }
+}
+function markProj2627Synced(source){
+  const hwm = _readProj2627Hwm();
+  hwm[source] = new Date().toISOString().slice(0,10);
+  localStorage.setItem(LS_PROJ2627_HWM, JSON.stringify(hwm));
   updateProj2627HwmDisplay();
 }
 function updateProj2627HwmDisplay(){
-  const el = document.getElementById('proj2627HwmLabel');
-  if(!el) return;
-  const hwm = localStorage.getItem(LS_PROJ2627_HWM);
-  el.textContent = hwm ? `(last updated ${hwm})` : '';
-  el.title = hwm ? `26-27 projections last scraped/uploaded ${hwm}` : 'No 26-27 projection sync recorded yet';
+  const hwm = _readProj2627Hwm();
+  // dataset.baseTitle caches each button's real descriptive title on first call so repeated
+  // syncs don't keep appending another date suffix on top of the last one.
+  for(const source in PROJ2627_HWM_BTN_IDS){
+    const btn = document.getElementById(PROJ2627_HWM_BTN_IDS[source]);
+    if(!btn) continue;
+    if(btn.dataset.baseTitle === undefined) btn.dataset.baseTitle = btn.title;
+    btn.title = hwm[source] ? `${btn.dataset.baseTitle} — last updated ${hwm[source]}` : btn.dataset.baseTitle;
+  }
 }
 const LS_SIGNINGS_RAW = 'hghl_signings_raw_v1'; // all contracts grouped by player key
 const LS_XACTIONS_2425 = 'hghl_xactions_2425';
@@ -2787,7 +2798,7 @@ async function syncESPN(){
     applyBlendedPts();
     lsSet(LS_PLAYERS, players);
     render();
-    markProj2627Synced();
+    markProj2627Synced('espn');
     toast(`ESPN synced! ${matched} matched, ${unmatched} unmatched. ${d.errors.length?d.errors.length+' errors.':''}`);
     _reportUnmatchedSourceEntries('ESPN 26-27', d.players);
     if(d.errors.length) console.warn('ESPN errors:', d.errors);
@@ -2822,7 +2833,7 @@ async function syncCBS(){
     applyBlendedPts();
     lsSet(LS_PLAYERS, players);
     render();
-    markProj2627Synced();
+    markProj2627Synced('cbs');
     toast(`CBS synced! ${matched} matched, ${unmatched} unmatched. ${d.errors.length?d.errors.length+' errors.':''}`);
     _reportUnmatchedSourceEntries('CBS 26-27', d.players);
     if(d.errors.length) console.warn('CBS errors:', d.errors);
@@ -2862,7 +2873,7 @@ async function syncAthletic(input){
     applyBlendedPts();
     lsSet(LS_PLAYERS, players);
     render();
-    markProj2627Synced();
+    markProj2627Synced('ath');
     toast(`ATH 26-27 synced! ${matched} matched, ${unmatched} unmatched.`);
     _reportUnmatchedSourceEntries('Athletic 26-27', d.players);
   } catch(e){
@@ -2898,7 +2909,7 @@ async function syncDTZ(input){
     applyBlendedPts();
     lsSet(LS_PLAYERS, players);
     render();
-    markProj2627Synced();
+    markProj2627Synced('dtz');
     toast(`DTZ 26-27 synced! ${matched} matched, ${unmatched} unmatched.`);
     _reportUnmatchedSourceEntries('DTZ 26-27', d.players);
   } catch(e){
@@ -2937,7 +2948,7 @@ async function syncDOB(input){
     applyBlendedPts();
     lsSet(LS_PLAYERS, players);
     render();
-    markProj2627Synced();
+    markProj2627Synced('dob');
     toast(`Dobbers 26-27 synced! ${matched} matched, ${unmatched} unmatched.`);
     _reportUnmatchedSourceEntries('Dobbers 26-27', d.players);
   } catch(e){
@@ -3333,7 +3344,7 @@ async function syncSigningsAll(e){
         cap2526: c2526?.cap ?? null, cap2425: c2425?.cap ?? null, cap2324: c2324?.cap ?? null,
         nhlId: latest.nhl_id || null,
         nextCap2627: cNextNew?.cap ?? null, nextTerm2627: cNextNew?.term ?? null, nextYr2627: cNextNew?.start_yr ?? null,
-        proj2627: {espn:null,ath:null,dfo:null,dtz:null,dob:null,cbs:null,nhl:null,blend:0},
+        proj2627: {espn:null,ath:null,dfo:null,dtz:null,dob:null,cbs:null,nhl:null,blend:0}, projGp2627: {},
       });
       added++;
     }
@@ -3431,7 +3442,7 @@ async function syncAllNHL(){
         const newId = players.length>0 ? Math.max(...players.map(x=>x.id))+1 : 1;
         players.push({id:newId, name:p.name, team2627:p.nhlTeam, pos:p.pos, cap2627:0,
                       status:'r', source:'n', start2627:'', birthDate:p.birthDate||'', nhlId:p.nhlId||null,
-                      proj2627:{blend:0}});
+                      proj2627:{blend:0}, projGp2627:{}});
         added++;
       }
     }
@@ -3541,7 +3552,7 @@ async function syncDFO2627(){
     applyBlendedPts();
     lsSet(LS_PLAYERS, players);
     render();
-    markProj2627Synced();
+    markProj2627Synced('dfo');
     toast(`DFO 26-27 synced! ${matched} matched, ${unmatched} unmatched.`);
     _reportUnmatchedSourceEntries('DFO 26-27', d.players);
     // Sanity check: 5v5hockey's projections page has no season marker to scrape, so if it
@@ -3657,7 +3668,7 @@ async function syncNHLProj2627(){
     applyBlendedPts();
     lsSet(LS_PLAYERS, players);
     render();
-    markProj2627Synced();
+    markProj2627Synced('nhl');
     toast(`NHL 26-27 synced! ${matched} matched, ${unmatched} unmatched.`);
     _reportUnmatchedSourceEntries('NHL Proj 26-27', combined);
   } catch(e){ toast('NHL 26-27 sync failed: '+e.message); }
@@ -4664,7 +4675,7 @@ function _seedStart2627(){
       id:nextId++, name:stub.name, pos:stub.pos, team2627:'', cap2627:0, status:'r', source:'m',
       start2627:team||'', end2526:team,
       rank2627:null, birthDate:stub.birthDate||'', capMan:false, ptsMan:false,
-      proj2627:{espn:null,ath:null,dfo:null,dtz:null,dob:null,cbs:null,nhl:null,blend:0},
+      proj2627:{espn:null,ath:null,dfo:null,dtz:null,dob:null,cbs:null,nhl:null,blend:0}, projGp2627:{},
     });
   }
   dedup(); // self-heal any pre-existing alias-pair duplicate from before this fix, or from a stale sync
@@ -5852,7 +5863,7 @@ function _seedStart2526(){
       start2627:'', end2526:'', end2425:team, start2526:team,
       rank2627:null, rank2526:null, birthDate:stub.birthDate||'', capMan:false, ptsMan:false,
       proj2526:{dfo:null,dtz:null,espn:null,ath:null,cbs:null},
-      proj2627:{espn:null,ath:null,dfo:null,dtz:null,dob:null,cbs:null,nhl:null,blend:0},
+      proj2627:{espn:null,ath:null,dfo:null,dtz:null,dob:null,cbs:null,nhl:null,blend:0}, projGp2627:{},
     });
   }
   dedup(); // self-heal any pre-existing alias-pair duplicate from before this fix, or from a stale sync
@@ -10672,7 +10683,7 @@ function savePlayer(){
     }
   } else {
     const newId=players.length>0?Math.max(...players.map(p=>p.id))+1:1;
-    players.push({id:newId,name,team2627:team,pos,cap2627:cap,proj2627:{blend:pts},status,source:'m',start2627:ft2627,end2526:''});
+    players.push({id:newId,name,team2627:team,pos,cap2627:cap,proj2627:{blend:pts},projGp2627:{},status,source:'m',start2627:ft2627,end2526:''});
   }
   lsSet(LS_PLAYERS,players); populateTeamFilter(); populateFantasyFilter(); render(); closeModal();
   toast(editId!==null?'Player updated.':'Player added.');
