@@ -4380,7 +4380,8 @@ function _computeElcMandatoryDrops(deadlineDate, elcMax, xactions){
 // 23-24/24-25 retirements above. His stale team2627 (LAK) and real 25-26 pts2526 (38) otherwise
 // carry forward as a phantom PPTS via reblendPts' pts2526 fallback, since no live source
 // projects a retired player. Found live 2026-09-06.
-const INJURY_DROPS_2627 = new Set(['marcus johansson', 'anze kopitar']);
+// John Klingberg: retired ahead of 26-27 — same logic. Found live 2026-09-11.
+const INJURY_DROPS_2627 = new Set(['marcus johansson', 'anze kopitar', 'john klingberg']);
 
 // Expected-to-return injuries in 26-27 — distinct from INJURY_DROPS_2627 above (which is for
 // players who won't play again this season at all): these are known short/medium-term absences
