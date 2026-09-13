@@ -24,7 +24,6 @@ const MANUAL_CAPS_2627 = {
   'adam fantilli_F':      { cap: 13, yrStr: '' },
   'cutter gauthier_F':    { cap: 14, yrStr: '' },
   'alexander nikishin_D': { cap: 6,  yrStr: '' },
-  'zach bolduc_F':        { cap: 3,  yrStr: '' },
   'simon edvinsson_D':    { cap: 7,  yrStr: '' },
 };
 

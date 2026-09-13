@@ -2097,6 +2097,39 @@ function _dictLookupPos(name, pos, dict){
   for(const v of _nameVariants(name)){ const val = dict[`${v}_${pg}`]; if(val !== undefined && val !== null) return val; }
   return null;
 }
+// NHL player ID is a stronger signal than any name/alias match for pulling an EXISTING
+// player's own contracts out of the signings raw store — the same principle
+// _findExistingPlayerForSync already applies when detecting a brand-new player, just not yet
+// applied to refreshing a player who already exists. Scans every raw signings key once,
+// grouping every contract that carries a real nhl_id by that id (deduped by fingerprint, since
+// the same contract can legitimately appear under more than one name-key). A name-spelling
+// gap that leaves a real current contract orphaned under a key the player's own name/alias set
+// never reaches (e.g. "Zack Bolduc" vs the player's own "Zachary Bolduc") is invisible to
+// name-based lookup but not to this, since the orphaned contract still carries the same id.
+// Found live 2026-09-13 via Zack/Zachary Bolduc: his real current $4.2M extension was filed
+// under a "Zack"-spelled key his own name's alias set doesn't generate, so _dictLookupPos never
+// found it, leaving assignCapFromSignings/syncSigningsAll silently using his stale expired ELC.
+function _buildSigningsIdIndex(raw){
+  const idx = {};
+  for(const key in raw){
+    const arr = raw[key];
+    if(!Array.isArray(arr)) continue;
+    for(const c of arr){
+      if(!c.nhl_id) continue;
+      if(!idx[c.nhl_id]) idx[c.nhl_id] = [];
+      const fp = `${c.sign_date}|${c.exp}|${c.cap}|${c.start_yr}`;
+      if(!idx[c.nhl_id].some(x => `${x.sign_date}|${x.exp}|${x.cap}|${x.start_yr}` === fp)) idx[c.nhl_id].push(c);
+    }
+  }
+  return idx;
+}
+// Prefer nhl_id-based contract lookup over name/alias matching whenever both the player and a
+// signings entry carry a real id — falls back to the existing name-based _dictLookupPos only
+// when either side is missing an id (e.g. a brand-new prospect PuckPedia hasn't ID-tagged yet).
+function _contractsForPlayer(p, raw, idIndex){
+  if(p.nhlId && idIndex[p.nhlId] && idIndex[p.nhlId].length) return idIndex[p.nhlId];
+  return _dictLookupPos(p.name, p.pos, raw) || [];
+}
 // Every sync that pulls in an external source dict (name_pos -> entry, per _dictLookupPos's own
 // key convention) should call this once after fetching, so a real matching bug (Bobrovski/Bobrovsky,
 // Dumba/Mathew, Sandin-Pellikka hyphen mismatch — all found this way) surfaces in the console on
@@ -3094,13 +3127,15 @@ function _findNextContract(contracts, curContract, asOfDate){
 function assignCapFromSignings(){
   const raw = getSigningsRaw();
   if(!raw) return;
+  const idIndex = _buildSigningsIdIndex(raw);
   for(const p of players){
     // Alias/override fallback: a player's live-pool name and PuckPedia's own spelling can
     // differ (e.g. "Tommy" Novak's live record vs "Thomas"/"Tom" Novak in the signings
     // store) — a bare-key-only lookup silently leaves cap2324/2425/2526 null, which
     // getCap*() then treats as 0, which in turn satisfies "cap <= ELC_MAX" and
-    // misclassifies a real veteran as an ELC prospect.
-    const contracts = _dictLookupPos(p.name, p.pos, raw) || [];
+    // misclassifies a real veteran as an ELC prospect. nhl_id match (see
+    // _contractsForPlayer) takes priority over this when both sides have one.
+    const contracts = _contractsForPlayer(p, raw, idIndex);
     if(!contracts.length) continue;
     // contracts stored sign_date DESC; first match = most recently signed active contract
     const c2324 = contracts.find(c => c.start_yr <= 2023 && c.exp >= '2023-2024');
@@ -3229,10 +3264,12 @@ async function syncSigningsAll(e){
     // Apply cap hits to all existing players
     let matched = 0;
     const matchedKeys = new Set();
+    const idIndex = _buildSigningsIdIndex(raw);
     for(const p of players){
       const pg = posGroup(p.pos);
       // Alias/override fallback — see assignCapFromSignings() for why (Tommy/Thomas/Tom Novak etc.)
-      const contracts = _dictLookupPos(p.name, p.pos, raw) || [];
+      // nhl_id match (see _contractsForPlayer) takes priority over this when both sides have one.
+      const contracts = _contractsForPlayer(p, raw, idIndex);
       if(!contracts.length) continue;
       const c2324 = contracts.find(c => c.start_yr <= 2023 && c.exp >= '2023-2024');
       const c2425 = contracts.find(c => c.start_yr <= 2024 && c.exp >= '2024-2025');
@@ -5543,11 +5580,27 @@ function renderSignings(){
   const season  = document.getElementById('signingsSeason')?.value || 'all';
   const hghlF   = document.getElementById('signingsHGHL')?.value || '';
 
-  // Build HGHL team lookup from players[]
+  // Build HGHL team lookup from players[] — keyed both by name_pg (existing behavior) AND by
+  // nhl_id, since a raw signings row's own key can be an alt-spelling the player's exact name
+  // never generates (e.g. a "Zack Bolduc"-keyed row vs the player's own "Zachary Bolduc" name) —
+  // same class of gap as _contractsForPlayer/_buildSigningsIdIndex fixed for cap assignment.
+  // Found live 2026-09-13: fixing the cap-assignment side didn't fix this separate lookup, since
+  // this one was never routed through that shared logic.
+  // team26 (26-27) reads from PREDROP_ROSTER_2627, not live start2627 — real drops haven't
+  // happened yet this cycle, so start2627 reflects whatever Reset/Draft Mode state the app
+  // happens to be in locally, not who actually owns the player right now. 25-26/24-25 are
+  // already-settled history, so their start fields ARE the real final rosters — no change
+  // needed there. Found live 2026-09-13.
   const hghlMap = {}; // name_pg → {team26, team25, team24}
+  const hghlMapById = {}; // nhl_id → {team26, team25, team24}
   for(const p of players){
-    const k = `${normName(p.name).toLowerCase()}_${posGroup(p.pos)}`;
-    hghlMap[k] = {team26: p.start2627||'', team25: p.start2526||'', team24: p.start2425||''};
+    const base = normName(p.name).toLowerCase();
+    const pg = posGroup(p.pos);
+    const predropTeam26 = PREDROP_ROSTER_2627[`${base}_${pg}`] ?? _dictLookup(p.name, PREDROP_ROSTER_2627) ?? '';
+    const teamInfo = {team26: predropTeam26, team25: p.start2526||'', team24: p.start2425||''};
+    const k = `${base}_${pg}`;
+    hghlMap[k] = teamInfo;
+    if(p.nhlId) hghlMapById[p.nhlId] = teamInfo;
   }
 
   // Season filter helpers
@@ -5574,7 +5627,7 @@ function renderSignings(){
       const rowKey = season === 'all' ? `${dedupName}_${c.sign_date}_${c.exp}_${c.start_yr}` : dedupName;
       if(seen.has(rowKey)) continue;
       seen.add(rowKey);
-      const hghl = hghlMap[key] || {};
+      const hghl = (c.nhl_id && hghlMapById[c.nhl_id]) || hghlMap[key] || {};
       const hghlTeam = season==='2526' ? (hghl.team25||'') : season==='2425' ? (hghl.team24||'') : (hghl.team26||'');
       rows.push({...c, pg, key, hghlTeam});
     }

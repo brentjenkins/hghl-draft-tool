@@ -2182,6 +2182,13 @@ _FORMAL_TO_NICK = {
 }
 # Reverse map: nick → formal (built from _FORMAL_TO_NICK, last formal wins on collision)
 _NICK_TO_FORMAL = {v: k for k, v in _FORMAL_TO_NICK.items()}
+# Extra alternate-spelling nicknames beyond the one _FORMAL_TO_NICK already registers as the
+# reverse mapping (a plain dict can only remember one nick per formal name) -- same class of
+# gap as the frontend FIRST_NAME_ALIASES' "forward-only" entries (zack/sammy/mikey etc.).
+# Zack Bolduc: PuckPedia's raw signings data uses "Zack" for a contract that never got linked
+# to his zachary/zach-keyed entries as a result, leaving his real current contract ($4.2M,
+# 2026-2030) orphaned under zack_bolduc_F alone. Found live 2026-09-13.
+_NICK_TO_FORMAL["zack"] = "zachary"
 
 # PuckPedia URL slugs that can't be derived from the app's name spelling even with
 # the alias retry above — e.g. "JJ Peterka" normalizes to "johnjason" for dict-key
