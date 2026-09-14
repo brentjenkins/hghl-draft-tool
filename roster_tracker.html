@@ -1499,15 +1499,20 @@ function _buildCurveFns(pool, getCap, getPts){
 }
 
 // Returns prospect bonus score (0 if not a prospect).
-// Weighted by pts vs ELC expectation: high-ceiling prospects score much higher
-// than fringe ELC players at the same age.
-function prospectBonus(age, pg, capHit, elcMax, pts=0, w){
+// Weighted by pts vs expectation: high-ceiling prospects score much higher than fringe
+// players at the same age. Normalizes against _curveBaseline (real curve for F/D, flat
+// _elcExp for G — see that function's comment) rather than a flat elcExp for all 3
+// positions, since the flat F/D baseline was propping up marginal ELC players — the type
+// who often get sent back to the minors for playing time rather than earning a real NHL
+// role, so treating them as roughly on par with a real top prospect overstated their
+// score. `curveFn` optional — falls back to the flat baseline if not supplied.
+function prospectBonus(age, pg, capHit, elcMax, pts=0, w, curveFn){
   w = w || draftWeights;
   if(age == null || age >= 99) return 0;
   const maxAge = PROSPECT_MAX_AGE[pg] ?? 22;
   if(age > maxAge || capHit > elcMax * ELC_SIGNING_BONUS_WIGGLE) return 0;
   const ageScore = maxAge + 1 - age;
-  const normPts = _elcExp(pg, w);
+  const normPts = _curveBaseline(pg, capHit, elcMax, curveFn, w) ?? _elcExp(pg, w);
   const ptsRatio = pts > 0 ? pts / normPts : 0;
   return Math.max(0, ageScore * ptsRatio * w.wtProspect);
 }
@@ -3860,7 +3865,12 @@ function _scoreCols2627(p){
   const age = calcAge(p) ?? 99;
   const prospectMaxAgeRS = PROSPECT_MAX_AGE[posLetterRS] ?? 22;
   const prospectAgeScoreRS = (age < 99 && age <= prospectMaxAgeRS) ? prospectMaxAgeRS + 1 - age : 0;
-  const prospectNormPtsRS = _elcExp(posLetterRS, draftWeights);
+  // Algebraic back-out (mirrors conCrvTip's pattern below) rather than a fresh _curveBaseline
+  // call, since this non-draft-mode path only has stored rankPlayers() fields, not a live
+  // curveFn — recovers exactly the normPts prospectBonus used at scoring time.
+  const prospectNormPtsRS = p.rsPros2627 > 0
+    ? p.proj2627.blend * p.rsCovM2627 * prospectAgeScoreRS * draftWeights.wtProspect / p.rsPros2627
+    : 0;
   const rawPpPerMRS = p.cap2627>0 ? p.proj2627.blend/p.cap2627 : 0;
   return {
     prod: p.rsProd2627, prospect: p.rsPros2627, total: p.rankScore2627,
@@ -3923,7 +3933,12 @@ function _scoreCols2526(p){
   const age = calcAge2526(p) ?? 99;
   const prospectMaxAgeRS = PROSPECT_MAX_AGE[posLetterRS] ?? 22;
   const prospectAgeScoreRS = (age < 99 && age <= prospectMaxAgeRS) ? prospectMaxAgeRS + 1 - age : 0;
-  const prospectNormPtsRS = _elcExp(posLetterRS, draftWeights);
+  // Algebraic back-out (mirrors conCrvTip's pattern below) rather than a fresh _curveBaseline
+  // call, since this non-draft-mode path only has stored rankPlayers() fields, not a live
+  // curveFn — recovers exactly the normPts prospectBonus used at scoring time.
+  const prospectNormPtsRS = p.rsPros2526 > 0
+    ? ppts2526blend(p) * p.rsCovM2526 * prospectAgeScoreRS * draftWeights.wtProspect / p.rsPros2526
+    : 0;
   const rawPpPerMRS = getCap2526(p)>0 ? ppts2526blend(p)/getCap2526(p) : 0;
   return {
     prod: p.rsProd2526, prospect: p.rsPros2526, total: p.rankScore2526,
@@ -3983,7 +3998,12 @@ function _scoreCols2425(p){
   const age = calcAge2425(p) ?? 99;
   const prospectMaxAgeRS = PROSPECT_MAX_AGE[posLetterRS] ?? 22;
   const prospectAgeScoreRS = (age < 99 && age <= prospectMaxAgeRS) ? prospectMaxAgeRS + 1 - age : 0;
-  const prospectNormPtsRS = _elcExp(posLetterRS, draftWeights);
+  // Algebraic back-out (mirrors conCrvTip's pattern below) rather than a fresh _curveBaseline
+  // call, since this non-draft-mode path only has stored rankPlayers() fields, not a live
+  // curveFn — recovers exactly the normPts prospectBonus used at scoring time.
+  const prospectNormPtsRS = p.rsPros2425 > 0
+    ? ppts2425blend(p) * p.rsCovM2425 * prospectAgeScoreRS * draftWeights.wtProspect / p.rsPros2425
+    : 0;
   const rawPpPerMRS = getCap2425(p)>0 ? ppts2425blend(p)/getCap2425(p) : 0;
   return {
     prod: p.rsProd2425, prospect: p.rsPros2425, total: p.rankScore2425,
@@ -4043,7 +4063,12 @@ function _scoreCols2324(p){
   const age = calcAge2324(p) ?? 99;
   const prospectMaxAgeRS = PROSPECT_MAX_AGE[posLetterRS] ?? 22;
   const prospectAgeScoreRS = (age < 99 && age <= prospectMaxAgeRS) ? prospectMaxAgeRS + 1 - age : 0;
-  const prospectNormPtsRS = _elcExp(posLetterRS, draftWeights);
+  // Algebraic back-out (mirrors conCrvTip's pattern below) rather than a fresh _curveBaseline
+  // call, since this non-draft-mode path only has stored rankPlayers() fields, not a live
+  // curveFn — recovers exactly the normPts prospectBonus used at scoring time.
+  const prospectNormPtsRS = p.rsPros2324 > 0
+    ? ppts2324blend(p) * p.rsCovM2324 * prospectAgeScoreRS * draftWeights.wtProspect / p.rsPros2324
+    : 0;
   const rawPpPerMRS = getCap2324(p)>0 ? ppts2324blend(p)/getCap2324(p) : 0;
   return {
     prod: p.rsProd2324, prospect: p.rsPros2324, total: p.rankScore2324,
@@ -4499,7 +4524,6 @@ const POSTDROP_ROSTER_2627 = {
   'kyle connor_F': 'Bossy Posse',
   'tage thompson_F': 'Bossy Posse',
   'juraj slafkovsky_F': 'Bossy Posse',
-  'gabriel vilardi_F': 'Bossy Posse',
   'emil heineman_F': 'Bossy Posse',
   'mika zibanejad_F': 'Bossy Posse',
   'gabe perreault_F': 'Bossy Posse',
@@ -8320,10 +8344,10 @@ function _computeRankScore(p, { pg, pp, cap, calcAgeForSim, contractYearAnchor, 
   // division-by-zero/NaN here. Mirrors _scoreDraftCandidate's identical pattern.
   const deltaCurveBase = (ppEff>0 && cap>0) ? _curveBaseline(pg, cap, elcMax, curveFn, W) : null;
   const deltaRaw = (deltaCurveBase!=null && ppEff-deltaCurveBase>0) ? ppEff-deltaCurveBase : 0;
-  const prospect = prospectBonus(age < 99 ? age : null, pg, cap||0, elcMax, ppEff, W);
+  const prospect = prospectBonus(age < 99 ? age : null, pg, cap||0, elcMax, ppEff, W, curveFn);
   const prospectMaxAge = PROSPECT_MAX_AGE[pg] ?? 22;
   const prospectAgeScore = (age < 99 && age <= prospectMaxAge) ? prospectMaxAge + 1 - age : 0;
-  const prospectNormPts = _elcExp(pg, W);
+  const prospectNormPts = _curveBaseline(pg, cap||0, elcMax, curveFn, W) ?? _elcExp(pg, W);
   // Term value, reference-only outside Draft Mode (see conTermTip / termActive in _scoreCols2X2Y)
   // — computed here so the Trm column shows a real greyed-out number on the Players view instead
   // of a hardcoded 0, but deliberately excluded from `score` below since it only actually counts
@@ -8438,12 +8462,12 @@ function _scoreDraftCandidate(p, { pg, pp, cap0, pressure, mode, round, draftWei
   const playerNhlTeam = p[teamField] || p.team2627 || null;
   const tFanBias = (team && GM_FAN_TEAM[team] && playerNhlTeam === GM_FAN_TEAM[team]) ? (draftWeights.wtFanBias||0) : 0;
   const richExtra = tPPTSM + tYouth + tDelta + tFanBias + tTermValue;
-  const prospect = prospectBonus(age < 99 ? age : null, pg, cap0, elcMax, ppEff, draftWeights);
+  const prospect = prospectBonus(age < 99 ? age : null, pg, cap0, elcMax, ppEff, draftWeights, curveFns[pg]);
   // Raw components behind prospectBonus (ageScore × ptsRatio × wtProspect), recomputed
   // independently purely for tooltip display - see prospectBonus itself for the real formula.
   const prospectMaxAge = PROSPECT_MAX_AGE[pg] ?? 22;
   const prospectAgeScore = (age < 99 && age <= prospectMaxAge) ? prospectMaxAge + 1 - age : 0;
-  const prospectNormPts = _elcExp(pg, draftWeights);
+  const prospectNormPts = _curveBaseline(pg, cap0, elcMax, curveFns[pg], draftWeights) ?? _elcExp(pg, draftWeights);
   const posMult = mode==='prospect' ? (pm[pg]||1) : 1;
   const tPPTSBase = ppEff * posMult * pressMult;
   // Cap-use bonus: Optimize-mode-only (see draftModeByTeam/_runAlgoDraft), 0 everywhere else.
