@@ -1481,8 +1481,15 @@ const ELC_SIGNING_BONUS_WIGGLE = 1.1;
 // being pulled up by mid-tier veteran goalies elsewhere on the curve, not reflecting
 // anything realistic at the ELC price point. F/D's empirical numbers (41/26) were much
 // closer to their own real-curve values (46-53/28-32), so no such carve-out was needed.
+// Simulate-mode teams (w._flatElcBaseline, set by _effectiveDraftWeights) ALSO get the flat
+// F/D baseline — found live 2026-09-14 via John Tavares going 1st overall ahead of Ivan
+// Demidov: Simulate mode exists to predict real GM behavior, including "any real GM takes a
+// generational ELC prospect early," and _effectiveDraftWeights already reverts elcExpF/D to
+// 35/25 for exactly that reason — but this function was reading curveFn unconditionally for
+// F/D regardless of mode, silently neutering that shadowing for CRV/PROSPECT/TRM alike.
 function _curveBaseline(pg, cap, elcMax, curveFn, w){
-  if(pg === 'G' && cap > 0 && cap <= elcMax * ELC_SIGNING_BONUS_WIGGLE) return _elcExp(pg, w);
+  const flatOnly = pg === 'G' || (w && w._flatElcBaseline);
+  if(flatOnly && cap > 0 && cap <= elcMax * ELC_SIGNING_BONUS_WIGGLE) return _elcExp(pg, w);
   return (curveFn && cap > 0) ? curveFn(cap) : null;
 }
 
@@ -1608,9 +1615,10 @@ function _trajYearMult(ageAtYear, pg){
 //      should score well, not a case term value can't see. tDelta already covers "is this
 //      contract good right now"; TRM covers "does that goodness (or lack of it) persist/emerge
 //      across the years still left on the deal" — not "is the future better than today".
-// So: no comparison to today's delta anywhere in this function anymore — termGain is simply the
-// average projected curve-delta across the contract's remaining years, floored at 0 (a bad-and-
-// staying-bad contract earns no bonus, but never a penalty either — user's explicit call).
+// So: no comparison to today's delta anywhere in this function anymore — termGain is the SUM of
+// projected curve-delta across the contract's remaining years (not an average — see the mode
+// split below), floored at 0 (a bad-and-staying-bad contract earns no bonus, but never a penalty
+// either — user's explicit call).
 //
 // For each future year: project production via the existing age-trajectory model, and compare
 // it against the CURVE's expected production at that year's AAV — but the AAV's position on
@@ -1644,16 +1652,23 @@ function _termValueCore(pg, ppEff, cap0, age, yrsRaw, capLimit0, w, contractYear
   // exclude it here so the loop only projects TRUE future years. The current year's curve position
   // is already captured by tDelta; scoring it again here would double-count it.
   const futureYears = Math.max(0, termYears - 1);
-  // Sum, don't average — and the sign of the FIRST future year sets the mode:
-  //  - starts above curve (will eventually decline below it): sum only the leading run of positive
-  //    years and stop at the first year he'd dip below curve, since a real GM drops him right there —
-  //    the negative years he'd never actually roster shouldn't drag the score down.
-  //  - starts below curve (on his way to being a bargain, e.g. a young player growing into his deal):
-  //    sum every year including the negative ones, since a real GM holds through the dip to get the
-  //    later payoff, so the early cost should net against it.
-  let sumDelta = 0;
+  // Sum, don't average, every future year's curve-delta THROUGH THE LAST year the contract is
+  // still at-or-above curve — only a trailing run of below-curve years at the very end (the part
+  // that never pays off) gets trimmed. A mid-window dip doesn't end the count as long as the
+  // contract eventually recovers, and a below-curve start nets fully against a later payoff:
+  //   ++++--  -> ++++     (ends badly: trim the trailing decline)
+  //   --++++  -> --++++   (below curve now, recovers: the early cost nets against the later gain)
+  //   ++-++++ -> ++-++++  (one mid-window dip that recovers: keep it, it's not the trailing run)
+  //   ++-+--- -> ++-+     (dip, brief recovery, then real decline: trim the trailing decline only)
+  //   +-+-+-+- -> +-+-+-+ (flip-flops repeatedly: only the FINAL trailing minus gets trimmed —
+  //                        counting every recovered dip as if it were a clean decline would let a
+  //                        flip-flopping contract look as good as one that's simply, steadily
+  //                        above curve, which overstates it)
+  // A contract that never recovers to above curve at all sums to nothing (no "last positive year"
+  // to sum through), same as before — floored at 0 either way, never a penalty.
+  const deltas = [];
   if(futureYears > 0 && canScoreCurve){
-    let trajMult = 1, mode = null;
+    let trajMult = 1;
     for(let y = 1; y <= futureYears; y++){
       const rawYearMult = _trajYearMult(age < 99 ? age + y : null, pg);
       const yearMult = rawYearMult < 1 ? 1 - (1 - rawYearMult) * (1 - declineDampen) : rawYearMult;
@@ -1667,22 +1682,24 @@ function _termValueCore(pg, ppEff, cap0, age, yrsRaw, capLimit0, w, contractYear
       // Routed through _curveBaseline (not a direct curveFn call) so future-year goalie
       // projections use the same flat ELC-tier baseline CRV/tDelta do, not the real curve's
       // unrealistic extrapolation at the ELC cap point — see _curveBaseline's own comment.
-      const delta = projPts - _curveBaseline(pg, effectiveCap, elcMax, curveFn, w);
-      if(mode === null) mode = delta >= 0 ? 'declining' : 'improving';
-      if(mode === 'declining' && delta < 0) break;
-      sumDelta += delta;
+      deltas.push(projPts - _curveBaseline(pg, effectiveCap, elcMax, curveFn, w));
     }
   }
+  let lastPosIdx = -1;
+  for(let i = 0; i < deltas.length; i++) if(deltas[i] >= 0) lastPosIdx = i;
+  let sumDelta = 0;
+  for(let i = 0; i <= lastPosIdx; i++) sumDelta += deltas[i];
   const termGain = Math.max(0, sumDelta);
   return { termGain, termYears, declineDampen };
 }
 
 // Drop-side term-value protection credit (see wtDropTermCredit) — standalone/testable rather
 // than an unreachable closure inside _runAlgoDrops, mirroring why _termValueCore itself was
-// factored out. _termValueCore now returns termGain in raw points (the average FUTURE
-// curve-delta improvement over today's), directly comparable to _runAlgoDrops' own deficit()
-// units — used to shift a player's effective deficit down within their tier's sort order (see
-// fanBiasProtection for the exact same pattern, applied to fan bias instead of contract term).
+// factored out. _termValueCore now returns termGain in raw points (the SUM of projected FUTURE
+// curve-delta across the contract's remaining years — see that function's own comment for the
+// mode split), directly comparable to _runAlgoDrops' own deficit() units — used to shift a
+// player's effective deficit down within their tier's sort order (see fanBiasProtection for the
+// exact same pattern, applied to fan bias instead of contract term).
 function _dropTermCreditOf(p, { ppts, getCap, calcAgeForSim, contractYearAnchor, nextContractField = 'nextTerm2627', capLimit, curveFns, elcMax }){
   if(wtDropTermCredit <= 0) return 0;
   const pg = posGroup(p.pos), pp = ppts(p), cap0 = getCap(p)||0;
@@ -1739,7 +1756,7 @@ function _draftModeFor(team){ return draftModeByTeam[team] || 'simulate'; }
 function _effectiveDraftWeights(team, draftWeightsBase){
   const teamMode = _draftModeFor(team);
   return teamMode === 'simulate'
-    ? { ...draftWeightsBase, elcExpF: 35, elcExpD: 25, wtCapUse: 0, wtFanBias: draftWeightsBase.wtFanBias || 5, wtTermValue: 0 }
+    ? { ...draftWeightsBase, elcExpF: 35, elcExpD: 25, wtCapUse: 0, wtFanBias: draftWeightsBase.wtFanBias || 5, wtTermValue: 0, _flatElcBaseline: true }
     : { ...draftWeightsBase, wtCapUse: draftWeightsBase.wtCapUse || 0.15, wtFanBias: 0, wtTermValue: draftWeightsBase.wtTermValue || 2 };
 }
 let ptsTarget = 1200; // historically the real points needed to win the championship, apart from last year
@@ -2142,12 +2159,27 @@ function _buildSigningsIdIndex(raw){
   }
   return idx;
 }
-// Prefer nhl_id-based contract lookup over name/alias matching whenever both the player and a
-// signings entry carry a real id — falls back to the existing name-based _dictLookupPos only
-// when either side is missing an id (e.g. a brand-new prospect PuckPedia hasn't ID-tagged yet).
+// Combines nhl_id-matched contracts (stronger signal — immune to name/alias gaps, see above)
+// with name-matched ones under the player's own key, rather than letting an id match short-
+// circuit and hide the rest. Necessary because Historical Caps (see fetchHistoricalCaps) never
+// tags its scraped contracts with an nhl_id — it has no way to know it — so a player with both
+// an id-tagged current contract (from api_signings) and untagged older ones (from Historical
+// Caps) would otherwise have the id-only lookup return just the current deal and silently drop
+// every historical contract even though they sit right there under the player's own name key.
+// Found live 2026-09-14 via Leon Draisaitl: cap2425 stayed null because his 2017-2025 contract
+// (Historical Caps, no id) was invisible once his 2025-2033 extension (api_signings, has id)
+// made the id-index lookup return non-empty and never fall through to the name-based store.
 function _contractsForPlayer(p, raw, idIndex){
-  if(p.nhlId && idIndex[p.nhlId] && idIndex[p.nhlId].length) return idIndex[p.nhlId];
-  return _dictLookupPos(p.name, p.pos, raw) || [];
+  const byId = (p.nhlId && idIndex[p.nhlId]) || [];
+  const byName = _dictLookupPos(p.name, p.pos, raw) || [];
+  if(!byId.length) return byName;
+  const seen = new Set(byId.map(c => `${c.sign_date}|${c.exp}|${c.cap}|${c.start_yr}`));
+  const merged = byId.slice();
+  for(const c of byName){
+    const fp = `${c.sign_date}|${c.exp}|${c.cap}|${c.start_yr}`;
+    if(!seen.has(fp)){ seen.add(fp); merged.push(c); }
+  }
+  return merged;
 }
 // Every sync that pulls in an external source dict (name_pos -> entry, per _dictLookupPos's own
 // key convention) should call this once after fetching, so a real matching bug (Bobrovski/Bobrovsky,
@@ -3848,8 +3880,8 @@ function _scoreCols2627(p){
       conTrjTip: `Peak Trajectory × wtAge\n${b.youthRaw.toFixed(1)} × ${draftWeights.wtAge} = ${(b.tYouth*mult).toFixed(1)}\nPeak Trajectory @ age ${b.ageRaw} = ${b.youthRaw.toFixed(1)}${mult!==1?`\n(× ${mult.toFixed(2)} pos-budget correction)`:''}`,
       conCrvTip: `((PPTS × coverage) − curve baseline) × wtDeltaCurve\n((${b.pp} × ${b.coverageMult.toFixed(2)}) − ${(b.curveBase!=null?b.pp*(Math.round(b.coverageMult*100)/100)-b.deltaRaw:0).toFixed(1)}) × ${draftWeights.wtDeltaCurve} = ${(b.tDelta*mult).toFixed(1)}\ncoverage @ ${b.srcN} src = ${b.coverageMult.toFixed(2)}${mult!==1?`\n(× ${mult.toFixed(2)} pos-budget correction)`:''}`,
       conTermTip: termIsActive
-        ? `Avg FUTURE curve-delta × wtTermValue (Optimize mode)\n${b.termYears||0} yr(s) of contract security → ${conTermDisplay.toFixed(1)}\nAverages the projected production-vs-AAV curve delta across the contract's remaining years — rewards a deal that keeps providing value going forward, whether production is improving or just staying good on a flat AAV. Floored at 0, never penalizes a worsening deal. Adjusted for age trajectory: rising production pre-peak, flat through the prime window (peak to peak+${TRAJ_PRIME_WINDOW_YRS}), declining once past prime (age ${b.ageRaw}, ${posGroup(p.pos)} peak ${PEAK_AGE_BY_POS[posGroup(p.pos)]||27})${b.declineDampen>0?`\nStill-elite production dampens the past-prime decline by ${Math.round(b.declineDampen*100)}%`:''}${mult!==1?`\n(× ${mult.toFixed(2)} pos-budget correction)`:''}`
-        : `Avg FUTURE curve-delta × wtTermValue (reference only)\n${b.termYears||0} yr(s) of contract security → ${conTermDisplay.toFixed(1)}\n${b.team||'This team'} is in Simulate mode — doesn't count toward Score (Optimize-mode teams only)`,
+        ? `FUTURE curve-delta × wtTermValue (Optimize mode)\n${b.termYears||0} yr(s) of contract security → ${conTermDisplay.toFixed(1)}\nSums the projected production-vs-AAV curve delta across the contract's remaining years — rewards a deal that keeps providing value going forward, whether production is improving or just staying good on a flat AAV. Floored at 0, never penalizes a worsening deal. Adjusted for age trajectory: rising production pre-peak, flat through the prime window (peak to peak+${TRAJ_PRIME_WINDOW_YRS}), declining once past prime (age ${b.ageRaw}, ${posGroup(p.pos)} peak ${PEAK_AGE_BY_POS[posGroup(p.pos)]||27})${b.declineDampen>0?`\nStill-elite production dampens the past-prime decline by ${Math.round(b.declineDampen*100)}%`:''}${mult!==1?`\n(× ${mult.toFixed(2)} pos-budget correction)`:''}`
+        : `FUTURE curve-delta × wtTermValue (reference only)\n${b.termYears||0} yr(s) of contract security → ${conTermDisplay.toFixed(1)}\n${b.team||'This team'} is in Simulate mode — doesn't count toward Score (Optimize-mode teams only)`,
       prospectTip: b.tProspect>0
         ? `Years × (PPTS × coverage / ELC expected pts) × wtProspect${b.tFanBias>0?' + Fan team bonus':''}\n${b.prospectAgeScore} × (${b.pp} × ${b.coverageMult.toFixed(2)} / ${b.prospectNormPts}) × ${draftWeights.wtProspect} = ${b.tProspect.toFixed(1)}\nProspect Age @ ${posGroup(p.pos)} <= ${prospectMaxAge}\nYears as prospect = ${prospectMaxAge}+1-${b.ageRaw}=${b.prospectAgeScore}\ncoverage @ ${b.srcN} src = ${b.coverageMult.toFixed(2)}\nELC expected pts @ ${posGroup(p.pos)} = ${b.prospectNormPts}${pw!==1?(pw===0?'\n(ignored — past round decay window)':`\n(× ${pw} round decay = ${(b.tProspect*pw).toFixed(1)})`):''}${b.tFanBias>0?`\nFan team bonus @ ${teamAbbr(b.team)} = ${b.tFanBias.toFixed(1)}`:''}${mult!==1?`\n(× ${mult.toFixed(2)} pos-budget correction)`:''}`
         : 'No prospect bonus',
@@ -3879,7 +3911,7 @@ function _scoreCols2627(p){
     conPpmTip: `PPTS/$M × coverage × wtPPTSM\n${rawPpPerMRS.toFixed(1)} × ${p.rsCovM2627.toFixed(2)} × ${draftWeights.wtPPTSM} = ${p.rsPpm2627.toFixed(1)}\ncoverage @ ${p.rsSrcN2627} src = ${p.rsCovM2627.toFixed(2)}`,
     conTrjTip: `Peak Trajectory × wtAge\n${p.rsYRaw2627.toFixed(1)} × ${draftWeights.wtAge} = ${p.rsTrj2627.toFixed(1)}\nPeak Trajectory @ age ${age} = ${p.rsYRaw2627.toFixed(1)}`,
     conCrvTip: `((PPTS × coverage) − curve baseline) × wtDeltaCurve\n((${p.proj2627.blend} × ${p.rsCovM2627.toFixed(2)}) − ${(p.proj2627.blend*p.rsCovM2627-p.rsDRaw2627).toFixed(1)}) × ${draftWeights.wtDeltaCurve} = ${p.rsCrv2627.toFixed(1)}\ncoverage @ ${p.rsSrcN2627} src = ${p.rsCovM2627.toFixed(2)}`,
-    conTermTip: `Avg FUTURE curve-delta × wtTermValue\nValue: ${(p.rsTerm2627||0).toFixed(1)}\nReference only here — Score only counts in Optimize mode`,
+    conTermTip: `FUTURE curve-delta × wtTermValue\nValue: ${(p.rsTerm2627||0).toFixed(1)}\nReference only here — Score only counts in Optimize mode`,
     prospectTip: p.rsPros2627 > 0
       ? `Years × (PPTS × coverage / ELC expected pts) × wtProspect\n${prospectAgeScoreRS} × (${p.proj2627.blend} × ${p.rsCovM2627.toFixed(2)} / ${prospectNormPtsRS}) × ${draftWeights.wtProspect} = ${p.rsPros2627.toFixed(1)}\nProspect Age @ ${posLetterRS} <= ${prospectMaxAgeRS}\nYears as prospect = ${prospectMaxAgeRS}+1-${age}=${prospectAgeScoreRS}\ncoverage @ ${p.rsSrcN2627} src = ${p.rsCovM2627.toFixed(2)}\nELC expected pts @ ${posLetterRS} = ${prospectNormPtsRS}`
       : 'No prospect bonus',
@@ -3921,8 +3953,8 @@ function _scoreCols2526(p){
       conTrjTip: `Peak Trajectory × wtAge\n${b.youthRaw.toFixed(1)} × ${draftWeights.wtAge} = ${(b.tYouth*mult).toFixed(1)}\nPeak Trajectory @ age ${b.ageRaw} = ${b.youthRaw.toFixed(1)}${mult!==1?`\n(× ${mult.toFixed(2)} pos-budget correction)`:''}`,
       conCrvTip: `((PPTS × coverage) − curve baseline) × wtDeltaCurve\n((${b.pp} × ${b.coverageMult.toFixed(2)}) − ${(b.curveBase!=null?b.pp*(Math.round(b.coverageMult*100)/100)-b.deltaRaw:0).toFixed(1)}) × ${draftWeights.wtDeltaCurve} = ${(b.tDelta*mult).toFixed(1)}\ncoverage @ ${b.srcN} src = ${b.coverageMult.toFixed(2)}${mult!==1?`\n(× ${mult.toFixed(2)} pos-budget correction)`:''}`,
       conTermTip: termIsActive
-        ? `Avg FUTURE curve-delta × wtTermValue (Optimize mode)\n${b.termYears||0} yr(s) of contract security → ${conTermDisplay.toFixed(1)}\nAverages the projected production-vs-AAV curve delta across the contract's remaining years — rewards a deal that keeps providing value going forward, whether production is improving or just staying good on a flat AAV. Floored at 0, never penalizes a worsening deal. Adjusted for age trajectory: rising production pre-peak, flat through the prime window (peak to peak+${TRAJ_PRIME_WINDOW_YRS}), declining once past prime (age ${b.ageRaw}, ${posGroup(p.pos)} peak ${PEAK_AGE_BY_POS[posGroup(p.pos)]||27})${b.declineDampen>0?`\nStill-elite production dampens the past-prime decline by ${Math.round(b.declineDampen*100)}%`:''}${mult!==1?`\n(× ${mult.toFixed(2)} pos-budget correction)`:''}`
-        : `Avg FUTURE curve-delta × wtTermValue (reference only)\n${b.termYears||0} yr(s) of contract security → ${conTermDisplay.toFixed(1)}\n${b.team||'This team'} is in Simulate mode — doesn't count toward Score (Optimize-mode teams only)`,
+        ? `FUTURE curve-delta × wtTermValue (Optimize mode)\n${b.termYears||0} yr(s) of contract security → ${conTermDisplay.toFixed(1)}\nSums the projected production-vs-AAV curve delta across the contract's remaining years — rewards a deal that keeps providing value going forward, whether production is improving or just staying good on a flat AAV. Floored at 0, never penalizes a worsening deal. Adjusted for age trajectory: rising production pre-peak, flat through the prime window (peak to peak+${TRAJ_PRIME_WINDOW_YRS}), declining once past prime (age ${b.ageRaw}, ${posGroup(p.pos)} peak ${PEAK_AGE_BY_POS[posGroup(p.pos)]||27})${b.declineDampen>0?`\nStill-elite production dampens the past-prime decline by ${Math.round(b.declineDampen*100)}%`:''}${mult!==1?`\n(× ${mult.toFixed(2)} pos-budget correction)`:''}`
+        : `FUTURE curve-delta × wtTermValue (reference only)\n${b.termYears||0} yr(s) of contract security → ${conTermDisplay.toFixed(1)}\n${b.team||'This team'} is in Simulate mode — doesn't count toward Score (Optimize-mode teams only)`,
       prospectTip: b.tProspect>0
         ? `Years × (PPTS × coverage / ELC expected pts) × wtProspect${b.tFanBias>0?' + Fan team bonus':''}\n${b.prospectAgeScore} × (${b.pp} × ${b.coverageMult.toFixed(2)} / ${b.prospectNormPts}) × ${draftWeights.wtProspect} = ${b.tProspect.toFixed(1)}\nProspect Age @ ${posGroup(p.pos)} <= ${prospectMaxAge}\nYears as prospect = ${prospectMaxAge}+1-${b.ageRaw}=${b.prospectAgeScore}\ncoverage @ ${b.srcN} src = ${b.coverageMult.toFixed(2)}\nELC expected pts @ ${posGroup(p.pos)} = ${b.prospectNormPts}${pw!==1?(pw===0?'\n(ignored — past round decay window)':`\n(× ${pw} round decay = ${(b.tProspect*pw).toFixed(1)})`):''}${b.tFanBias>0?`\nFan team bonus @ ${teamAbbr(b.team)} = ${b.tFanBias.toFixed(1)}`:''}${mult!==1?`\n(× ${mult.toFixed(2)} pos-budget correction)`:''}`
         : 'No prospect bonus',
@@ -3947,7 +3979,7 @@ function _scoreCols2526(p){
     conPpmTip: `PPTS/$M × coverage × wtPPTSM\n${rawPpPerMRS.toFixed(1)} × ${p.rsCovM2526.toFixed(2)} × ${draftWeights.wtPPTSM} = ${p.rsPpm2526.toFixed(1)}\ncoverage @ ${p.rsSrcN2526} src = ${p.rsCovM2526.toFixed(2)}`,
     conTrjTip: `Peak Trajectory × wtAge\n${p.rsYRaw2526.toFixed(1)} × ${draftWeights.wtAge} = ${p.rsTrj2526.toFixed(1)}\nPeak Trajectory @ age ${age} = ${p.rsYRaw2526.toFixed(1)}`,
     conCrvTip: `((PPTS × coverage) − curve baseline) × wtDeltaCurve\n((${ppts2526blend(p)} × ${p.rsCovM2526.toFixed(2)}) − ${(ppts2526blend(p)*p.rsCovM2526-p.rsDRaw2526).toFixed(1)}) × ${draftWeights.wtDeltaCurve} = ${p.rsCrv2526.toFixed(1)}\ncoverage @ ${p.rsSrcN2526} src = ${p.rsCovM2526.toFixed(2)}`,
-    conTermTip: `Avg FUTURE curve-delta × wtTermValue\nValue: ${(p.rsTerm2526||0).toFixed(1)}\nReference only here — Score only counts in Optimize mode`,
+    conTermTip: `FUTURE curve-delta × wtTermValue\nValue: ${(p.rsTerm2526||0).toFixed(1)}\nReference only here — Score only counts in Optimize mode`,
     prospectTip: p.rsPros2526 > 0
       ? `Years × (PPTS × coverage / ELC expected pts) × wtProspect\n${prospectAgeScoreRS} × (${ppts2526blend(p)} × ${p.rsCovM2526.toFixed(2)} / ${prospectNormPtsRS}) × ${draftWeights.wtProspect} = ${p.rsPros2526.toFixed(1)}\nProspect Age @ ${posLetterRS} <= ${prospectMaxAgeRS}\nYears as prospect = ${prospectMaxAgeRS}+1-${age}=${prospectAgeScoreRS}\ncoverage @ ${p.rsSrcN2526} src = ${p.rsCovM2526.toFixed(2)}\nELC expected pts @ ${posLetterRS} = ${prospectNormPtsRS}`
       : 'No prospect bonus',
@@ -3986,8 +4018,8 @@ function _scoreCols2425(p){
       conTrjTip: `Peak Trajectory × wtAge\n${b.youthRaw.toFixed(1)} × ${draftWeights.wtAge} = ${(b.tYouth*mult).toFixed(1)}\nPeak Trajectory @ age ${b.ageRaw} = ${b.youthRaw.toFixed(1)}${mult!==1?`\n(× ${mult.toFixed(2)} pos-budget correction)`:''}`,
       conCrvTip: `((PPTS × coverage) − curve baseline) × wtDeltaCurve\n((${b.pp} × ${b.coverageMult.toFixed(2)}) − ${(b.curveBase!=null?b.pp*(Math.round(b.coverageMult*100)/100)-b.deltaRaw:0).toFixed(1)}) × ${draftWeights.wtDeltaCurve} = ${(b.tDelta*mult).toFixed(1)}\ncoverage @ ${b.srcN} src = ${b.coverageMult.toFixed(2)}${mult!==1?`\n(× ${mult.toFixed(2)} pos-budget correction)`:''}`,
       conTermTip: termIsActive
-        ? `Avg FUTURE curve-delta × wtTermValue (Optimize mode)\n${b.termYears||0} yr(s) of contract security → ${conTermDisplay.toFixed(1)}\nAverages the projected production-vs-AAV curve delta across the contract's remaining years — rewards a deal that keeps providing value going forward, whether production is improving or just staying good on a flat AAV. Floored at 0, never penalizes a worsening deal. Adjusted for age trajectory: rising production pre-peak, flat through the prime window (peak to peak+${TRAJ_PRIME_WINDOW_YRS}), declining once past prime (age ${b.ageRaw}, ${posGroup(p.pos)} peak ${PEAK_AGE_BY_POS[posGroup(p.pos)]||27})${b.declineDampen>0?`\nStill-elite production dampens the past-prime decline by ${Math.round(b.declineDampen*100)}%`:''}${mult!==1?`\n(× ${mult.toFixed(2)} pos-budget correction)`:''}`
-        : `Avg FUTURE curve-delta × wtTermValue (reference only)\n${b.termYears||0} yr(s) of contract security → ${conTermDisplay.toFixed(1)}\n${b.team||'This team'} is in Simulate mode — doesn't count toward Score (Optimize-mode teams only)`,
+        ? `FUTURE curve-delta × wtTermValue (Optimize mode)\n${b.termYears||0} yr(s) of contract security → ${conTermDisplay.toFixed(1)}\nSums the projected production-vs-AAV curve delta across the contract's remaining years — rewards a deal that keeps providing value going forward, whether production is improving or just staying good on a flat AAV. Floored at 0, never penalizes a worsening deal. Adjusted for age trajectory: rising production pre-peak, flat through the prime window (peak to peak+${TRAJ_PRIME_WINDOW_YRS}), declining once past prime (age ${b.ageRaw}, ${posGroup(p.pos)} peak ${PEAK_AGE_BY_POS[posGroup(p.pos)]||27})${b.declineDampen>0?`\nStill-elite production dampens the past-prime decline by ${Math.round(b.declineDampen*100)}%`:''}${mult!==1?`\n(× ${mult.toFixed(2)} pos-budget correction)`:''}`
+        : `FUTURE curve-delta × wtTermValue (reference only)\n${b.termYears||0} yr(s) of contract security → ${conTermDisplay.toFixed(1)}\n${b.team||'This team'} is in Simulate mode — doesn't count toward Score (Optimize-mode teams only)`,
       prospectTip: b.tProspect>0
         ? `Years × (PPTS × coverage / ELC expected pts) × wtProspect${b.tFanBias>0?' + Fan team bonus':''}\n${b.prospectAgeScore} × (${b.pp} × ${b.coverageMult.toFixed(2)} / ${b.prospectNormPts}) × ${draftWeights.wtProspect} = ${b.tProspect.toFixed(1)}\nProspect Age @ ${posGroup(p.pos)} <= ${prospectMaxAge}\nYears as prospect = ${prospectMaxAge}+1-${b.ageRaw}=${b.prospectAgeScore}\ncoverage @ ${b.srcN} src = ${b.coverageMult.toFixed(2)}\nELC expected pts @ ${posGroup(p.pos)} = ${b.prospectNormPts}${pw!==1?(pw===0?'\n(ignored — past round decay window)':`\n(× ${pw} round decay = ${(b.tProspect*pw).toFixed(1)})`):''}${b.tFanBias>0?`\nFan team bonus @ ${teamAbbr(b.team)} = ${b.tFanBias.toFixed(1)}`:''}${mult!==1?`\n(× ${mult.toFixed(2)} pos-budget correction)`:''}`
         : 'No prospect bonus',
@@ -4012,7 +4044,7 @@ function _scoreCols2425(p){
     conPpmTip: `PPTS/$M × coverage × wtPPTSM\n${rawPpPerMRS.toFixed(1)} × ${p.rsCovM2425.toFixed(2)} × ${draftWeights.wtPPTSM} = ${p.rsPpm2425.toFixed(1)}\ncoverage @ ${p.rsSrcN2425} src = ${p.rsCovM2425.toFixed(2)}`,
     conTrjTip: `Peak Trajectory × wtAge\n${p.rsYRaw2425.toFixed(1)} × ${draftWeights.wtAge} = ${p.rsTrj2425.toFixed(1)}\nPeak Trajectory @ age ${age} = ${p.rsYRaw2425.toFixed(1)}`,
     conCrvTip: `((PPTS × coverage) − curve baseline) × wtDeltaCurve\n((${ppts2425blend(p)} × ${p.rsCovM2425.toFixed(2)}) − ${(ppts2425blend(p)*p.rsCovM2425-p.rsDRaw2425).toFixed(1)}) × ${draftWeights.wtDeltaCurve} = ${p.rsCrv2425.toFixed(1)}\ncoverage @ ${p.rsSrcN2425} src = ${p.rsCovM2425.toFixed(2)}`,
-    conTermTip: `Avg FUTURE curve-delta × wtTermValue\nValue: ${(p.rsTerm2425||0).toFixed(1)}\nReference only here — Score only counts in Optimize mode`,
+    conTermTip: `FUTURE curve-delta × wtTermValue\nValue: ${(p.rsTerm2425||0).toFixed(1)}\nReference only here — Score only counts in Optimize mode`,
     prospectTip: p.rsPros2425 > 0
       ? `Years × (PPTS × coverage / ELC expected pts) × wtProspect\n${prospectAgeScoreRS} × (${ppts2425blend(p)} × ${p.rsCovM2425.toFixed(2)} / ${prospectNormPtsRS}) × ${draftWeights.wtProspect} = ${p.rsPros2425.toFixed(1)}\nProspect Age @ ${posLetterRS} <= ${prospectMaxAgeRS}\nYears as prospect = ${prospectMaxAgeRS}+1-${age}=${prospectAgeScoreRS}\ncoverage @ ${p.rsSrcN2425} src = ${p.rsCovM2425.toFixed(2)}\nELC expected pts @ ${posLetterRS} = ${prospectNormPtsRS}`
       : 'No prospect bonus',
@@ -4051,8 +4083,8 @@ function _scoreCols2324(p){
       conTrjTip: `Peak Trajectory × wtAge\n${b.youthRaw.toFixed(1)} × ${draftWeights.wtAge} = ${(b.tYouth*mult).toFixed(1)}\nPeak Trajectory @ age ${b.ageRaw} = ${b.youthRaw.toFixed(1)}${mult!==1?`\n(× ${mult.toFixed(2)} pos-budget correction)`:''}`,
       conCrvTip: `((PPTS × coverage) − curve baseline) × wtDeltaCurve\n((${b.pp} × ${b.coverageMult.toFixed(2)}) − ${(b.curveBase!=null?b.pp*(Math.round(b.coverageMult*100)/100)-b.deltaRaw:0).toFixed(1)}) × ${draftWeights.wtDeltaCurve} = ${(b.tDelta*mult).toFixed(1)}\ncoverage @ ${b.srcN} src = ${b.coverageMult.toFixed(2)}${mult!==1?`\n(× ${mult.toFixed(2)} pos-budget correction)`:''}`,
       conTermTip: termIsActive
-        ? `Avg FUTURE curve-delta × wtTermValue (Optimize mode)\n${b.termYears||0} yr(s) of contract security → ${conTermDisplay.toFixed(1)}\nAverages the projected production-vs-AAV curve delta across the contract's remaining years — rewards a deal that keeps providing value going forward, whether production is improving or just staying good on a flat AAV. Floored at 0, never penalizes a worsening deal. Adjusted for age trajectory: rising production pre-peak, flat through the prime window (peak to peak+${TRAJ_PRIME_WINDOW_YRS}), declining once past prime (age ${b.ageRaw}, ${posGroup(p.pos)} peak ${PEAK_AGE_BY_POS[posGroup(p.pos)]||27})${b.declineDampen>0?`\nStill-elite production dampens the past-prime decline by ${Math.round(b.declineDampen*100)}%`:''}${mult!==1?`\n(× ${mult.toFixed(2)} pos-budget correction)`:''}`
-        : `Avg FUTURE curve-delta × wtTermValue (reference only)\n${b.termYears||0} yr(s) of contract security → ${conTermDisplay.toFixed(1)}\n${b.team||'This team'} is in Simulate mode — doesn't count toward Score (Optimize-mode teams only)`,
+        ? `FUTURE curve-delta × wtTermValue (Optimize mode)\n${b.termYears||0} yr(s) of contract security → ${conTermDisplay.toFixed(1)}\nSums the projected production-vs-AAV curve delta across the contract's remaining years — rewards a deal that keeps providing value going forward, whether production is improving or just staying good on a flat AAV. Floored at 0, never penalizes a worsening deal. Adjusted for age trajectory: rising production pre-peak, flat through the prime window (peak to peak+${TRAJ_PRIME_WINDOW_YRS}), declining once past prime (age ${b.ageRaw}, ${posGroup(p.pos)} peak ${PEAK_AGE_BY_POS[posGroup(p.pos)]||27})${b.declineDampen>0?`\nStill-elite production dampens the past-prime decline by ${Math.round(b.declineDampen*100)}%`:''}${mult!==1?`\n(× ${mult.toFixed(2)} pos-budget correction)`:''}`
+        : `FUTURE curve-delta × wtTermValue (reference only)\n${b.termYears||0} yr(s) of contract security → ${conTermDisplay.toFixed(1)}\n${b.team||'This team'} is in Simulate mode — doesn't count toward Score (Optimize-mode teams only)`,
       prospectTip: b.tProspect>0
         ? `Years × (PPTS × coverage / ELC expected pts) × wtProspect${b.tFanBias>0?' + Fan team bonus':''}\n${b.prospectAgeScore} × (${b.pp} × ${b.coverageMult.toFixed(2)} / ${b.prospectNormPts}) × ${draftWeights.wtProspect} = ${b.tProspect.toFixed(1)}\nProspect Age @ ${posGroup(p.pos)} <= ${prospectMaxAge}\nYears as prospect = ${prospectMaxAge}+1-${b.ageRaw}=${b.prospectAgeScore}\ncoverage @ ${b.srcN} src = ${b.coverageMult.toFixed(2)}\nELC expected pts @ ${posGroup(p.pos)} = ${b.prospectNormPts}${pw!==1?(pw===0?'\n(ignored — past round decay window)':`\n(× ${pw} round decay = ${(b.tProspect*pw).toFixed(1)})`):''}${b.tFanBias>0?`\nFan team bonus @ ${teamAbbr(b.team)} = ${b.tFanBias.toFixed(1)}`:''}${mult!==1?`\n(× ${mult.toFixed(2)} pos-budget correction)`:''}`
         : 'No prospect bonus',
@@ -4077,7 +4109,7 @@ function _scoreCols2324(p){
     conPpmTip: `PPTS/$M × coverage × wtPPTSM\n${rawPpPerMRS.toFixed(1)} × ${p.rsCovM2324.toFixed(2)} × ${draftWeights.wtPPTSM} = ${p.rsPpm2324.toFixed(1)}\ncoverage @ ${p.rsSrcN2324} src = ${p.rsCovM2324.toFixed(2)}`,
     conTrjTip: `Peak Trajectory × wtAge\n${p.rsYRaw2324.toFixed(1)} × ${draftWeights.wtAge} = ${p.rsTrj2324.toFixed(1)}\nPeak Trajectory @ age ${age} = ${p.rsYRaw2324.toFixed(1)}`,
     conCrvTip: `((PPTS × coverage) − curve baseline) × wtDeltaCurve\n((${ppts2324blend(p)} × ${p.rsCovM2324.toFixed(2)}) − ${(ppts2324blend(p)*p.rsCovM2324-p.rsDRaw2324).toFixed(1)}) × ${draftWeights.wtDeltaCurve} = ${p.rsCrv2324.toFixed(1)}\ncoverage @ ${p.rsSrcN2324} src = ${p.rsCovM2324.toFixed(2)}`,
-    conTermTip: `Avg FUTURE curve-delta × wtTermValue\nValue: ${(p.rsTerm2324||0).toFixed(1)}\nReference only here — Score only counts in Optimize mode`,
+    conTermTip: `FUTURE curve-delta × wtTermValue\nValue: ${(p.rsTerm2324||0).toFixed(1)}\nReference only here — Score only counts in Optimize mode`,
     prospectTip: p.rsPros2324 > 0
       ? `Years × (PPTS × coverage / ELC expected pts) × wtProspect\n${prospectAgeScoreRS} × (${ppts2324blend(p)} × ${p.rsCovM2324.toFixed(2)} / ${prospectNormPtsRS}) × ${draftWeights.wtProspect} = ${p.rsPros2324.toFixed(1)}\nProspect Age @ ${posLetterRS} <= ${prospectMaxAgeRS}\nYears as prospect = ${prospectMaxAgeRS}+1-${age}=${prospectAgeScoreRS}\ncoverage @ ${p.rsSrcN2324} src = ${p.rsCovM2324.toFixed(2)}\nELC expected pts @ ${posLetterRS} = ${prospectNormPtsRS}`
       : 'No prospect bonus',
@@ -8431,10 +8463,13 @@ function _scoreDraftCandidate(p, { pg, pp, cap0, pressure, mode, round, draftWei
   const youthRaw = peakTrajectoryScore(age < 99 ? age : null, pg, yrsRaw);
   const tYouth = youthRaw * draftWeights.wtAge;
   // Term value: does this contract's CURVE POSITION (production vs. AAV, the same thing
-  // wtDeltaCurve/tDelta measures today) improve over its remaining life — e.g. Logan Cooley is
-  // below curve today, but rising production on a flat AAV against a rising cap ceiling should
-  // make the back years of his deal a bargain. See _termValueCore for the full design (average
-  // FUTURE curve-delta vs. today's, floored at 0 — never penalizes a worsening contract).
+  // wtDeltaCurve/tDelta measures today) stay good — or become good — across its remaining life?
+  // A contract that just HOLDS above curve scores well even with flat, non-improving production;
+  // one currently below curve scores well too if rising production is projected to make it a
+  // bargain later — e.g. Logan Cooley is below curve today, but rising production on a flat AAV
+  // against a rising cap ceiling should make the back years of his deal a bargain. See
+  // _termValueCore for the full design (SUM of FUTURE curve-delta, floored at 0 — never
+  // penalizes a worsening contract).
   // Elite-production dampening (see _termValueCore): a past-prime player whose CURRENT output is
   // still well above a genuinely elite threshold gets LESS of the age-based decline applied —
   // being past a position's typical peak age doesn't mean actually declining if today's
