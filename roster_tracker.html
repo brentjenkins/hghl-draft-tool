@@ -1487,8 +1487,17 @@ const ELC_SIGNING_BONUS_WIGGLE = 1.1;
 // generational ELC prospect early," and _effectiveDraftWeights already reverts elcExpF/D to
 // 35/25 for exactly that reason — but this function was reading curveFn unconditionally for
 // F/D regardless of mode, silently neutering that shadowing for CRV/PROSPECT/TRM alike.
-function _curveBaseline(pg, cap, elcMax, curveFn, w){
-  const flatOnly = pg === 'G' || (w && w._flatElcBaseline);
+// `skipGFlat` (used only by _termValueCore) opts a caller OUT of G's flat-baseline leniency —
+// found live 2026-09-14 via Jet Greaves going 2nd overall: CRV's single-year leniency for G is
+// defensible (backed by the projected-points backtest above), but TRM SUMS that same leniency
+// across every remaining year of the contract, compounding a modest one-year judgment call into
+// an unrealistically large multi-year bonus for a position with no reliable "sure things"
+// (project_goalie_volatility, R^2=0.14) — exactly the over-confidence the real curve's harsher
+// bar exists to prevent. This restores _termValueCore's pre-2026-09-14 behavior for G alone
+// (it always used the real curve directly before being routed through this function), while
+// keeping today's F/D fix and Simulate-mode shadowing intact for every caller.
+function _curveBaseline(pg, cap, elcMax, curveFn, w, skipGFlat){
+  const flatOnly = (pg === 'G' && !skipGFlat) || (w && w._flatElcBaseline);
   if(flatOnly && cap > 0 && cap <= elcMax * ELC_SIGNING_BONUS_WIGGLE) return _elcExp(pg, w);
   return (curveFn && cap > 0) ? curveFn(cap) : null;
 }
@@ -1679,10 +1688,12 @@ function _termValueCore(pg, ppEff, cap0, age, yrsRaw, capLimit0, w, contractYear
       // This year's AAV, translated to its equivalent position on TODAY's curve — a flat dollar
       // buys a shrinking share of production value as $/pt rises, not as the cap ceiling rises.
       const effectiveCap = yearCap / Math.pow(POINT_COST_GROWTH_RATE_ASSUMED, y);
-      // Routed through _curveBaseline (not a direct curveFn call) so future-year goalie
-      // projections use the same flat ELC-tier baseline CRV/tDelta do, not the real curve's
-      // unrealistic extrapolation at the ELC cap point — see _curveBaseline's own comment.
-      deltas.push(projPts - _curveBaseline(pg, effectiveCap, elcMax, curveFn, w));
+      // Routed through _curveBaseline (not a direct curveFn call) so F/D and Simulate-mode
+      // shadowing stay consistent with CRV/PROSPECT — but skipGFlat=true keeps G on the real
+      // curve here specifically, since summing G's lenient flat leniency across every future
+      // year would compound a defensible single-year judgment into unrealistic multi-year
+      // confidence in a position with no reliable "sure things" — see _curveBaseline's comment.
+      deltas.push(projPts - _curveBaseline(pg, effectiveCap, elcMax, curveFn, w, true));
     }
   }
   let lastPosIdx = -1;
@@ -1705,7 +1716,14 @@ function _dropTermCreditOf(p, { ppts, getCap, calcAgeForSim, contractYearAnchor,
   const pg = posGroup(p.pos), pp = ppts(p), cap0 = getCap(p)||0;
   if(!(pp > 0 && cap0 > 0)) return 0;
   const age = calcAgeForSim(p) ?? 99;
-  const yrsRaw = (p.expYear>=contractYearAnchor ? p.expYear-contractYearAnchor+1 : 0) + (p[nextContractField]||0);
+  // expYearField mirrors nextCap/nextYr's derivation from nextContractField — reads the SEASON's
+  // own contract expiry (see _computeRankScore's comment) rather than today's live p.expYear,
+  // which would leak a since-signed future contract's term into a historical season's TRM/drop
+  // scoring. Found live 2026-09-14 via Jet Greaves' 25-26 term credit reflecting his brand-new
+  // 2026-07-23 extension instead of the 2-year deal actually active as of the 25-26 draft.
+  const expYearField = nextContractField.replace('nextTerm', 'expYear');
+  const expYear = p[expYearField] ?? p.expYear;
+  const yrsRaw = (expYear>=contractYearAnchor ? expYear-contractYearAnchor+1 : 0) + (p[nextContractField]||0);
   const nextCap = p[nextContractField.replace('Term','Cap')] || null;
   const nextYr  = p[nextContractField.replace('Term','Yr')] || null;
   const { termGain } = _termValueCore(pg, pp, cap0, age, yrsRaw, capLimit, draftWeights, contractYearAnchor, nextCap, nextYr, curveFns?.[pg], elcMax);
@@ -3201,17 +3219,26 @@ function assignCapFromSignings(){
     p.yrStr2425  = _signingYrStr(c2425, 2024);
     p.yrStr2526  = _signingYrStr(c2526, 2025);
     p.yrStr2627  = _signingYrStr(c2627, 2026);
+    // Season-specific contract expiry — used by _computeRankScore/_scoreDraftCandidate/
+    // _dropTermCreditOf's yrsRaw calc so a historical season's TRM/drop-term-credit reflects
+    // the contract actually active THEN, not today's live p.expYear (which would leak a
+    // since-signed future contract's term into the past — found live 2026-09-14 via Jet
+    // Greaves' 25-26 term credit reflecting a contract he didn't sign until 2026-07-23).
+    p.expYear2324 = parseInt(c2324?.exp?.split('-')[0]) || 0;
+    p.expYear2425 = parseInt(c2425?.exp?.split('-')[0]) || 0;
+    p.expYear2526 = parseInt(c2526?.exp?.split('-')[0]) || 0;
     if(c2627){
       if(!p.capMan) p.cap2627 = c2627.cap;
       p.contractTerm = c2627.term || 0;
       p.expYear      = parseInt(c2627.exp?.split('-')[0]) || 0;
+      p.expYear2627  = p.expYear;
       if(c2627.team && (!p.team2627 || p.team2627==='—')) p.team2627 = c2627.team;
       if(c2627.birthDate && !p.birthDate)          p.birthDate = c2627.birthDate;
       if(c2627.nhl_id && !p.nhlId)                 p.nhlId = c2627.nhl_id;
     } else if(!p.capMan){
       const manual = _dictLookupPos(p.name, p.pos, MANUAL_CAPS_2627);
       p.cap2627 = manual?.cap ?? UNSIGNED_FALLBACK_CAP_2627;
-      p.contractTerm = 0; p.expYear = 0;
+      p.contractTerm = 0; p.expYear = 0; p.expYear2627 = 0;
     }
     const cNext = _findNextContract(contracts, c2627);
     p.nextCap2627          = cNext?.cap ?? null;
@@ -3333,18 +3360,24 @@ async function syncSigningsAll(e){
       p.yrStr2425 = _signingYrStr(c2425, 2024);
       p.yrStr2526 = _signingYrStr(c2526, 2025);
       p.yrStr2627 = _signingYrStr(c2627, 2026);
+      // See assignCapFromSignings()'s matching comment — needed here too since this loop is
+      // an independent cap-assignment path, not a caller of that function.
+      p.expYear2324 = parseInt(c2324?.exp?.split('-')[0]) || 0;
+      p.expYear2425 = parseInt(c2425?.exp?.split('-')[0]) || 0;
+      p.expYear2526 = parseInt(c2526?.exp?.split('-')[0]) || 0;
       p.capMan = false;
       if(c2627){
         p.cap2627 = c2627.cap;
         p.contractTerm = c2627.term || 0;
         p.expYear = parseInt(c2627.exp?.split('-')[0]) || 0;
+        p.expYear2627 = p.expYear;
         if(c2627.team && (!p.team2627 || p.team2627==='—')) p.team2627 = c2627.team;
         if(c2627.birthDate && !p.birthDate) p.birthDate = c2627.birthDate;
         if(c2627.nhl_id && !p.nhlId) p.nhlId = c2627.nhl_id;
       } else {
         const manual = _dictLookupPos(p.name, p.pos, MANUAL_CAPS_2627);
         p.cap2627 = manual?.cap ?? UNSIGNED_FALLBACK_CAP_2627;
-        p.contractTerm = 0; p.expYear = 0;
+        p.contractTerm = 0; p.expYear = 0; p.expYear2627 = 0;
       }
       const cNext = _findNextContract(contracts, c2627);
       p.nextCap2627          = cNext?.cap ?? null;
@@ -3396,11 +3429,16 @@ async function syncSigningsAll(e){
         existingById.yrStr2425 = _signingYrStr(c2425, 2024);
         existingById.yrStr2526 = _signingYrStr(c2526, 2025);
         existingById.yrStr2627 = _signingYrStr(c2627, 2026);
+        // See assignCapFromSignings()'s matching comment.
+        existingById.expYear2324 = parseInt(c2324?.exp?.split('-')[0]) || 0;
+        existingById.expYear2425 = parseInt(c2425?.exp?.split('-')[0]) || 0;
+        existingById.expYear2526 = parseInt(c2526?.exp?.split('-')[0]) || 0;
         existingById.capMan = false;
         if(c2627){
           existingById.cap2627 = c2627.cap;
           existingById.contractTerm = c2627.term || 0;
           existingById.expYear = parseInt(c2627.exp?.split('-')[0]) || 0;
+          existingById.expYear2627 = existingById.expYear;
           if(c2627.team && (!existingById.team2627 || existingById.team2627==='—')) existingById.team2627 = c2627.team;
           if(c2627.birthDate && !existingById.birthDate) existingById.birthDate = c2627.birthDate;
         }
@@ -3427,6 +3465,10 @@ async function syncSigningsAll(e){
         pos: latest.pos || 'C',
         cap2627: c2627?.cap || 0, contractTerm: c2627?.term || 0,
         expYear: c2627 ? parseInt(c2627.exp?.split('-')[0]) || 0 : 0,
+        expYear2627: c2627 ? parseInt(c2627.exp?.split('-')[0]) || 0 : 0,
+        expYear2324: parseInt(c2324?.exp?.split('-')[0]) || 0,
+        expYear2425: parseInt(c2425?.exp?.split('-')[0]) || 0,
+        expYear2526: parseInt(c2526?.exp?.split('-')[0]) || 0,
         birthDate: latest.birthDate || '', source: 'p', status: 'r',
         nextCap2324: cNextNew2324?.cap ?? null, nextTerm2324: cNextNew2324?.term ?? null, nextYr2324: cNextNew2324?.start_yr ?? null,
         nextCap2425: cNextNew2425?.cap ?? null, nextTerm2425: cNextNew2425?.term ?? null, nextYr2425: cNextNew2425?.start_yr ?? null,
@@ -8367,7 +8409,12 @@ function _computeRankScore(p, { pg, pp, cap, calcAgeForSim, contractYearAnchor, 
   const nextContractYrs = p[nextContractField]||0;
   const nextCap = p[nextContractField.replace('Term','Cap')] || null;
   const nextYr  = p[nextContractField.replace('Term','Yr')] || null;
-  const yrsRaw = (p.expYear>=contractYearAnchor ? p.expYear-contractYearAnchor+1 : 0) + nextContractYrs;
+  // Reads the SEASON's own contract expiry (expYear2X2Y), not today's live p.expYear, which
+  // would leak a since-signed future contract's term into a historical season's TRM scoring —
+  // see _dropTermCreditOf's comment for the Jet Greaves case this was found from.
+  const expYearField = nextContractField.replace('nextTerm', 'expYear');
+  const expYear = p[expYearField] ?? p.expYear;
+  const yrsRaw = (expYear>=contractYearAnchor ? expYear-contractYearAnchor+1 : 0) + nextContractYrs;
   const youthRaw = peakTrajectoryScore(age < 99 ? age : null, pg, yrsRaw);
   const trj = youthRaw * W.wtAge;
   const crv = _deltaCurveBonus(ppEff, cap, pg, elcMax, curveFn, W.wtDeltaCurve, W);
@@ -8459,7 +8506,12 @@ function _scoreDraftCandidate(p, { pg, pp, cap0, pressure, mode, round, draftWei
   // comment (Demidov vs Celebrini/Makar).
   const nextCap = p[nextContractField.replace('Term','Cap')] || null;
   const nextYr  = p[nextContractField.replace('Term','Yr')] || null;
-  const yrsRaw = (p.expYear>=contractYearAnchor ? p.expYear-contractYearAnchor+1 : 0) + nextContractYrs;
+  // Reads the SEASON's own contract expiry (expYear2X2Y), not today's live p.expYear, which
+  // would leak a since-signed future contract's term into a historical season's TRM scoring —
+  // see _dropTermCreditOf's comment for the Jet Greaves case this was found from.
+  const expYearField = nextContractField.replace('nextTerm', 'expYear');
+  const expYear = p[expYearField] ?? p.expYear;
+  const yrsRaw = (expYear>=contractYearAnchor ? expYear-contractYearAnchor+1 : 0) + nextContractYrs;
   const youthRaw = peakTrajectoryScore(age < 99 ? age : null, pg, yrsRaw);
   const tYouth = youthRaw * draftWeights.wtAge;
   // Term value: does this contract's CURVE POSITION (production vs. AAV, the same thing
