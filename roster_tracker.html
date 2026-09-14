@@ -1467,11 +1467,22 @@ function _elcExp(pg, w){ w = w || draftWeights; return ({F: w.elcExpF, D: w.elcE
 // non-prospect-eligible.
 const ELC_SIGNING_BONUS_WIGGLE = 1.1;
 
-// Returns the curve baseline for a player: ELC expected pts for ELC-cap players,
-// curveFn(cap) for everyone else. Used by all △ display functions so the column
-// reflects the same expectation as the prospect bonus. `w` — see _elcExp.
+// Returns the curve baseline for a player: real curveFn(cap) for F/D, but a flat ELC
+// expected-pts baseline for G at ELC-tier cap (else curveFn(cap) too). `w` — see _elcExp.
+// F/D moved off the flat ELC shortcut 2026-09-14, prompted by Roman Kantserov showing
+// CRV=+42 (vs the lenient flat ELC baseline) but TRM~0 (vs the real curve, which
+// _termValueCore already used) for the same player — CRV and TRM were quietly grading
+// ELC-tier F/D against two different bars. G was deliberately kept on the flat baseline:
+// a live projected-points backtest of every real rostered ELC-tier goalie across all 3
+// completed seasons (n=6, median 38.5/mean 40.7 pts) came in far below what the real
+// fitted curve extrapolates to at the ELC cap point (~53-55 pts in every roster snapshot
+// tested) — goalie ELC-cap production is both rare and volatile (see
+// project_goalie_volatility memory, R^2=0.14), so the curve fit there is almost certainly
+// being pulled up by mid-tier veteran goalies elsewhere on the curve, not reflecting
+// anything realistic at the ELC price point. F/D's empirical numbers (41/26) were much
+// closer to their own real-curve values (46-53/28-32), so no such carve-out was needed.
 function _curveBaseline(pg, cap, elcMax, curveFn, w){
-  if(cap > 0 && cap <= elcMax * ELC_SIGNING_BONUS_WIGGLE) return _elcExp(pg, w);
+  if(pg === 'G' && cap > 0 && cap <= elcMax * ELC_SIGNING_BONUS_WIGGLE) return _elcExp(pg, w);
   return (curveFn && cap > 0) ? curveFn(cap) : null;
 }
 
@@ -1648,7 +1659,10 @@ function _termValueCore(pg, ppEff, cap0, age, yrsRaw, capLimit0, w, contractYear
       // This year's AAV, translated to its equivalent position on TODAY's curve — a flat dollar
       // buys a shrinking share of production value as $/pt rises, not as the cap ceiling rises.
       const effectiveCap = yearCap / Math.pow(POINT_COST_GROWTH_RATE_ASSUMED, y);
-      const delta = projPts - curveFn(effectiveCap);
+      // Routed through _curveBaseline (not a direct curveFn call) so future-year goalie
+      // projections use the same flat ELC-tier baseline CRV/tDelta do, not the real curve's
+      // unrealistic extrapolation at the ELC cap point — see _curveBaseline's own comment.
+      const delta = projPts - _curveBaseline(pg, effectiveCap, elcMax, curveFn, w);
       if(mode === null) mode = delta >= 0 ? 'declining' : 'improving';
       if(mode === 'declining' && delta < 0) break;
       sumDelta += delta;
@@ -4747,13 +4761,22 @@ function resetDraft(){
 function _buildSeq(teams, startField, state){
   const target = DRAFT_ROSTER_MAX.F + DRAFT_ROSTER_MAX.D + DRAFT_ROSTER_MAX.G;
   const picked = new Set((state?.picks||[]).filter(pk => pk.player).map(pk => normName(pk.player).toLowerCase()));
-  const seq = [], rem = {};
+  const seq = [], rounds = [], rem = {};
   for(const t of teams){
     const keepers = players.filter(p => p[startField]===t && !picked.has(normName(p.name).toLowerCase())).length;
     rem[t] = Math.max(0, target - keepers);
   }
-  let any = true;
-  while(any){ any=false; for(const t of teams){ if(rem[t]>0){seq.push(t);rem[t]--;any=true;} } }
+  // Each pass through `teams` is one round, but a team that already hit its roster
+  // target drops out of later passes — so rounds near the end of the draft can have
+  // fewer than teams.length picks. `rounds` (attached to the returned array) tracks
+  // the real round number per index so callers stop assuming a flat n/teams.length.
+  let any = true, round = 1;
+  while(any){
+    any=false;
+    for(const t of teams){ if(rem[t]>0){seq.push(t);rounds.push(round);rem[t]--;any=true;} }
+    round++;
+  }
+  seq.rounds = rounds;
   return seq;
 }
 function buildDraftSeq2627(){ return _buildSeq(DRAFT_TEAMS_2627, 'start2627', draftState2627); }
@@ -4780,11 +4803,13 @@ function makeDraftPick(player, pos, nhlTeam, cap, projPts){
 
 function exportDraft2627(){
   if(!draftState2627.picks.length){ toast('No draft picks to export yet.'); return; }
-  const numTeams = DRAFT_TEAMS_2627.length;
+  const seq = buildDraftSeq2627();
   const rows = [['Round','Pick','Team','Player','Pos']];
+  let pickInRound = 0, lastRound = null;
   draftState2627.picks.forEach((pk, i) => {
-    const round = Math.floor(i / numTeams) + 1;
-    const pickInRound = (i % numTeams) + 1;
+    const round = seq.rounds[i];
+    if(round !== lastRound){ pickInRound = 0; lastRound = round; }
+    pickInRound++;
     rows.push([round, pickInRound, pk.team, pk.player || 'PASS', pk.pos || '']);
   });
   const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
@@ -4963,7 +4988,7 @@ function renderBigBoard(){
     const total = draftState2324.picks.length;
     const onClock = seq[total] ?? null;
     document.getElementById('draftOnClock').textContent = onClock
-      ? `Round ${Math.floor(total/9)+1} — On the clock: ${onClock} — Pick ${total+1}`
+      ? `Round ${seq.rounds[total]} — On the clock: ${onClock} — Pick ${total+1}`
       : 'Draft complete';
     _renderBBStandings('start2324', DRAFT_TEAMS_2324, p => ppts2324blend(p));
     updateStats2324();
@@ -4976,7 +5001,7 @@ function renderBigBoard(){
     const total = draftState2425.picks.length;
     const onClock = seq[total] ?? null;
     document.getElementById('draftOnClock').textContent = onClock
-      ? `Round ${Math.floor(total/9)+1} — On the clock: ${onClock} — Pick ${total+1}`
+      ? `Round ${seq.rounds[total]} — On the clock: ${onClock} — Pick ${total+1}`
       : 'Draft complete';
     _renderBBStandings('start2425', DRAFT_TEAMS_2425, p => ppts2425blend(p));
     updateStats2425();
@@ -4989,7 +5014,7 @@ function renderBigBoard(){
     const total = draftState2526.picks.length;
     const onClock = seq[total] ?? null;
     document.getElementById('draftOnClock').textContent = onClock
-      ? `Round ${Math.floor(total/9)+1} — On the clock: ${onClock} — Pick ${total+1}`
+      ? `Round ${seq.rounds[total]} — On the clock: ${onClock} — Pick ${total+1}`
       : 'Draft complete';
     _renderBBStandings('start2526', DRAFT_TEAMS_2526, p => ppts2526blend(p));
     updateStats2526();
@@ -5037,7 +5062,7 @@ function _renderBBDraftBoard(picks, draftSeq, startField, getCap, capLimit, targ
   for(let n = startN; n <= endN; n++){
     const team = picks[n]?.team ?? draftSeq[n];
     if(!team) break;
-    const round = Math.floor(n / 9) + 1;
+    const round = draftSeq.rounds[n];
     const pick = picks[n];
     const isCurrent = n === total;
     const showPlayer = pick && pick.player;
@@ -10041,7 +10066,6 @@ function renderDraftView(){
   const total    = picks.length;
   const posColors = {F:'#dbeafe', D:'#dcfce7', G:'#fef3c7'};
   const posText   = {F:'#1e40af', D:'#166534', G:'#92400e'};
-  const curRound = Math.floor(total / 9) + 1;
 
   // Sticky-bottom auto-scroll: if already near the latest picks (or this is
   // the first render), follow new picks as they happen. If the user has
@@ -10051,6 +10075,7 @@ function renderDraftView(){
 
   const draftSeq = buildDraftSeq2627();
   const onClock = draftSeq[total] ?? null;
+  const curRound = draftSeq.rounds[total];
   document.getElementById('draftOnClock').textContent = onClock
     ? `Round ${curRound} — On the clock: ${onClock} — Pick ${total + 1}`
     : 'Draft complete';
@@ -10064,9 +10089,9 @@ function renderDraftView(){
   let lastRound = null;
 
   for(let n = startN; n <= endN; n++){
-    const round   = Math.floor(n / 9) + 1;
     const team    = picks[n]?.team ?? draftSeq[n];
     if(!team) break; // past end of draft
+    const round   = draftSeq.rounds[n];
     const pick    = picks[n];              // defined only if already picked
     const isCurrent  = n === total;
     const showPlayer  = !!pick;
