@@ -464,12 +464,12 @@ const PREDROP_STUBS_2425 = [
   {name:'Daniel Sprong',     pos:'RW'},
   {name:'Joe Pavelski',      pos:'C'},
   {name:'Cam Talbot',        pos:'G'},
-  // Below: the remaining ~171 PREDROP_ROSTER_2425 players not covered above - this list was
-  // never filled out to the same completeness as PREDROP_STUBS_2324/2526 (which cover ~179/180
-  // of their own predrop rosters each), so Compare Drops 24-25 was silently running on only 9
-  // real players instead of the full ~180-player dataset. Positions cross-referenced from the
-  // same players' entries in PREDROP_STUBS_2324/2526 where available; the rest (players not on
-  // either adjacent season's list) filled in from general knowledge. Found live 2026-08-19.
+  // Below: the remaining ~171 PREDROP_ROSTER_2425 players not covered above, filled in
+  // 2026-08-19 (was previously only 9 entries, silently running Compare Drops 24-25 on a
+  // fraction of the real ~180-player dataset). Positions cross-referenced from the same
+  // players' entries in PREDROP_STUBS_2324/2526 where available; the rest filled in from
+  // general knowledge. Verified complete (180/180 PREDROP_ROSTER_2425 entries resolve to
+  // either an existing player or a stub here) 2026-09-15.
   {name:'Nikita Kucherov', pos:'F'},
   {name:'Brayden Point', pos:'F'},
   {name:'Mikko Rantanen', pos:'F'},
