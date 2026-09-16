@@ -1908,11 +1908,15 @@ const ELC_MAX_2324 = 0.950;
 const ELC_MAX_2425 = 0.975;
 const ELC_MAX_2526 = 0.975; // ELC max cap hit 2025-26 (league min + $175k)
 const ELC_MAX_2627 = 1.025; // ELC max cap hit 2026-27
-// Fallback cap for a player with no signed 26-27 contract — without this, assignCapFromSignings()/
-// syncSigningsAll() left them at cap2627=0, letting a team roster their full PPTS for literally
-// $0 (found live 2026-08-25 via Zach Bolduc giving Dumb and Goalie To 36 points for $0). A
-// deliberately conservative floor, not a real projection — see MANUAL_CAPS_2627 (data_2627.js)
-// for specific players known to be worth much more once they actually sign.
+// Fallback cap for a ROSTERED player with no signed 26-27 contract — without this, a real team's
+// cap total could silently undercount by however much that player is really worth (found live
+// 2026-08-25 via Zach Bolduc giving Dumb and Goalie To 36 points for $0). A deliberately
+// conservative floor, not a real projection — see MANUAL_CAPS_2627 (data_2627.js) for specific
+// players known to be worth much more once they actually sign. Scoped to rostered players only
+// (2026-09-16): an unsigned FREE AGENT showing this same fake $1.00M was misleading (looked like
+// a real cheap contract, indistinguishable from an actual $1.00M deal) with no analogous cap-
+// accounting risk to justify it — free agents now show '—' (unknown) instead, same as a player
+// with zero contracts found at all ever did.
 const UNSIGNED_FALLBACK_CAP_2627 = 1.0;
 const DRAFT_RESERVE_2425 = 1.5 * (ELC_MAX_2425 - 0.175);
 const DRAFT_RESERVE_2526 = 1.5 * (ELC_MAX_2526 - 0.175); // cap to reserve per drop for 25-26 drafting (~$1.20M)
@@ -3237,7 +3241,7 @@ function assignCapFromSignings(){
       if(c2627.nhl_id && !p.nhlId)                 p.nhlId = c2627.nhl_id;
     } else if(!p.capMan){
       const manual = _dictLookupPos(p.name, p.pos, MANUAL_CAPS_2627);
-      p.cap2627 = manual?.cap ?? UNSIGNED_FALLBACK_CAP_2627;
+      p.cap2627 = manual?.cap ?? (p.start2627 ? UNSIGNED_FALLBACK_CAP_2627 : null);
       p.contractTerm = 0; p.expYear = 0; p.expYear2627 = 0;
     }
     const cNext = _findNextContract(contracts, c2627);
@@ -3376,7 +3380,7 @@ async function syncSigningsAll(e){
         if(c2627.nhl_id && !p.nhlId) p.nhlId = c2627.nhl_id;
       } else {
         const manual = _dictLookupPos(p.name, p.pos, MANUAL_CAPS_2627);
-        p.cap2627 = manual?.cap ?? UNSIGNED_FALLBACK_CAP_2627;
+        p.cap2627 = manual?.cap ?? (p.start2627 ? UNSIGNED_FALLBACK_CAP_2627 : null);
         p.contractTerm = 0; p.expYear = 0; p.expYear2627 = 0;
       }
       const cNext = _findNextContract(contracts, c2627);
@@ -6375,9 +6379,9 @@ function _runCompareDrops({ season, guards, predropRoster, postdropRoster, predr
     html += section('Correctly dropped', '#16a34a', '✓', r.correctDrops);
     html += section('Dropped for Injury/Demotion/Retirement', '#6b7280', '🏥', r.injuryMandatory);
     html += section('Algo dropped — kept, but dropped later anyway (vindicated)', '#0891b2', '⏱', r.algoDroppedVindicated);
-    html += section('Algo dropped — should have kept', '#dc2626', '✗', r.algoDroppedShouldKeep);
+    html += section('Algo dropped - GM kept', '#dc2626', '✗', r.algoDroppedShouldKeep);
     html += section('Algo kept — dropped, but re-acquired by same team later (vindicated)', '#0891b2', '⏱', r.algoKeptReacquired);
-    html += section('Algo kept — should have dropped', '#d97706', '△', r.algoKeptShouldDrop);
+    html += section('Algo kept - GM dropped', '#d97706', '△', r.algoKeptShouldDrop);
     html += section('Dropped by rule — ELC', '#6366f1', '📋', r.elcMandatory);
     // Omit correctKeeps — too verbose; they're the bulk and uninteresting
     html += `</div></div>`;

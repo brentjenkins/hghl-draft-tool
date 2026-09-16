@@ -22,7 +22,6 @@ const FINAL_STANDINGS_2526 = {
 // display-only, not read by assignCapFromSignings — left blank since none have signed yet).
 const MANUAL_CAPS_2627 = {
   'adam fantilli_F':      { cap: 13, yrStr: '' },
-  'cutter gauthier_F':    { cap: 14, yrStr: '' },
   'alexander nikishin_D': { cap: 6,  yrStr: '' },
   'simon edvinsson_D':    { cap: 7,  yrStr: '' },
 };
