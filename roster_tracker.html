@@ -5022,7 +5022,7 @@ function undoLastPick2526(){
   draftState2526.picks.pop();
   lsSet(LS_DRAFT_2526, draftState2526);
   render2526();
-  renderBigBoard();
+  if(currentView==='draft') renderBigBoard();
 }
 function undoLastPick2425(){
   if(!draftState2425.picks.length) return;
@@ -5031,7 +5031,7 @@ function undoLastPick2425(){
   draftState2425.picks.pop();
   lsSet(LS_DRAFT_2425, draftState2425);
   render2425();
-  renderBigBoard();
+  if(currentView==='draft') renderBigBoard();
 }
 function undoLastPick2324(){
   if(!draftState2324.picks.length) return;
@@ -5040,7 +5040,7 @@ function undoLastPick2324(){
   draftState2324.picks.pop();
   lsSet(LS_DRAFT_2324, draftState2324);
   render2324();
-  renderBigBoard();
+  if(currentView==='draft') renderBigBoard();
 }
 
 // Full-league need/cap/spotsLeft snapshot for every 26-27 team from current live state —
@@ -7922,7 +7922,7 @@ function algoDraft2627(){
     maxSrc: MAX_SRC_2627,
     injurySet: INJURY_DROPS_2627,
   });
-  renderBigBoard();
+  if(currentView==='draft') renderBigBoard();
 }
 
 function algoDraft2425(){
