@@ -4241,6 +4241,12 @@ function toggleHideIrrelevant2324(){
 }
 
 function render(){
+  // Skip the ~35,000-node DOM rebuild when this tab isn't even visible — every caller
+  // (33 call sites) invoked this unconditionally, so switching tabs never stopped it from
+  // paying full render cost on every player edit, draft pick, or Algo Drops run elsewhere.
+  // setView() re-renders on switching back to 'roster' so the table is never stale when seen.
+  if(currentView!=='roster'){ _rosterRenderPending = true; return; }
+  _rosterRenderPending = false;
   const q=document.getElementById('search').value.toLowerCase();
   const fp=document.getElementById('filterPos').value;
   const ft=document.getElementById('filterTeam').value;
@@ -4575,10 +4581,22 @@ const INJURY_DROPS_2526 = new Set(['matthew tkachuk', 'rutger mcgroarty', 'josep
 // (not literal string matching) before comparing, since Yahoo's and PuckPedia's spelling
 // conventions for the same player don't always agree (nickname vs formal, etc).
 function _computeElcMandatoryDrops(deadlineDate, elcMax, xactions){
+  // Name lookup here used to be findPlayerByName — an O(2874) fuzzy-name scan of the whole
+  // roster — called once per qualifying transaction AND once per qualifying contract across
+  // the ENTIRE signings history (every player's full contract record). That's an O(N*M)
+  // pattern (same class of bug as the render()/renderBigBoard() fixes above), and it ran
+  // fresh on every single Algo Drops click. Found live 2026-09-16 via a ~4s Algo Drops cost
+  // that had no corresponding time inside _runAlgoDrops itself — this function is evaluated
+  // as an argument BEFORE _runAlgoDrops's own internal timers even start. Fixed by building
+  // a name-variant index once per call (O(N)) instead of scanning per lookup.
+  const nameIndex = new Map();
+  for(const p of players){ for(const v of _nameVariants(p.name)){ if(!nameIndex.has(v)) nameIndex.set(v, p); } }
+  const findByName = name => { for(const v of _nameVariants(name)){ const p = nameIndex.get(v); if(p) return p; } return null; };
+
   const addedAfterDeadline = new Set();
   for(const tx of (xactions||[])){
     if(tx.type !== 'add' || !(tx.date > deadlineDate)) continue;
-    const p = findPlayerByName(tx.player);
+    const p = findByName(tx.player);
     if(p) addedAfterDeadline.add(normName(p.name).toLowerCase());
   }
   if(!addedAfterDeadline.size) return new Set();
@@ -4589,7 +4607,7 @@ function _computeElcMandatoryDrops(deadlineDate, elcMax, xactions){
       if(!c.sign_date || !(c.cap > 0)) continue;
       if(c.sign_date <= deadlineDate) continue;
       if(c.cap > elcMax) continue;
-      const p = findPlayerByName(c.name);
+      const p = findByName(c.name);
       if(!p) continue;
       const key = normName(p.name).toLowerCase();
       if(addedAfterDeadline.has(key)) result.add(key);
@@ -5234,6 +5252,21 @@ function _renderBBDraftBoard(picks, draftSeq, startField, getCap, capLimit, targ
   const posText   = {F:'#1e40af',D:'#166534',G:'#92400e'};
   let html = '', lastRound = null;
 
+  // Precompute each team's current cap/position-need snapshot ONCE (a single pass over all
+  // players) instead of re-scanning the whole player pool per pick row below — every row for
+  // the same team recomputed the IDENTICAL result, since this reads the team's current live
+  // roster, not a point-in-time snapshot at that pick. Same fix as renderDraftView (2026-09-16).
+  const teamStats = new Map();
+  for(const p of players){
+    const t = p[startField];
+    if(!t) continue;
+    if(!teamStats.has(t)) teamStats.set(t, {cap:0, fN:0, dN:0, gN:0});
+    const s = teamStats.get(t);
+    s.cap += getCap(p);
+    const pg2 = posGroup(p.pos);
+    if(pg2==='F') s.fN++; else if(pg2==='D') s.dN++; else if(pg2==='G') s.gN++;
+  }
+
   for(let n = startN; n <= endN; n++){
     const team = picks[n]?.team ?? draftSeq[n];
     if(!team) break;
@@ -5249,17 +5282,14 @@ function _renderBBDraftBoard(picks, draftSeq, startField, getCap, capLimit, targ
     }
 
     const logo = teamLogos[team];
-    const roster = players.filter(p => p[startField] === team);
-    const cap = roster.reduce((s,p) => s + getCap(p), 0);
+    const stats = teamStats.get(team) || {cap:0, fN:0, dN:0, gN:0};
+    const cap = stats.cap;
     const rem = capLimit - cap;
     const remColor = rem<0?'#dc2626':rem<5?'#dc2626':rem<15?'#d97706':'#16a34a';
     const remLabel = rem<0?`$${(-rem).toFixed(1)}M over`:`$${rem.toFixed(1)}M left`;
-    const fN = roster.filter(p=>posGroup(p.pos)==='F').length;
-    const dN = roster.filter(p=>posGroup(p.pos)==='D').length;
-    const gN = roster.filter(p=>posGroup(p.pos)==='G').length;
-    const fRem = Math.max(0,DRAFT_ROSTER_MAX.F-fN);
-    const dRem = Math.max(0,DRAFT_ROSTER_MAX.D-dN);
-    const gRem = Math.max(0,DRAFT_ROSTER_MAX.G-gN);
+    const fRem = Math.max(0,DRAFT_ROSTER_MAX.F-stats.fN);
+    const dRem = Math.max(0,DRAFT_ROSTER_MAX.D-stats.dN);
+    const gRem = Math.max(0,DRAFT_ROSTER_MAX.G-stats.gN);
     const pickedPG = showPlayer ? posGroup(pick.pos) : null;
     const posHi = pg => pickedPG===pg
       ? 'background:#185FA5;color:#fff;border-radius:4px;padding:1px 6px'
@@ -5892,6 +5922,7 @@ function quickDraft(id){
 }
 
 let currentView = 'roster';
+let _rosterRenderPending = false;
 
 // ── 25-26 Players view ────────────────────────────────────────────
 
@@ -10239,6 +10270,7 @@ function setView(v){
   document.querySelectorAll('.view-tab').forEach((t,i) => {
     t.classList.toggle('active', views[i] === v);
   });
+  if(v==='roster' && _rosterRenderPending) render();
   if(v==='roster2324') render2324();
   if(v==='roster2425') render2425();
   if(v==='roster2526') render2526();
@@ -10284,6 +10316,23 @@ function renderDraftView(){
   const startN      = 0;
   const endN = total + 8;
 
+  // Precompute each team's current cap/position-need snapshot ONCE (a single pass over all
+  // players) instead of re-scanning the whole ~2874-player pool per pick row below — every row
+  // for the same team was recomputing the IDENTICAL result, since this reads the team's current
+  // live roster, not a point-in-time snapshot at that pick. Found live 2026-09-16: this made
+  // renderDraftView's cost grow with picks×players, visibly slowing down as a live draft
+  // progressed (picks taking longer to register the deeper into the draft you got).
+  const teamStats = new Map();
+  for(const p of players){
+    const t = p.start2627;
+    if(!t) continue;
+    if(!teamStats.has(t)) teamStats.set(t, {cap:0, fN:0, dN:0, gN:0});
+    const s = teamStats.get(t);
+    s.cap += (p.cap2627||0);
+    const pg2 = posGroup(p.pos);
+    if(pg2==='F') s.fN++; else if(pg2==='D') s.dN++; else if(pg2==='G') s.gN++;
+  }
+
   let html = '';
   let lastRound = null;
 
@@ -10302,17 +10351,14 @@ function renderDraftView(){
     }
 
     const logo   = teamLogos[team];
-    const roster = players.filter(p => p.start2627 === team);
-    const cap    = roster.reduce((s,p) => s+(p.cap2627||0), 0);
+    const stats  = teamStats.get(team) || {cap:0, fN:0, dN:0, gN:0};
+    const cap    = stats.cap;
     const rem    = CAP_LIMIT - cap;
     const remColor = rem < 0 ? '#dc2626' : rem < 5 ? '#dc2626' : rem < 15 ? '#d97706' : '#16a34a';
     const remLabel = rem < 0 ? `$${(-rem).toFixed(1)}M over` : `$${rem.toFixed(1)}M left`;
-    const fN = roster.filter(p=>posGroup(p.pos)==='F').length;
-    const dN = roster.filter(p=>posGroup(p.pos)==='D').length;
-    const gN = roster.filter(p=>posGroup(p.pos)==='G').length;
-    const fRem = Math.max(0, DRAFT_ROSTER_MAX.F - fN);
-    const dRem = Math.max(0, DRAFT_ROSTER_MAX.D - dN);
-    const gRem = Math.max(0, DRAFT_ROSTER_MAX.G - gN);
+    const fRem = Math.max(0, DRAFT_ROSTER_MAX.F - stats.fN);
+    const dRem = Math.max(0, DRAFT_ROSTER_MAX.D - stats.dN);
+    const gRem = Math.max(0, DRAFT_ROSTER_MAX.G - stats.gN);
 
     const pickedPG = showPlayer ? posGroup(pick.pos) : null;
     const posHi = pg => pickedPG === pg
@@ -10346,7 +10392,6 @@ function renderDraftView(){
   _col.innerHTML = html;
   if(nearBottom) _col.scrollTop = _col.scrollHeight;
   renderStandings();
-
   renderDraftSearch();
 }
 
