@@ -8,6 +8,7 @@ __pycache__/
 node_modules/
 /package-lock.json
 ClaudeHGHL_prompts.txt
+BTJ_predraft_checks.js
 
 # Raw projection source exports (ATH/DFO/DTZ/DOB/NHL_Proj) - re-downloadable/re-purchasable,
 # not meant to be committed; used locally for backtests (see project_weighted_proj_blend memory)
