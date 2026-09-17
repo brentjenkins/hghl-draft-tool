@@ -2186,6 +2186,23 @@ function _dictLookupPos(name, pos, dict){
   for(const v of _nameVariants(name)){ const val = dict[`${v}_${pg}`]; if(val !== undefined && val !== null) return val; }
   return null;
 }
+// Reverse-match audit for a real POSTDROP_ROSTER_2X2Y dict, used by the "Actual Drops" loaders.
+// Every entry in that dict is a REAL rostered player from that season's actual drops — unlike
+// the loader's forward pass (most of the ~2874-player pool has no dict entry at all, which is
+// expected: they're free agents, never on any roster), a dict key that matches NO live player
+// record means a genuine rostered player silently vanished, almost always a name-mismatch bug
+// worth surfacing immediately rather than silently under-counting that team's real roster.
+// Builds a one-time name-variant index into `players` (O(N)) rather than scanning the full
+// player pool per dict key — same fix as the O(N*M) bug found in _computeElcMandatoryDrops.
+function _unmatchedRosterDictKeys(dict){
+  const nameIndex = new Map();
+  for(const p of players){ for(const v of _nameVariants(p.name)){ if(!nameIndex.has(v)) nameIndex.set(v, true); } }
+  const keyToName = k => k.replace(/_(F|D|G)$/, '');
+  return Object.keys(dict).filter(k => {
+    for(const v of _nameVariants(keyToName(k))) if(nameIndex.has(v)) return false;
+    return true;
+  });
+}
 // NHL player ID is a stronger signal than any name/alias match for pulling an EXISTING
 // player's own contracts out of the signings raw store — the same principle
 // _findExistingPlayerForSync already applies when detecting a brand-new player, just not yet
@@ -6202,37 +6219,42 @@ async function syncStats2627(){
 function loadActualRoster2627(){
   if(!Object.keys(POSTDROP_ROSTER_2627).length){ toast('POSTDROP_ROSTER_2627 is empty — populate it first.'); return; }
   if(!confirm('Load actual 26-27 pre-draft rosters? This overwrites the current 26-27 algo-drops state.')) return;
-  let matched = 0, unmatched = 0;
+  const teams = [...new Set(players.map(p=>p.start2627).filter(Boolean))];
+  let dropped = 0;
   for(const p of players){
     const base = normName(p.name).toLowerCase();
     const pg   = posGroup(p.pos);
     const t = POSTDROP_ROSTER_2627[`${base}_${pg}`] ?? _dictLookup(p.name, POSTDROP_ROSTER_2627) ?? null;
+    if(p.start2627 && !t) dropped++;
     p.start2627 = t;
-    if(t) matched++; else unmatched++;
   }
   draftState2627 = {picks:[]};
   lsSet(LS_PLAYERS, players);
   lsSet(LS_DRAFT_2627, draftState2627);
   render();
-  toast(`Loaded actual 26-27 pre-draft rosters — ${players.filter(p=>p.start2627).length} rostered, ${matched} matched.`);
+  toast(`26-27 actual drops — ${dropped} players dropped across ${teams.length} teams.`);
+  const unmatchedKeys = _unmatchedRosterDictKeys(POSTDROP_ROSTER_2627);
+  if(unmatchedKeys.length) alert(`Warning: ${unmatchedKeys.length} real 26-27 roster entr${unmatchedKeys.length===1?'y':'ies'} could not be matched to any player — likely a name mismatch:\n\n${unmatchedKeys.join('\n')}`);
 }
 
 function loadActualRoster2526(){
   if(!confirm('Load actual 25-26 pre-draft rosters? This overwrites the current 25-26 algo-drops state with the real post-drop, pre-draft state.')) return;
-  let matched = 0, unmatched = 0;
+  const teams = [...new Set(players.map(p=>p.start2526).filter(Boolean))];
+  let dropped = 0;
   for(const p of players){
     const base = normName(p.name).toLowerCase();
     const pg   = posGroup(p.pos);
     const t = POSTDROP_ROSTER_2526[`${base}_${pg}`] ?? _dictLookup(p.name, POSTDROP_ROSTER_2526) ?? null; // null = was dropped before draft
+    if(p.start2526 && !t) dropped++;
     p.start2526 = t;
-    if(t) matched++; else unmatched++;
   }
   draftState2526 = {picks:[]};
   lsSet(LS_PLAYERS, players);
   lsSet(LS_DRAFT_2526, draftState2526);
   render2526();
-  const rostered = players.filter(p=>p.start2526).length;
-  toast(`Loaded actual 25-26 pre-draft rosters — ${rostered} players rostered, ${matched} matched.`);
+  toast(`25-26 actual drops — ${dropped} players dropped across ${teams.length} teams.`);
+  const unmatchedKeys = _unmatchedRosterDictKeys(POSTDROP_ROSTER_2526);
+  if(unmatchedKeys.length) alert(`Warning: ${unmatchedKeys.length} real 25-26 roster entr${unmatchedKeys.length===1?'y':'ies'} could not be matched to any player — likely a name mismatch:\n\n${unmatchedKeys.join('\n')}`);
 }
 
 function loadActualDraft2526(){
@@ -6786,19 +6808,22 @@ function loadActualRoster2425(){
     return;
   }
   if(!confirm('Load actual 24-25 pre-draft rosters? This overwrites start2425 with the real post-drop, pre-pick state.')) return;
-  let matched=0, unmatched=0;
+  const teams = [...new Set(players.map(p=>p.start2425).filter(Boolean))];
+  let dropped = 0;
   for(const p of players){
     const base = normName(p.name).toLowerCase();
     const pg   = posGroup(p.pos);
     const t = POSTDROP_ROSTER_2425[`${base}_${pg}`] ?? _dictLookup(p.name, POSTDROP_ROSTER_2425) ?? null;
+    if(p.start2425 && !t) dropped++;
     p.start2425 = t;
-    if(t) matched++; else unmatched++;
   }
   draftState2425 = {picks:[]};
   lsSet(LS_PLAYERS, players);
   lsSet(LS_DRAFT_2425, draftState2425);
   render2425();
-  toast(`Loaded actual 24-25 drops: ${matched} matched, ${unmatched} unmatched.`);
+  toast(`24-25 actual drops — ${dropped} players dropped across ${teams.length} teams.`);
+  const unmatchedKeys = _unmatchedRosterDictKeys(POSTDROP_ROSTER_2425);
+  if(unmatchedKeys.length) alert(`Warning: ${unmatchedKeys.length} real 24-25 roster entr${unmatchedKeys.length===1?'y':'ies'} could not be matched to any player — likely a name mismatch:\n\n${unmatchedKeys.join('\n')}`);
 }
 
 function loadActualDraft2425(){
@@ -6975,18 +7000,22 @@ function loadActualRoster2324(){
     return;
   }
   if(!confirm('Load actual 23-24 pre-draft rosters? This overwrites start2324 with the real post-drop, pre-pick state.')) return;
-  let matched=0, unmatched=0;
+  const teams = [...new Set(players.map(p=>p.start2324).filter(Boolean))];
+  let dropped = 0;
   for(const p of players){
     const base = normName(p.name).toLowerCase();
     const pg   = posGroup(p.pos);
     const team = POSTDROP_ROSTER_2324[`${base}_${pg}`] ?? _dictLookup(p.name, POSTDROP_ROSTER_2324) ?? null;
-    if(team){ p.start2324 = team; matched++; } else { p.start2324 = null; unmatched++; }
+    if(p.start2324 && !team) dropped++;
+    p.start2324 = team;
   }
   draftState2324 = {picks:[]};
   lsSet(LS_PLAYERS, players);
   lsSet(LS_DRAFT_2324, draftState2324);
   render2324();
-  toast(`Loaded actual 23-24 drops: ${matched} matched, ${unmatched} unmatched.`);
+  toast(`23-24 actual drops — ${dropped} players dropped across ${teams.length} teams.`);
+  const unmatchedKeys = _unmatchedRosterDictKeys(POSTDROP_ROSTER_2324);
+  if(unmatchedKeys.length) alert(`Warning: ${unmatchedKeys.length} real 23-24 roster entr${unmatchedKeys.length===1?'y':'ies'} could not be matched to any player — likely a name mismatch:\n\n${unmatchedKeys.join('\n')}`);
 }
 
 function loadActualDraft2324(){
