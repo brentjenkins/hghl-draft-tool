@@ -1774,21 +1774,51 @@ def _apply_pos_override(name, pg):
     return _SOURCE_POS_OVERRIDES.get(normalize_name(name).lower(), pg)
 
 
-def _parse_dobbers_csvs(files):
-    """Parse Dobbers skater + goalie CSV exports (uploaded together), shared across every
-    season's Dobbers endpoint — the export format (junk header rows, column names, LD/RD
-    position codes) is identical whether it's a live preseason guide or a historical one
-    bought for backtesting.
+def _sheets_from_upload(f):
+    """Reads an uploaded .csv or .xlsx/.xls file into a list of (label, rows) sheets. A CSV
+    file is always exactly one "sheet" (labeled by filename); an xlsx workbook can bundle
+    multiple tabs in ONE file — Dobbers ships skaters and goalies as separate tabs ("Goaltenders"
+    for goalies) rather than separate files, so every sheet is returned, not just the first
+    one (found live 2026-09-18: reading only wb.worksheets[0] silently dropped every goalie
+    when the skater tab happened to come first). Numeric xlsx cells are stringified
+    (e.g. 82 -> "82") to match csv.reader's always-string cells; downstream safe_float()
+    parsing handles both fine either way. Raises ValueError (caller-facing message) for an
+    unsupported extension, or the underlying exception for a real read failure.
+    """
+    import csv, io
+    name_lower = f.filename.lower()
+    if name_lower.endswith(".csv"):
+        text = f.read().decode("utf-8-sig")
+        return [(f.filename, list(csv.reader(io.StringIO(text))))]
+    if name_lower.endswith((".xlsx", ".xls")):
+        import openpyxl
+        wb = openpyxl.load_workbook(f, read_only=True, data_only=True)
+        return [
+            (sheet.title, [["" if c is None else str(c) for c in row] for row in sheet.iter_rows(values_only=True)])
+            for sheet in wb.worksheets
+        ]
+    raise ValueError(f"Please upload a .csv or .xlsx file ({f.filename} is neither)")
 
-    Unlike DTZ's exports, Dobbers' CSVs have several metadata/junk rows before the real
-    header row, so the header is located by scanning for a row containing "Player" rather
-    than assuming row 0. Skater sheet has direct Goals/Assists columns (same G+A scoring as
-    every other source); goalie sheet has Wins/SO (no SV%/W columns like DTZ's format), so
-    goalie-file detection keys off "GAA" instead.
+
+def _parse_dobbers_csvs(files):
+    """Parse Dobbers skater + goalie exports (.csv or .xlsx), shared across every season's
+    Dobbers endpoint — the export format (junk header rows, column names, LD/RD position
+    codes) is identical whether it's a live preseason guide or a historical one bought for
+    backtesting. The CSV workflow uploads two separate files (one per position group); the
+    xlsx workflow uploads ONE workbook with both as separate tabs, so every sheet from every
+    uploaded file is parsed independently and merged together.
+
+    Unlike DTZ's exports, Dobbers' files have several metadata/junk rows before the real
+    header row, so the header is located by scanning for a row containing "Player"/"Name"
+    rather than assuming row 0. Skater sheets have direct Goals/Assists columns (same G+A
+    scoring as every other source). Goalie sheets are identified primarily by sheet name
+    ("Goaltenders", xlsx only) rather than header content, since the xlsx tab's exact column
+    set isn't guaranteed to match the CSV export's "GAA"+"Wins" signature; HGHL pts =
+    Wins*2 + Shutouts*3 either way. A sheet matching neither shape (e.g. a non-data tab in a
+    multi-sheet workbook) is skipped rather than treated as a hard error.
 
     Returns (all_players, parsed_kinds, error_message). error_message is None on success.
     """
-    import csv, io
 
     def safe_float(val):
         try: return float(val) if val and str(val).strip() else 0.0
@@ -1796,66 +1826,85 @@ def _parse_dobbers_csvs(files):
 
     def find_header_row(rows):
         for i, row in enumerate(rows):
-            if any(cell.strip() == "Player" for cell in row):
+            if any(cell.strip() in ("Player", "Name") for cell in row):
                 return i
+        return None
+
+    def find_col(header, candidates):
+        for c in candidates:
+            if c in header: return header.index(c)
         return None
 
     all_players = {}
     parsed_kinds = []
     for f in files:
-        if not f.filename.lower().endswith(".csv"):
-            return None, None, f"Please upload .csv files ({f.filename} is not a CSV)"
         try:
-            text = f.read().decode("utf-8-sig")
-            rows = list(csv.reader(io.StringIO(text)))
+            sheets = _sheets_from_upload(f)
+        except ValueError as e:
+            return None, None, str(e)
         except Exception as e:
             return None, None, f"Could not read {f.filename}: {e}"
-        if not rows:
-            continue
-        header_idx = find_header_row(rows)
-        if header_idx is None:
-            return None, None, f"Could not find a header row (no 'Player' column) in {f.filename}"
-        header = [h.strip() for h in rows[header_idx]]
-        data_rows = rows[header_idx + 1:]
+        multi = len(sheets) > 1
+        for sheet_label, rows in sheets:
+            if not rows:
+                continue
+            header_idx = find_header_row(rows)
+            if header_idx is None:
+                if multi: continue
+                return None, None, f"Could not find a header row (no 'Player' column) in {f.filename}"
+            header = [h.strip() for h in rows[header_idx]]
+            data_rows = rows[header_idx + 1:]
+            col_name = find_col(header, ["Player", "Name"])
+            if col_name is None:
+                if multi: continue
+                return None, None, f"Could not find a Player/Name column in {f.filename}"
 
-        if "Goals" in header and "Assists" in header:
-            col_name, col_pos = header.index("Player"), header.index("Pos")
-            col_g, col_a = header.index("Goals"), header.index("Assists")
-            col_gp = header.index("Games") if "Games" in header else None
-            for row in data_rows:
-                if not row or len(row) <= col_name or not row[col_name].strip(): continue
-                name = row[col_name].strip()
-                pos_raw = row[col_pos].strip().upper() if len(row) > col_pos else ""
-                if not pos_raw: continue
-                # Dobbers uses LD/RD (handedness-specific) for defensemen, not a plain "D" like
-                # DTZ's format — found 2026-08-04 via Carter Yakemchuk ("RD") silently
-                # misclassified as a forward, breaking the position-keyed lookup entirely for
-                # every D in the file (316 of 906 skaters — not a one-off name mismatch).
-                pg = "D" if pos_raw in ("D", "LD", "RD") else "F"
-                pg = _apply_pos_override(name, pg)
-                hghl_pts = round(safe_float(row[col_g]) + safe_float(row[col_a]))
-                if hghl_pts <= 0: continue
-                gp = round(safe_float(row[col_gp])) if col_gp is not None and len(row) > col_gp else 0
-                key = f"{normalize_name(name).lower()}_{pg}"
-                all_players[key] = {"name": name, "pg": pg, "hghl_pts": hghl_pts, "gp": gp}
-                _add_name_aliases(all_players, key, name, pg)
-            parsed_kinds.append(f"skaters({f.filename})")
-        elif "GAA" in header and "Wins" in header:
-            col_name, col_w, col_so = header.index("Player"), header.index("Wins"), header.index("SO")
-            col_gp = header.index("Proj. Games") if "Proj. Games" in header else None
-            for row in data_rows:
-                if not row or len(row) <= col_name or not row[col_name].strip(): continue
-                name = row[col_name].strip()
-                hghl_pts = round(safe_float(row[col_w]) * 2 + safe_float(row[col_so]) * 3)
-                if hghl_pts <= 0: continue
-                gp = round(safe_float(row[col_gp])) if col_gp is not None and len(row) > col_gp else 0
-                key = f"{normalize_name(name).lower()}_G"
-                all_players[key] = {"name": name, "pg": "G", "hghl_pts": hghl_pts, "gp": gp}
-                _add_name_aliases(all_players, key, name, "G")
-            parsed_kinds.append(f"goalies({f.filename})")
-        else:
-            return None, None, f"Could not identify {f.filename} as a Dobbers skater or goalie export"
+            is_goalie_sheet = "goaltender" in sheet_label.lower() or "goalie" in sheet_label.lower()
+            col_w, col_so = find_col(header, ["Wins", "W"]), find_col(header, ["Shutouts", "SO", "ShO"])
 
+            if is_goalie_sheet or ("GAA" in header and col_w is not None):
+                if col_w is None or col_so is None:
+                    if multi: continue
+                    return None, None, f"Could not find Wins/Shutouts columns in {f.filename} ({sheet_label})"
+                col_gp = find_col(header, ["Proj. Games", "Games", "GP"])
+                for row in data_rows:
+                    if not row or len(row) <= col_name or not row[col_name].strip(): continue
+                    name = row[col_name].strip()
+                    hghl_pts = round(safe_float(row[col_w]) * 2 + safe_float(row[col_so]) * 3)
+                    if hghl_pts <= 0: continue
+                    gp = round(safe_float(row[col_gp])) if col_gp is not None and len(row) > col_gp else 0
+                    key = f"{normalize_name(name).lower()}_G"
+                    all_players[key] = {"name": name, "pg": "G", "hghl_pts": hghl_pts, "gp": gp}
+                    _add_name_aliases(all_players, key, name, "G")
+                parsed_kinds.append(f"goalies({f.filename}:{sheet_label})")
+            elif "Goals" in header and "Assists" in header:
+                col_pos = find_col(header, ["Pos"])
+                col_g, col_a = header.index("Goals"), header.index("Assists")
+                col_gp = find_col(header, ["Games"])
+                for row in data_rows:
+                    if not row or len(row) <= col_name or not row[col_name].strip(): continue
+                    name = row[col_name].strip()
+                    pos_raw = row[col_pos].strip().upper() if col_pos is not None and len(row) > col_pos else ""
+                    if not pos_raw: continue
+                    # Dobbers uses LD/RD (handedness-specific) for defensemen, not a plain "D" like
+                    # DTZ's format — found 2026-08-04 via Carter Yakemchuk ("RD") silently
+                    # misclassified as a forward, breaking the position-keyed lookup entirely for
+                    # every D in the file (316 of 906 skaters — not a one-off name mismatch).
+                    pg = "D" if pos_raw in ("D", "LD", "RD") else "F"
+                    pg = _apply_pos_override(name, pg)
+                    hghl_pts = round(safe_float(row[col_g]) + safe_float(row[col_a]))
+                    if hghl_pts <= 0: continue
+                    gp = round(safe_float(row[col_gp])) if col_gp is not None and len(row) > col_gp else 0
+                    key = f"{normalize_name(name).lower()}_{pg}"
+                    all_players[key] = {"name": name, "pg": pg, "hghl_pts": hghl_pts, "gp": gp}
+                    _add_name_aliases(all_players, key, name, pg)
+                parsed_kinds.append(f"skaters({f.filename}:{sheet_label})")
+            else:
+                if multi: continue
+                return None, None, f"Could not identify {f.filename} as a Dobbers skater or goalie export"
+
+    if not all_players:
+        return None, None, "No players parsed from the uploaded file(s) — check the format"
     return all_players, parsed_kinds, None
 
 

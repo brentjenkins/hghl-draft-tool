@@ -346,8 +346,8 @@ tr:hover td{background:#fafaf8}
     </div>
     <div style="display:flex;align-items:center;gap:6px">
       <span style="font-size:10px;font-weight:600;color:#bbb;text-transform:uppercase;letter-spacing:.06em;line-height:1.3">23-24<br>Projections</span>
-      <input type="file" id="dob2324FileInput" accept=".csv" multiple style="display:none" onchange="syncDOB2324(this)">
-      <button class="btn btn-dob" id="dob2324Btn" onclick="document.getElementById('dob2324FileInput').click()" title="Import Dobbers 2023-24 projections (bought after the fact to backtest) — select both the skater and goalie CSV exports together">📈 DOB 23-24</button>
+      <input type="file" id="dob2324FileInput" accept=".csv,.xlsx,.xls" multiple style="display:none" onchange="syncDOB2324(this)">
+      <button class="btn btn-dob" id="dob2324Btn" onclick="document.getElementById('dob2324FileInput').click()" title="Import Dobbers 2023-24 projections (bought after the fact to backtest) — select both the skater and goalie exports together (.csv or .xlsx)">📈 DOB 23-24</button>
     </div>
     </div>
     <div style="display:flex;align-items:center;gap:6px">
@@ -621,8 +621,8 @@ tr:hover td{background:#fafaf8}
       <button class="btn btn-dfo" id="dfo2627Btn" onclick="syncDFO2627()" title="Scrape DFO/5v5hockey 2026-27 projections (Points league, G+A for skaters, W×2+SO×3 for goalies)">📈 DFO 26-27</button>
       <input type="file" id="dtzFileInput" accept=".csv" multiple style="display:none" onchange="syncDTZ(this)">
       <button class="btn btn-dtz" id="dtzBtn" onclick="document.getElementById('dtzFileInput').click()" title="Import DTZ 2026-27 projections — select both the skater and goalie CSV exports together (once DTZ publishes 26-27 data)">📈 DTZ 26-27</button>
-      <input type="file" id="dobFileInput" accept=".csv" multiple style="display:none" onchange="syncDOB(this)">
-      <button class="btn btn-dob" id="dobBtn" onclick="document.getElementById('dobFileInput').click()" title="Import Dobbers 2026-27 projections — select both the skater and goalie CSV exports together.">📈 DOB 26-27</button>
+      <input type="file" id="dobFileInput" accept=".csv,.xlsx,.xls" multiple style="display:none" onchange="syncDOB(this)">
+      <button class="btn btn-dob" id="dobBtn" onclick="document.getElementById('dobFileInput').click()" title="Import Dobbers 2026-27 projections — select both the skater and goalie exports together (.csv or .xlsx).">📈 DOB 26-27</button>
       <button class="btn btn-espn" id="espnBtn" onclick="syncESPN()" title="Pull latest ESPN 2026-27 projections (G+A for skaters, W×2+SO×3 for goalies) (~30s)">📈 ESPN 26-27</button>
       <button class="btn btn-cbs" id="cbsBtn" onclick="syncCBS()" title="Scrape CBS Sports 2026-27 projections (G+A for skaters, W×2+SO×3 for goalies) (~25s)">📈 CBS 26-27</button>
       <button class="btn btn-nhl" id="nhlProj2627Btn" onclick="syncNHLProj2627()" title="Pull NHL.com 2026-27 forward &amp; defenseman point projections">📈 NHL 26-27</button>
