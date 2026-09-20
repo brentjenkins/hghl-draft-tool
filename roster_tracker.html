@@ -7552,23 +7552,45 @@ function updateStats2425(){
 
   let leagueCard;
   if(draftMode2425){
-    const pBadge2425=(r,need,avail,maxP)=>{const bg=r<0.3?'#dcfce7':r<0.6?'#f3f4f6':r<0.85?'#fef3c7':'#fee2e2';const col=r<0.3?'#15803d':r<0.6?'#6b7280':r<0.85?'#92400e':'#991b1b';return`<span title="need ${need}/avail ${avail}" style="background:${bg};color:${col};border-radius:3px;padding:0 3px;font-size:9px;font-weight:700;cursor:default">${r.toFixed(2)}</span>`;};
+    const pBadge2425=(r,need,avail,maxP)=>{const bg=r<0.3?'#dcfce7':r<0.6?'#f3f4f6':r<0.85?'#fef3c7':'#fee2e2';const col=r<0.3?'#15803d':r<0.6?'#6b7280':r<0.85?'#92400e':'#991b1b';return`<span title="need ${need}/quality avail ${avail}" style="background:${bg};color:${col};border-radius:3px;padding:0 3px;font-size:9px;font-weight:700;cursor:default">${r.toFixed(2)}</span>`;};
     const lnF=allTeams.reduce((s,t)=>{const r=players.filter(p=>p.start2425===t);return s+Math.max(0,DRAFT_ROSTER_MAX.F-r.filter(p=>posGroup(p.pos)==='F').length);},0);
     const lnD=allTeams.reduce((s,t)=>{const r=players.filter(p=>p.start2425===t);return s+Math.max(0,DRAFT_ROSTER_MAX.D-r.filter(p=>posGroup(p.pos)==='D').length);},0);
     const lnG=allTeams.reduce((s,t)=>{const r=players.filter(p=>p.start2425===t);return s+Math.max(0,DRAFT_ROSTER_MAX.G-r.filter(p=>posGroup(p.pos)==='G').length);},0);
-    const allU2425=players.filter(p=>!p.start2425&&ppts2425blend(p)>0);
-    const avF=allU2425.filter(p=>posGroup(p.pos)==='F').length,avD=allU2425.filter(p=>posGroup(p.pos)==='D').length,avG=allU2425.filter(p=>posGroup(p.pos)==='G').length;
+    // "Available" = quality options (SCORE > pressureQualityThreshold), matching what
+    // wtPressure's real scoring actually counts — see the 26-27 updateStats() comment.
+    const rosteredNow2425 = players.filter(p => p.start2425 && getCap2425(p) > 0);
+    const curveFns2425Stats = {
+      F: fitQuadratic(rosteredNow2425.filter(p=>posGroup(p.pos)==='F').map(p=>({x:getCap2425(p),y:ppts2425blend(p)}))),
+      D: fitQuadratic(rosteredNow2425.filter(p=>posGroup(p.pos)==='D').map(p=>({x:getCap2425(p),y:ppts2425blend(p)}))),
+      G: fitQuadratic(rosteredNow2425.filter(p=>posGroup(p.pos)==='G').map(p=>({x:getCap2425(p),y:ppts2425blend(p)}))),
+    };
+    const qualityAvail2425 = _cachedQualityAvail('start2425', ppts2425blend, getCap2425, calcAge2425, 2024, 'nextTerm2425', curveFns2425Stats, ELC_MAX_2425, srcNFn2425, MAX_SRC_2425, CAP_LIMIT_2425);
+    const avF=qualityAvail2425.F,avD=qualityAvail2425.D,avG=qualityAvail2425.G;
     const rawP={F:lnF/Math.max(1,avF),D:lnD/Math.max(1,avD),G:lnG/Math.max(1,avG)};
     const maxP=Math.max(rawP.F,rawP.D,rawP.G,0.0001);
     const pr2425={F:rawP.F/maxP,D:rawP.D/maxP,G:rawP.G/maxP};
     const pr=lastPressure2425||pr2425;
+    let onClockRoom2425 = Infinity;
+    if(_oc2425!=null){
+      const onClockRoster = players.filter(p=>p.start2425===_oc2425);
+      const onClockCapUsed = onClockRoster.reduce((s,p)=>s+(getCap2425(p)||0),0);
+      const onClockSpotsLeft = Math.max(0,DRAFT_ROSTER_MAX.F-onClockRoster.filter(p=>posGroup(p.pos)==='F').length)
+        + Math.max(0,DRAFT_ROSTER_MAX.D-onClockRoster.filter(p=>posGroup(p.pos)==='D').length)
+        + Math.max(0,DRAFT_ROSTER_MAX.G-onClockRoster.filter(p=>posGroup(p.pos)==='G').length);
+      const onClockRound = buildDraftSeq2425().rounds[draftState2425.picks.length] || 1;
+      onClockRoom2425 = _teamAffordableRoom(onClockCapUsed, CAP_LIMIT_2425, onClockSpotsLeft, onClockRound, DRAFT_RESERVE_2425, ELC_MAX_2425);
+    }
+    const availTip2425 = pg => `${qualityAvail2425[pg]} quality players available league-wide (SCORE > ${draftWeights.pressureQualityThreshold??95}, any team's affordability)`;
+    const availBadge2425 = pg => `<span title="${esc(availTip2425(pg))}" style="background:#eef2ff;color:#4338ca;border-radius:3px;padding:0 3px;font-size:9px;font-weight:700;cursor:default">${qualityAvail2425[pg]}</span>`;
+    const affordTip2425 = pg => `${_affordableQualityCount(qualityAvail2425,pg,onClockRoom2425)} quality players available and affordable${_oc2425!=null?` for ${_oc2425}`:''} (room $${onClockRoom2425.toFixed(1)}M, reserving for other open spots)`;
+    const affordBadge2425 = pg => `<span title="${esc(affordTip2425(pg))}" style="background:#f3f4f6;color:#374151;border-radius:3px;padding:0 3px;font-size:9px;font-weight:700;cursor:default">${_affordableQualityCount(qualityAvail2425,pg,onClockRoom2425)}</span>`;
     leagueCard=`<div class="team-card league-card" style="background:#eff6ff;border:1px solid #dbeafe">
       <div class="team-card-header"><span class="team-card-name" style="color:#6366f1">League</span></div>
       <div class="team-card-cap" style="color:#6b7280;font-size:10px">picks remaining</div>
       <div class="team-card-pos" style="gap:6px">
-        <span style="display:flex;flex-direction:column;align-items:center;gap:2px;background:transparent;padding:0"><span>F&thinsp;${lnF}</span>${pBadge2425(pr.F,lnF,avF,maxP)}</span>
-        <span style="display:flex;flex-direction:column;align-items:center;gap:2px;background:transparent;padding:0"><span>D&thinsp;${lnD}</span>${pBadge2425(pr.D,lnD,avD,maxP)}</span>
-        <span style="display:flex;flex-direction:column;align-items:center;gap:2px;background:transparent;padding:0"><span>G&thinsp;${lnG}</span>${pBadge2425(pr.G,lnG,avG,maxP)}</span>
+        <span style="display:flex;flex-direction:column;align-items:center;gap:2px;background:transparent;padding:0"><span>F&thinsp;${lnF}</span>${availBadge2425('F')}${affordBadge2425('F')}${pBadge2425(pr.F,lnF,avF,maxP)}</span>
+        <span style="display:flex;flex-direction:column;align-items:center;gap:2px;background:transparent;padding:0"><span>D&thinsp;${lnD}</span>${availBadge2425('D')}${affordBadge2425('D')}${pBadge2425(pr.D,lnD,avD,maxP)}</span>
+        <span style="display:flex;flex-direction:column;align-items:center;gap:2px;background:transparent;padding:0"><span>G&thinsp;${lnG}</span>${availBadge2425('G')}${affordBadge2425('G')}${pBadge2425(pr.G,lnG,avG,maxP)}</span>
       </div>
     </div>`;
   } else {
@@ -7882,23 +7904,45 @@ function updateStats2324(){
 
   let leagueCard;
   if(draftMode2324){
-    const pBadge2324=(r,need,avail,maxP)=>{const bg=r<0.3?'#dcfce7':r<0.6?'#f3f4f6':r<0.85?'#fef3c7':'#fee2e2';const col=r<0.3?'#15803d':r<0.6?'#6b7280':r<0.85?'#92400e':'#991b1b';return`<span title="need ${need}/avail ${avail}" style="background:${bg};color:${col};border-radius:3px;padding:0 3px;font-size:9px;font-weight:700;cursor:default">${r.toFixed(2)}</span>`;};
+    const pBadge2324=(r,need,avail,maxP)=>{const bg=r<0.3?'#dcfce7':r<0.6?'#f3f4f6':r<0.85?'#fef3c7':'#fee2e2';const col=r<0.3?'#15803d':r<0.6?'#6b7280':r<0.85?'#92400e':'#991b1b';return`<span title="need ${need}/quality avail ${avail}" style="background:${bg};color:${col};border-radius:3px;padding:0 3px;font-size:9px;font-weight:700;cursor:default">${r.toFixed(2)}</span>`;};
     const lnF=allTeams.reduce((s,t)=>{const r=players.filter(p=>p.start2324===t);return s+Math.max(0,DRAFT_ROSTER_MAX.F-r.filter(p=>posGroup(p.pos)==='F').length);},0);
     const lnD=allTeams.reduce((s,t)=>{const r=players.filter(p=>p.start2324===t);return s+Math.max(0,DRAFT_ROSTER_MAX.D-r.filter(p=>posGroup(p.pos)==='D').length);},0);
     const lnG=allTeams.reduce((s,t)=>{const r=players.filter(p=>p.start2324===t);return s+Math.max(0,DRAFT_ROSTER_MAX.G-r.filter(p=>posGroup(p.pos)==='G').length);},0);
-    const allU2324=players.filter(p=>!p.start2324&&ppts2324blend(p)>0);
-    const avF=allU2324.filter(p=>posGroup(p.pos)==='F').length,avD=allU2324.filter(p=>posGroup(p.pos)==='D').length,avG=allU2324.filter(p=>posGroup(p.pos)==='G').length;
+    // "Available" = quality options (SCORE > pressureQualityThreshold), matching what
+    // wtPressure's real scoring actually counts — see the 26-27 updateStats() comment.
+    const rosteredNow2324 = players.filter(p => p.start2324 && getCap2324(p) > 0);
+    const curveFns2324Stats = {
+      F: fitQuadratic(rosteredNow2324.filter(p=>posGroup(p.pos)==='F').map(p=>({x:getCap2324(p),y:ppts2324blend(p)}))),
+      D: fitQuadratic(rosteredNow2324.filter(p=>posGroup(p.pos)==='D').map(p=>({x:getCap2324(p),y:ppts2324blend(p)}))),
+      G: fitQuadratic(rosteredNow2324.filter(p=>posGroup(p.pos)==='G').map(p=>({x:getCap2324(p),y:ppts2324blend(p)}))),
+    };
+    const qualityAvail2324 = _cachedQualityAvail('start2324', ppts2324blend, getCap2324, calcAge2324, 2023, 'nextTerm2324', curveFns2324Stats, ELC_MAX_2324, srcNFn2324, MAX_SRC_2324, CAP_LIMIT_2324);
+    const avF=qualityAvail2324.F,avD=qualityAvail2324.D,avG=qualityAvail2324.G;
     const rawP={F:lnF/Math.max(1,avF),D:lnD/Math.max(1,avD),G:lnG/Math.max(1,avG)};
     const maxP=Math.max(rawP.F,rawP.D,rawP.G,0.0001);
     const pr2324={F:rawP.F/maxP,D:rawP.D/maxP,G:rawP.G/maxP};
     const pr=lastPressure2324||pr2324;
+    let onClockRoom2324 = Infinity;
+    if(_oc2324!=null){
+      const onClockRoster = players.filter(p=>p.start2324===_oc2324);
+      const onClockCapUsed = onClockRoster.reduce((s,p)=>s+(getCap2324(p)||0),0);
+      const onClockSpotsLeft = Math.max(0,DRAFT_ROSTER_MAX.F-onClockRoster.filter(p=>posGroup(p.pos)==='F').length)
+        + Math.max(0,DRAFT_ROSTER_MAX.D-onClockRoster.filter(p=>posGroup(p.pos)==='D').length)
+        + Math.max(0,DRAFT_ROSTER_MAX.G-onClockRoster.filter(p=>posGroup(p.pos)==='G').length);
+      const onClockRound = buildDraftSeq2324().rounds[draftState2324.picks.length] || 1;
+      onClockRoom2324 = _teamAffordableRoom(onClockCapUsed, CAP_LIMIT_2324, onClockSpotsLeft, onClockRound, DRAFT_RESERVE_2324, ELC_MAX_2324);
+    }
+    const availTip2324 = pg => `${qualityAvail2324[pg]} quality players available league-wide (SCORE > ${draftWeights.pressureQualityThreshold??95}, any team's affordability)`;
+    const availBadge2324 = pg => `<span title="${esc(availTip2324(pg))}" style="background:#eef2ff;color:#4338ca;border-radius:3px;padding:0 3px;font-size:9px;font-weight:700;cursor:default">${qualityAvail2324[pg]}</span>`;
+    const affordTip2324 = pg => `${_affordableQualityCount(qualityAvail2324,pg,onClockRoom2324)} quality players available and affordable${_oc2324!=null?` for ${_oc2324}`:''} (room $${onClockRoom2324.toFixed(1)}M, reserving for other open spots)`;
+    const affordBadge2324 = pg => `<span title="${esc(affordTip2324(pg))}" style="background:#f3f4f6;color:#374151;border-radius:3px;padding:0 3px;font-size:9px;font-weight:700;cursor:default">${_affordableQualityCount(qualityAvail2324,pg,onClockRoom2324)}</span>`;
     leagueCard=`<div class="team-card league-card" style="background:#eff6ff;border:1px solid #dbeafe">
       <div class="team-card-header"><span class="team-card-name" style="color:#6366f1">League</span></div>
       <div class="team-card-cap" style="color:#6b7280;font-size:10px">picks remaining</div>
       <div class="team-card-pos" style="gap:6px">
-        <span style="display:flex;flex-direction:column;align-items:center;gap:2px;background:transparent;padding:0"><span>F&thinsp;${lnF}</span>${pBadge2324(pr.F,lnF,avF,maxP)}</span>
-        <span style="display:flex;flex-direction:column;align-items:center;gap:2px;background:transparent;padding:0"><span>D&thinsp;${lnD}</span>${pBadge2324(pr.D,lnD,avD,maxP)}</span>
-        <span style="display:flex;flex-direction:column;align-items:center;gap:2px;background:transparent;padding:0"><span>G&thinsp;${lnG}</span>${pBadge2324(pr.G,lnG,avG,maxP)}</span>
+        <span style="display:flex;flex-direction:column;align-items:center;gap:2px;background:transparent;padding:0"><span>F&thinsp;${lnF}</span>${availBadge2324('F')}${affordBadge2324('F')}${pBadge2324(pr.F,lnF,avF,maxP)}</span>
+        <span style="display:flex;flex-direction:column;align-items:center;gap:2px;background:transparent;padding:0"><span>D&thinsp;${lnD}</span>${availBadge2324('D')}${affordBadge2324('D')}${pBadge2324(pr.D,lnD,avD,maxP)}</span>
+        <span style="display:flex;flex-direction:column;align-items:center;gap:2px;background:transparent;padding:0"><span>G&thinsp;${lnG}</span>${availBadge2324('G')}${affordBadge2324('G')}${pBadge2324(pr.G,lnG,avG,maxP)}</span>
       </div>
     </div>`;
   } else {
@@ -8553,11 +8597,20 @@ let _qualityAvailCache = {count:-1, startField:null, threshold:null, val:null};
 // real pick (keyed on total assigned-player count + threshold) since _rankFACandidates can be
 // called several times for the SAME pick (position-locked previews, splash-target checks)
 // before a pick is finalized.
+// Return shape is {F,D,G,candidates} — F/D/G are plain counts (what real scoring reads via
+// qualityAvail[pg]); candidates is the raw {pg,cap} list behind those counts, kept so a caller
+// can cheaply re-filter by a SPECIFIC team's remaining cap room (see _affordableQualityCount)
+// for DISPLAY purposes without re-scoring the whole free-agent pool. Real scoring intentionally
+// stays league-wide/unaffordability-blind — a live experiment 2026-09-20 showed filtering the
+// SCORING denominator by affordability made teams draft worse (forced reaches instead of
+// smart punts) — this is purely an on-screen "what can the on-clock team actually still get"
+// readout, never fed back into the formula.
 function _cachedQualityAvail(startField, ppts, getCap, calcAgeForSim, contractYearAnchor, nextContractField, curveFns, elcMax, srcNFn, maxSrc, capLimit){
   const threshold = draftWeights.pressureQualityThreshold ?? 95;
   const count = players.filter(p=>p[startField]).length;
   if(_qualityAvailCache.count===count && _qualityAvailCache.startField===startField && _qualityAvailCache.threshold===threshold) return _qualityAvailCache.val;
   const avail = {F:0,D:0,G:0};
+  const candidates = [];
   for(const p of players){
     if(p[startField]) continue;
     const pp = ppts(p), cap0 = getCap(p)||0;
@@ -8567,10 +8620,36 @@ function _cachedQualityAvail(startField, ppts, getCap, calcAgeForSim, contractYe
       pg, pp, cap0, mode:'bestAvail', round: 99, draftWeights,
       calcAgeForSim, contractYearAnchor, nextContractField, curveFns, elcMax, srcNFn, maxSrc, capLimit0: capLimit,
     });
-    if(score > threshold) avail[pg]++;
+    if(score > threshold){ avail[pg]++; candidates.push({pg, cap: cap0}); }
   }
+  avail.candidates = candidates;
   _qualityAvailCache = {count, startField, threshold, val: avail};
   return avail;
+}
+
+// How many of the league-wide quality candidates (from _cachedQualityAvail) at position pg a
+// SPECIFIC team could actually still afford right now, given their own remaining cap room —
+// display-only (see _cachedQualityAvail's comment for why this never feeds real scoring).
+function _affordableQualityCount(qualityAvailResult, pg, teamRoom){
+  return (qualityAvailResult.candidates||[]).filter(c => c.pg===pg && c.cap<=teamRoom).length;
+}
+
+// A team's real spendable room for ONE MORE pick, not just their total remaining cap — a team
+// with $10M left and 3 open roster spots can't actually spend all $10M on the very next pick,
+// or the other 2 spots go unfillable. Reserves the empirical MEDIAN cost (_expectedRoundCost,
+// same real per-round pricing _rankFACandidates's actual pick-selection logic uses) for every
+// OTHER remaining spot, floored so an ELC-tier pick always stays affordable regardless (mirrors
+// _rankFACandidates's own totalReserve cap). Found live 2026-09-20: the League card's "Qual"
+// figure was using flat total-room-left, letting a cash-strapped-but-not-yet-drafting team look
+// like it could afford a $9M player it would never actually spend that much on with picks still
+// to fill.
+function _teamAffordableRoom(teamCapUsed, capLimit, spotsLeft, currentRound, draftReserve, elcMax){
+  const roomAvailable = capLimit - teamCapUsed;
+  if(spotsLeft <= 1) return roomAvailable;
+  let futureReserve = 0;
+  for(let fr = currentRound+1; fr < currentRound+spotsLeft; fr++) futureReserve += _expectedRoundCost(fr, capLimit, draftReserve);
+  const totalReserve = Math.min(futureReserve, Math.max(0, roomAvailable - elcMax*ELC_SIGNING_BONUS_WIGGLE));
+  return roomAvailable - totalReserve;
 }
 
 // pressMult for _scoreDraftCandidate — 1 (no-op) unless a real team + league need map +
@@ -9981,26 +10060,46 @@ function updateStats2526(){
   });
   if(!allTeams.length){ document.getElementById('statCards2526').innerHTML=''; return; }
 
-  const pBadge2526=(r,need,avail,maxP)=>{const bg=r<0.3?'#dcfce7':r<0.6?'#f3f4f6':r<0.85?'#fef3c7':'#fee2e2';const col=r<0.3?'#15803d':r<0.6?'#6b7280':r<0.85?'#92400e':'#991b1b';const raw=(need/Math.max(1,avail)).toFixed(3);const tip=`need ${need} / avail ${avail} · raw ratio ${raw} · max ${(maxP||0).toFixed(3)} → norm ${r.toFixed(2)}`;return`<span title="${tip}" style="background:${bg};color:${col};border-radius:3px;padding:0 3px;font-size:9px;font-weight:700;cursor:default">${r.toFixed(2)}</span>`;};
+  const pBadge2526=(r,need,avail,maxP)=>{const bg=r<0.3?'#dcfce7':r<0.6?'#f3f4f6':r<0.85?'#fef3c7':'#fee2e2';const col=r<0.3?'#15803d':r<0.6?'#6b7280':r<0.85?'#92400e':'#991b1b';const raw=(need/Math.max(1,avail)).toFixed(3);const tip=`need ${need} / quality avail ${avail} · raw ratio ${raw} · max ${(maxP||0).toFixed(3)} → norm ${r.toFixed(2)}`;return`<span title="${tip}" style="background:${bg};color:${col};border-radius:3px;padding:0 3px;font-size:9px;font-weight:700;cursor:default">${r.toFixed(2)}</span>`;};
   let leagueCard;
   if(draftMode2526){
     const lnF=allTeams.reduce((s,t)=>{const r=players.filter(p=>p.start2526===t);return s+Math.max(0,DRAFT_ROSTER_MAX.F-r.filter(p=>posGroup(p.pos)==='F').length);},0);
     const lnD=allTeams.reduce((s,t)=>{const r=players.filter(p=>p.start2526===t);return s+Math.max(0,DRAFT_ROSTER_MAX.D-r.filter(p=>posGroup(p.pos)==='D').length);},0);
     const lnG=allTeams.reduce((s,t)=>{const r=players.filter(p=>p.start2526===t);return s+Math.max(0,DRAFT_ROSTER_MAX.G-r.filter(p=>posGroup(p.pos)==='G').length);},0);
-    const allUndrafted2526=players.filter(p=>!p.start2526&&ppts2526blend(p)>0);
-    const avF=allUndrafted2526.filter(p=>posGroup(p.pos)==='F').length;
-    const avD=allUndrafted2526.filter(p=>posGroup(p.pos)==='D').length;
-    const avG=allUndrafted2526.filter(p=>posGroup(p.pos)==='G').length;
+    // "Available" = quality options (SCORE > pressureQualityThreshold), matching what
+    // wtPressure's real scoring actually counts — see the 26-27 updateStats() comment.
+    const rosteredNow2526 = players.filter(p => p.start2526 && getCap2526(p) > 0);
+    const curveFns2526Stats = {
+      F: fitQuadratic(rosteredNow2526.filter(p=>posGroup(p.pos)==='F').map(p=>({x:getCap2526(p),y:ppts2526blend(p)}))),
+      D: fitQuadratic(rosteredNow2526.filter(p=>posGroup(p.pos)==='D').map(p=>({x:getCap2526(p),y:ppts2526blend(p)}))),
+      G: fitQuadratic(rosteredNow2526.filter(p=>posGroup(p.pos)==='G').map(p=>({x:getCap2526(p),y:ppts2526blend(p)}))),
+    };
+    const qualityAvail2526 = _cachedQualityAvail('start2526', ppts2526blend, getCap2526, calcAge2526, 2025, 'nextTerm2526', curveFns2526Stats, ELC_MAX_2526, srcNFn2526, MAX_SRC_2526, CAP_LIMIT_2526);
+    const avF=qualityAvail2526.F, avD=qualityAvail2526.D, avG=qualityAvail2526.G;
     const rawPF2526=lnF/Math.max(1,avF), rawPD2526=lnD/Math.max(1,avD), rawPG2526=lnG/Math.max(1,avG);
     const statsMaxP2526=Math.max(rawPF2526,rawPD2526,rawPG2526,0.0001);
     const pr=lastPressure2526||{F:0,D:0,G:0};
+    let onClockRoom2526 = Infinity;
+    if(onClock!=null){
+      const onClockRoster = players.filter(p=>p.start2526===onClock);
+      const onClockCapUsed = onClockRoster.reduce((s,p)=>s+(getCap2526(p)||0),0);
+      const onClockSpotsLeft = Math.max(0,DRAFT_ROSTER_MAX.F-onClockRoster.filter(p=>posGroup(p.pos)==='F').length)
+        + Math.max(0,DRAFT_ROSTER_MAX.D-onClockRoster.filter(p=>posGroup(p.pos)==='D').length)
+        + Math.max(0,DRAFT_ROSTER_MAX.G-onClockRoster.filter(p=>posGroup(p.pos)==='G').length);
+      const onClockRound = buildDraftSeq2526().rounds[draftState2526.picks.length] || 1;
+      onClockRoom2526 = _teamAffordableRoom(onClockCapUsed, CAP_LIMIT_2526, onClockSpotsLeft, onClockRound, DRAFT_RESERVE_2526, ELC_MAX_2526);
+    }
+    const availTip2526 = pg => `${qualityAvail2526[pg]} quality players available league-wide (SCORE > ${draftWeights.pressureQualityThreshold??95}, any team's affordability)`;
+    const availBadge2526 = pg => `<span title="${esc(availTip2526(pg))}" style="background:#eef2ff;color:#4338ca;border-radius:3px;padding:0 3px;font-size:9px;font-weight:700;cursor:default">${qualityAvail2526[pg]}</span>`;
+    const affordTip2526 = pg => `${_affordableQualityCount(qualityAvail2526,pg,onClockRoom2526)} quality players available and affordable${onClock!=null?` for ${onClock}`:''} (room $${onClockRoom2526.toFixed(1)}M, reserving for other open spots)`;
+    const affordBadge2526 = pg => `<span title="${esc(affordTip2526(pg))}" style="background:#f3f4f6;color:#374151;border-radius:3px;padding:0 3px;font-size:9px;font-weight:700;cursor:default">${_affordableQualityCount(qualityAvail2526,pg,onClockRoom2526)}</span>`;
     leagueCard=`<div class="team-card league-card" style="background:#eff6ff;border:1px solid #dbeafe">
       <div class="team-card-header"><span class="team-card-name" style="color:#6366f1">League</span></div>
       <div class="team-card-cap" style="color:#6b7280;font-size:10px">picks remaining</div>
       <div class="team-card-pos" style="gap:6px">
-        <span style="display:flex;flex-direction:column;align-items:center;gap:2px;background:transparent;padding:0"><span>F&thinsp;${lnF}</span>${pBadge2526(pr.F,lnF,avF,statsMaxP2526)}</span>
-        <span style="display:flex;flex-direction:column;align-items:center;gap:2px;background:transparent;padding:0"><span>D&thinsp;${lnD}</span>${pBadge2526(pr.D,lnD,avD,statsMaxP2526)}</span>
-        <span style="display:flex;flex-direction:column;align-items:center;gap:2px;background:transparent;padding:0"><span>G&thinsp;${lnG}</span>${pBadge2526(pr.G,lnG,avG,statsMaxP2526)}</span>
+        <span style="display:flex;flex-direction:column;align-items:center;gap:2px;background:transparent;padding:0"><span>F&thinsp;${lnF}</span>${availBadge2526('F')}${affordBadge2526('F')}${pBadge2526(pr.F,lnF,avF,statsMaxP2526)}</span>
+        <span style="display:flex;flex-direction:column;align-items:center;gap:2px;background:transparent;padding:0"><span>D&thinsp;${lnD}</span>${availBadge2526('D')}${affordBadge2526('D')}${pBadge2526(pr.D,lnD,avD,statsMaxP2526)}</span>
+        <span style="display:flex;flex-direction:column;align-items:center;gap:2px;background:transparent;padding:0"><span>G&thinsp;${lnG}</span>${availBadge2526('G')}${affordBadge2526('G')}${pBadge2526(pr.G,lnG,avG,statsMaxP2526)}</span>
       </div>
     </div>`;
   } else {
@@ -10926,27 +11025,52 @@ function updateStats(){
   });
   if(!teams.length){ document.getElementById('statCards').innerHTML=''; return; }
 
-  const pBadge=(r,need,avail,maxP)=>{const bg=r<0.3?'#dcfce7':r<0.6?'#f3f4f6':r<0.85?'#fef3c7':'#fee2e2';const col=r<0.3?'#15803d':r<0.6?'#6b7280':r<0.85?'#92400e':'#991b1b';const raw=(need/Math.max(1,avail)).toFixed(3);const tip=`need ${need} / avail ${avail} · raw ratio ${raw} · max ${(maxP||0).toFixed(3)} → norm ${r.toFixed(2)}`;return`<span title="${tip}" style="background:${bg};color:${col};border-radius:3px;padding:0 3px;font-size:9px;font-weight:700;cursor:default">${r.toFixed(2)}</span>`;};
+  const pBadge=(r,need,avail,maxP)=>{const bg=r<0.3?'#dcfce7':r<0.6?'#f3f4f6':r<0.85?'#fef3c7':'#fee2e2';const col=r<0.3?'#15803d':r<0.6?'#6b7280':r<0.85?'#92400e':'#991b1b';const raw=(need/Math.max(1,avail)).toFixed(3);const tip=`need ${need} / quality avail ${avail} · raw ratio ${raw} · max ${(maxP||0).toFixed(3)} → norm ${r.toFixed(2)}`;return`<span title="${tip}" style="background:${bg};color:${col};border-radius:3px;padding:0 3px;font-size:9px;font-weight:700;cursor:default">${r.toFixed(2)}</span>`;};
   let leagueCard;
   if(draftMode){
     const lnF=teams.reduce((s,t)=>{const r=players.filter(p=>p.start2627===t);return s+Math.max(0,DRAFT_ROSTER_MAX.F-r.filter(p=>posGroup(p.pos)==='F').length);},0);
     const lnD=teams.reduce((s,t)=>{const r=players.filter(p=>p.start2627===t);return s+Math.max(0,DRAFT_ROSTER_MAX.D-r.filter(p=>posGroup(p.pos)==='D').length);},0);
     const lnG=teams.reduce((s,t)=>{const r=players.filter(p=>p.start2627===t);return s+Math.max(0,DRAFT_ROSTER_MAX.G-r.filter(p=>posGroup(p.pos)==='G').length);},0);
-    const drafted=new Set(draftState2627.picks.map(p=>normName(p.player).toLowerCase()));
-    const allUndrafted=players.filter(p=>!p.start2627&&!drafted.has(normName(p.name).toLowerCase())&&(p.proj2627.blend||0)>0);
-    const avF=allUndrafted.filter(p=>posGroup(p.pos)==='F').length;
-    const avD=allUndrafted.filter(p=>posGroup(p.pos)==='D').length;
-    const avG=allUndrafted.filter(p=>posGroup(p.pos)==='G').length;
+    // "Available" here means the same thing wtPressure's real scoring uses — quality options
+    // (SCORE > pressureQualityThreshold), not just any player with positive projected points.
+    // Was a raw positive-points count until 2026-09-20 (user: "still show 'total available'
+    // instead of a 'quality options available' denominator") — always undercounted real
+    // scarcity since most of the free-agent pool at any position is replacement-level filler.
+    const rosteredNow2627 = players.filter(p => p.start2627 && (p.cap2627||0) > 0);
+    const curveFns2627Stats = {
+      F: fitQuadratic(rosteredNow2627.filter(p=>posGroup(p.pos)==='F').map(p=>({x:p.cap2627,y:p.proj2627.blend||0}))),
+      D: fitQuadratic(rosteredNow2627.filter(p=>posGroup(p.pos)==='D').map(p=>({x:p.cap2627,y:p.proj2627.blend||0}))),
+      G: fitQuadratic(rosteredNow2627.filter(p=>posGroup(p.pos)==='G').map(p=>({x:p.cap2627,y:p.proj2627.blend||0}))),
+    };
+    const qualityAvail2627 = _cachedQualityAvail('start2627', p=>p.proj2627.blend||0, p=>p.cap2627||0, calcAge, NHL_SEASON_YEAR, 'nextTerm2627', curveFns2627Stats, ELC_MAX_2627, srcNFn2627, MAX_SRC_2627, CAP_LIMIT);
+    const avF=qualityAvail2627.F, avD=qualityAvail2627.D, avG=qualityAvail2627.G;
     const rawPF=lnF/Math.max(1,avF), rawPD=lnD/Math.max(1,avD), rawPG=lnG/Math.max(1,avG);
     const statsMaxP=Math.max(rawPF,rawPD,rawPG,0.0001);
     const pr=lastPressure||{F:0,D:0,G:0};
+    // Qual: same quality-candidate pool as avF/avD/avG above, but re-filtered to what the team
+    // ACTUALLY ON THE CLOCK right now can still afford — display-only, never fed back into the
+    // real (deliberately affordability-blind) scoring formula. See _cachedQualityAvail's comment.
+    let onClockRoom = Infinity;
+    if(onClock!=null){
+      const onClockRoster = players.filter(p=>p.start2627===onClock);
+      const onClockCapUsed = onClockRoster.reduce((s,p)=>s+(p.cap2627||0),0);
+      const onClockSpotsLeft = Math.max(0,DRAFT_ROSTER_MAX.F-onClockRoster.filter(p=>posGroup(p.pos)==='F').length)
+        + Math.max(0,DRAFT_ROSTER_MAX.D-onClockRoster.filter(p=>posGroup(p.pos)==='D').length)
+        + Math.max(0,DRAFT_ROSTER_MAX.G-onClockRoster.filter(p=>posGroup(p.pos)==='G').length);
+      const onClockRound = buildDraftSeq2627().rounds[draftState2627.picks.length] || 1;
+      onClockRoom = _teamAffordableRoom(onClockCapUsed, CAP_LIMIT, onClockSpotsLeft, onClockRound, DRAFT_RESERVE_2627, ELC_MAX_2627);
+    }
+    const availTip = pg => `${qualityAvail2627[pg]} quality players available league-wide (SCORE > ${draftWeights.pressureQualityThreshold??95}, any team's affordability)`;
+    const availBadge = pg => `<span title="${esc(availTip(pg))}" style="background:#eef2ff;color:#4338ca;border-radius:3px;padding:0 3px;font-size:9px;font-weight:700;cursor:default">${qualityAvail2627[pg]}</span>`;
+    const affordTip = pg => `${_affordableQualityCount(qualityAvail2627,pg,onClockRoom)} quality players available and affordable${onClock!=null?` for ${onClock}`:''} (room $${onClockRoom.toFixed(1)}M, reserving for other open spots)`;
+    const affordBadge = pg => `<span title="${esc(affordTip(pg))}" style="background:#f3f4f6;color:#374151;border-radius:3px;padding:0 3px;font-size:9px;font-weight:700;cursor:default">${_affordableQualityCount(qualityAvail2627,pg,onClockRoom)}</span>`;
     leagueCard=`<div class="team-card league-card" style="background:#eff6ff;border:1px solid #dbeafe">
       <div class="team-card-header"><span class="team-card-name" style="color:#6366f1">League</span></div>
       <div class="team-card-cap" style="color:#6b7280;font-size:10px">picks remaining</div>
       <div class="team-card-pos" style="gap:6px">
-        <span style="display:flex;flex-direction:column;align-items:center;gap:2px;background:transparent;padding:0"><span>F&thinsp;${lnF}</span>${pBadge(pr.F,lnF,avF,statsMaxP)}</span>
-        <span style="display:flex;flex-direction:column;align-items:center;gap:2px;background:transparent;padding:0"><span>D&thinsp;${lnD}</span>${pBadge(pr.D,lnD,avD,statsMaxP)}</span>
-        <span style="display:flex;flex-direction:column;align-items:center;gap:2px;background:transparent;padding:0"><span>G&thinsp;${lnG}</span>${pBadge(pr.G,lnG,avG,statsMaxP)}</span>
+        <span style="display:flex;flex-direction:column;align-items:center;gap:2px;background:transparent;padding:0"><span>F&thinsp;${lnF}</span>${availBadge('F')}${affordBadge('F')}${pBadge(pr.F,lnF,avF,statsMaxP)}</span>
+        <span style="display:flex;flex-direction:column;align-items:center;gap:2px;background:transparent;padding:0"><span>D&thinsp;${lnD}</span>${availBadge('D')}${affordBadge('D')}${pBadge(pr.D,lnD,avD,statsMaxP)}</span>
+        <span style="display:flex;flex-direction:column;align-items:center;gap:2px;background:transparent;padding:0"><span>G&thinsp;${lnG}</span>${availBadge('G')}${affordBadge('G')}${pBadge(pr.G,lnG,avG,statsMaxP)}</span>
       </div>
     </div>`;
   } else {
