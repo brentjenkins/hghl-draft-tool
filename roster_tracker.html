@@ -1093,32 +1093,41 @@ tr:hover td{background:#fafaf8}
       <div style="font-size:12px;color:#6b7280;margin-bottom:12px">Score = <strong style="color:#185FA5">Production</strong> + <strong style="color:#0d9488">Contract</strong> + <strong style="color:#475569">Trajectory</strong> + <strong style="color:#475569">Prospect</strong></div>
       <div style="display:flex;flex-direction:column;gap:10px">
 
-        <!-- Production bubble (long horizontal: Coverage | Pressure/Draft Scoring) -->
+        <!-- Production bubble (Coverage discount | Min source coverage | Position pressure) —
+             grid columns match the Contract bubble below (1fr 1.3fr 1.3fr) so "Min source
+             coverage" lines up vertically with CRV, per user request 2026-09-19. -->
         <div style="background:#eff6ff;border:1px solid #dbeafe;border-radius:10px;padding:12px 16px">
           <div style="font-size:11px;font-weight:700;color:#1d4ed8;margin-bottom:2px">Production Score = <span style="font-family:monospace">PRD</span></div>
           <div style="font-size:10px;color:#9ca3af;margin-bottom:2px">Production component (<span style="font-family:monospace;color:#b0b0ac">PRD</span>)</div>
           <div style="font-size:11px;color:#6b7280;font-family:monospace;margin-bottom:10px">PPTS × coverage × pressure</div>
-          <div style="display:grid;grid-template-columns:1.6fr 1fr;gap:16px;align-items:start">
+          <div style="display:grid;grid-template-columns:1fr 1.3fr 1.3fr;gap:16px;align-items:start">
 
-            <!-- Coverage column -->
-            <div style="display:flex;flex-wrap:wrap;align-items:flex-end;gap:8px;font-size:13px">
+            <div>
               <div style="display:flex;flex-direction:column;gap:3px">
                 <span style="font-size:11px;color:#9ca3af" title="Shrinks the points used for scoring (not the displayed PPTS) when a player has few projection sources — a 1-source player gets a real haircut on its score, not just a missing bonus. Backtested 2026-07-24: low-coverage players bust ~2x as often and overproject ~3x as much as fully-covered ones.">Coverage discount (<span style="font-family:monospace;color:#b0b0ac">wtCoverageDiscount</span>)</span>
                 <input type="number" id="s-wtCoverageDiscount" value="0.25" min="0" max="1" step="0.05" onchange="updateDraftWeight('wtCoverageDiscount',+this.value)" style="width:70px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center">
               </div>
+            </div>
+
+            <div>
               <div style="display:flex;flex-direction:column;gap:3px">
                 <span style="font-size:11px;color:#9ca3af" title="Hard floor: a free agent needs coverage from at least this fraction of that season's available projection sources to be draft-eligible at all (not just discounted). Backtested 2026-07-28 against all 3 real drafts: real GMs never drafted below ~1/3 coverage in any season (23-24 w/ 3 sources, 24-25 w/ 4, 25-26 w/ 6), while the algo's own 25-26 misses were 100% single-source (all CBS). 0-source players are already unscoreable (ppts=0) so this only bites the 'has SOME points, but from a lone uncorroborated source' case. Shared across all 4 seasons — raised to 0.33 on 2026-09-01 once 26-27 reached 6 sources (parity with 25-26's precedent).">Min source coverage (<span style="font-family:monospace;color:#b0b0ac">minSrcCoverage</span>)</span>
                 <input type="number" id="s-minSrcCoverage" value="0.33" min="0" max="1" step="0.01" onchange="updateDraftWeight('minSrcCoverage',+this.value)" style="width:70px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center">
               </div>
             </div>
 
-            <!-- Pressure column (nested Draft Scoring bubble) -->
-            <div style="background:#fff;border:1px solid #bfdbfe;border-radius:8px;padding:10px 12px">
-              <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#1d4ed8;margin-bottom:2px">Draft Scoring <span style="font-weight:400;text-transform:none;color:#9ca3af">(Draft Mode only)</span></div>
-              <div style="font-size:10px;color:#9ca3af;margin-bottom:8px">Feeds the "× pressure" term above — only active live in Draft Mode; the static Rank Score above omits this term entirely.</div>
-              <div style="display:flex;flex-direction:column;gap:3px">
-                <span style="font-size:11px;color:#9ca3af">Position pressure weight (<span style="font-family:monospace;color:#b0b0ac">wtPressure</span>)</span>
-                <input type="number" id="s-wtPressure" value="0.3" min="0" max="1" step="0.05" onchange="updateDraftWeight('wtPressure',+this.value)" style="width:80px;height:32px;border:1px solid #ddd;border-radius:8px;padding:0 8px;font-size:13px;text-align:center">
+            <div>
+              <div style="font-size:10px;color:#9ca3af;margin-bottom:2px" title="Boosts a candidate's score when OTHER teams currently needing the same position are about to pick before this team's own next turn, AND few genuinely good options (score above the quality threshold) remain at that position league-wide. Draft-Mode only (needs live team/need context); no-op in the static Rank Score above. Redesigned 2026-09-19 after a controlled live experiment showed the original relative-ratio version (see git history) made teams draft WORSE on average — this version is validated positive across every threshold (60-160) and magnitude (0.1-1.0) tested, peaking at threshold=95/weight=0.6.">Position pressure (<span style="font-family:monospace;color:#b0b0ac">wtPressure</span>) — Draft Mode only</div>
+              <div style="font-size:11px;color:#6b7280;font-family:monospace;margin-bottom:8px">(picks at position before my turn / quality left) × wtPressure</div>
+              <div style="display:flex;flex-wrap:wrap;gap:8px">
+                <div style="display:flex;flex-direction:column;gap:3px">
+                  <span style="font-size:11px;color:#9ca3af">Position pressure weight (<span style="font-family:monospace;color:#b0b0ac">wtPressure</span>)</span>
+                  <input type="number" id="s-wtPressure" value="0.6" min="0" max="3" step="0.05" onchange="updateDraftWeight('wtPressure',+this.value)" style="width:70px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center">
+                </div>
+                <div style="display:flex;flex-direction:column;gap:3px">
+                  <span style="font-size:11px;color:#9ca3af" title="A free agent's SCORE (team-agnostic, bestAvail mode) must exceed this to count as a 'quality' option remaining at their position — the denominator of the pressure ratio. Backtested 2026-09-19 across 60-160; 95 gave the best combined average-value and win-rate result.">Quality threshold (<span style="font-family:monospace;color:#b0b0ac">pressureQualityThreshold</span>)</span>
+                  <input type="number" id="s-pressureQualityThreshold" value="95" min="0" max="300" step="5" onchange="updateDraftWeight('pressureQualityThreshold',+this.value)" style="width:70px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center">
+                </div>
               </div>
             </div>
 
@@ -1424,7 +1433,7 @@ let sortColSignings = 'sign_date', sortDirSignings = -1;
 // side (7/21 otherwise-unexplained "GM kept a below-curve player forever" cases matched the
 // GM's fan team, ~10x the ~3% chance baseline) and explicitly flagged then to revisit for draft
 // accuracy too. See GM_FAN_TEAM / project_gm_nhl_affiliation memory.
-let draftWeights = { wtPPTSM: 0.75, wtAge: 1, wtProspect: 12, wtCoverageDiscount: 0.25, wtPressure: 0.3, wtDeltaCurve: 8, elcExpF: 41, elcExpD: 26, elcExpG: 35, wtPosAlloc: 1.0, minSrcCoverage: 0.33, wtCapUse: 0, wtFanBias: 0, wtTermValue: 2 };
+let draftWeights = { wtPPTSM: 0.75, wtAge: 1, wtProspect: 12, wtCoverageDiscount: 0.25, wtPressure: 0.6, pressureQualityThreshold: 95, wtDeltaCurve: 8, elcExpF: 41, elcExpD: 26, elcExpG: 35, wtPosAlloc: 1.0, minSrcCoverage: 0.33, wtCapUse: 0, wtFanBias: 0, wtTermValue: 2 };
 // Knapsack-optimal cap fractions: F=58%, D=35%, G=7% (derived from 26-27 player pool, $104M cap)
 const OPT_POS_FRACS = {F: 0.58, D: 0.35, G: 0.07};
 
@@ -3978,7 +3987,7 @@ function _scoreCols2627(p){
       prod: b.tPPTS*mult, prospect: (b.tProspect*pw+b.tFanBias)*mult,
       conPpm: b.tPPTSM*mult, conTrj: b.tYouth*mult, conCrv: b.tDelta*mult, conTerm: conTermDisplay, termActive: termIsActive,
       total: draftSubMode==='bestAvail' ? p._dsNormal : p._ds,
-      prodTip: `PPTS × coverage × pressure\n${b.pp} × ${b.coverageMult.toFixed(2)} × ${b.pressMult.toFixed(2)} = ${b.tPPTSBase.toFixed(1)}\ncoverage @ ${b.srcN} src = ${b.coverageMult.toFixed(2)}\npressure @ ${posGroup(p.pos)} = ${b.pressMult.toFixed(2)}${b.tCapUse>0?`\n(cap-use +${b.tCapUse.toFixed(1)})`:''}${mult!==1?`\n(× ${mult.toFixed(2)} pos-budget correction)`:''}`,
+      prodTip: `PPTS × coverage\n${b.pp} × ${b.coverageMult.toFixed(2)} = ${b.tPPTSBase.toFixed(1)}\ncoverage @ ${b.srcN} src = ${b.coverageMult.toFixed(2)}${b.tCapUse>0?`\n(cap-use +${b.tCapUse.toFixed(1)})`:''}${mult!==1?`\n(× ${mult.toFixed(2)} pos-budget correction)`:''}`,
       conPpmTip: `PPTS/$M × coverage × wtPPTSM\n${(p.cap2627>0?b.pp/p.cap2627:0).toFixed(1)} × ${b.coverageMult.toFixed(2)} × ${draftWeights.wtPPTSM} = ${(b.tPPTSM*mult).toFixed(1)}\ncoverage @ ${b.srcN} src = ${b.coverageMult.toFixed(2)}${mult!==1?`\n(× ${mult.toFixed(2)} pos-budget correction)`:''}`,
       conTrjTip: `Peak Trajectory × wtAge × coverage\n${b.youthRaw.toFixed(1)} × ${draftWeights.wtAge} × ${b.coverageMult.toFixed(2)} = ${(b.tYouth*mult).toFixed(1)}\nPeak Trajectory @ age ${b.ageRaw} = ${b.youthRaw.toFixed(1)}\ncoverage @ ${b.srcN} src = ${b.coverageMult.toFixed(2)}${mult!==1?`\n(× ${mult.toFixed(2)} pos-budget correction)`:''}`,
       conCrvTip: `((PPTS × coverage) − curve baseline) × wtDeltaCurve\n((${b.pp} × ${b.coverageMult.toFixed(2)}) − ${(b.curveBase!=null?b.pp*(Math.round(b.coverageMult*100)/100)-b.deltaRaw:0).toFixed(1)}) × ${draftWeights.wtDeltaCurve} = ${(b.tDelta*mult).toFixed(1)}\ncoverage @ ${b.srcN} src = ${b.coverageMult.toFixed(2)}${mult!==1?`\n(× ${mult.toFixed(2)} pos-budget correction)`:''}`,
@@ -4051,7 +4060,7 @@ function _scoreCols2526(p){
       prod: b.tPPTS*mult, prospect: (b.tProspect*pw+b.tFanBias)*mult,
       conPpm: b.tPPTSM*mult, conTrj: b.tYouth*mult, conCrv: b.tDelta*mult, conTerm: conTermDisplay, termActive: termIsActive,
       total: draftSubMode2526==='bestAvail' ? p._ds2526Normal : p._ds2526,
-      prodTip: `PPTS × coverage × pressure\n${b.pp} × ${b.coverageMult.toFixed(2)} × ${b.pressMult.toFixed(2)} = ${b.tPPTSBase.toFixed(1)}\ncoverage @ ${b.srcN} src = ${b.coverageMult.toFixed(2)}\npressure @ ${posGroup(p.pos)} = ${b.pressMult.toFixed(2)}${b.tCapUse>0?`\n(cap-use +${b.tCapUse.toFixed(1)})`:''}${mult!==1?`\n(× ${mult.toFixed(2)} pos-budget correction)`:''}`,
+      prodTip: `PPTS × coverage\n${b.pp} × ${b.coverageMult.toFixed(2)} = ${b.tPPTSBase.toFixed(1)}\ncoverage @ ${b.srcN} src = ${b.coverageMult.toFixed(2)}${b.tCapUse>0?`\n(cap-use +${b.tCapUse.toFixed(1)})`:''}${mult!==1?`\n(× ${mult.toFixed(2)} pos-budget correction)`:''}`,
       conPpmTip: `PPTS/$M × coverage × wtPPTSM\n${(getCap2526(p)>0?b.pp/getCap2526(p):0).toFixed(1)} × ${b.coverageMult.toFixed(2)} × ${draftWeights.wtPPTSM} = ${(b.tPPTSM*mult).toFixed(1)}\ncoverage @ ${b.srcN} src = ${b.coverageMult.toFixed(2)}${mult!==1?`\n(× ${mult.toFixed(2)} pos-budget correction)`:''}`,
       conTrjTip: `Peak Trajectory × wtAge × coverage\n${b.youthRaw.toFixed(1)} × ${draftWeights.wtAge} × ${b.coverageMult.toFixed(2)} = ${(b.tYouth*mult).toFixed(1)}\nPeak Trajectory @ age ${b.ageRaw} = ${b.youthRaw.toFixed(1)}\ncoverage @ ${b.srcN} src = ${b.coverageMult.toFixed(2)}${mult!==1?`\n(× ${mult.toFixed(2)} pos-budget correction)`:''}`,
       conCrvTip: `((PPTS × coverage) − curve baseline) × wtDeltaCurve\n((${b.pp} × ${b.coverageMult.toFixed(2)}) − ${(b.curveBase!=null?b.pp*(Math.round(b.coverageMult*100)/100)-b.deltaRaw:0).toFixed(1)}) × ${draftWeights.wtDeltaCurve} = ${(b.tDelta*mult).toFixed(1)}\ncoverage @ ${b.srcN} src = ${b.coverageMult.toFixed(2)}${mult!==1?`\n(× ${mult.toFixed(2)} pos-budget correction)`:''}`,
@@ -4116,7 +4125,7 @@ function _scoreCols2425(p){
       prod: b.tPPTS*mult, prospect: (b.tProspect*pw+b.tFanBias)*mult,
       conPpm: b.tPPTSM*mult, conTrj: b.tYouth*mult, conCrv: b.tDelta*mult, conTerm: conTermDisplay, termActive: termIsActive,
       total: draftSubMode2425==='bestAvail' ? p._ds2425Normal : p._ds2425,
-      prodTip: `PPTS × coverage × pressure\n${b.pp} × ${b.coverageMult.toFixed(2)} × ${b.pressMult.toFixed(2)} = ${b.tPPTSBase.toFixed(1)}\ncoverage @ ${b.srcN} src = ${b.coverageMult.toFixed(2)}\npressure @ ${posGroup(p.pos)} = ${b.pressMult.toFixed(2)}${b.tCapUse>0?`\n(cap-use +${b.tCapUse.toFixed(1)})`:''}${mult!==1?`\n(× ${mult.toFixed(2)} pos-budget correction)`:''}`,
+      prodTip: `PPTS × coverage\n${b.pp} × ${b.coverageMult.toFixed(2)} = ${b.tPPTSBase.toFixed(1)}\ncoverage @ ${b.srcN} src = ${b.coverageMult.toFixed(2)}${b.tCapUse>0?`\n(cap-use +${b.tCapUse.toFixed(1)})`:''}${mult!==1?`\n(× ${mult.toFixed(2)} pos-budget correction)`:''}`,
       conPpmTip: `PPTS/$M × coverage × wtPPTSM\n${(getCap2425(p)>0?b.pp/getCap2425(p):0).toFixed(1)} × ${b.coverageMult.toFixed(2)} × ${draftWeights.wtPPTSM} = ${(b.tPPTSM*mult).toFixed(1)}\ncoverage @ ${b.srcN} src = ${b.coverageMult.toFixed(2)}${mult!==1?`\n(× ${mult.toFixed(2)} pos-budget correction)`:''}`,
       conTrjTip: `Peak Trajectory × wtAge × coverage\n${b.youthRaw.toFixed(1)} × ${draftWeights.wtAge} × ${b.coverageMult.toFixed(2)} = ${(b.tYouth*mult).toFixed(1)}\nPeak Trajectory @ age ${b.ageRaw} = ${b.youthRaw.toFixed(1)}\ncoverage @ ${b.srcN} src = ${b.coverageMult.toFixed(2)}${mult!==1?`\n(× ${mult.toFixed(2)} pos-budget correction)`:''}`,
       conCrvTip: `((PPTS × coverage) − curve baseline) × wtDeltaCurve\n((${b.pp} × ${b.coverageMult.toFixed(2)}) − ${(b.curveBase!=null?b.pp*(Math.round(b.coverageMult*100)/100)-b.deltaRaw:0).toFixed(1)}) × ${draftWeights.wtDeltaCurve} = ${(b.tDelta*mult).toFixed(1)}\ncoverage @ ${b.srcN} src = ${b.coverageMult.toFixed(2)}${mult!==1?`\n(× ${mult.toFixed(2)} pos-budget correction)`:''}`,
@@ -4181,7 +4190,7 @@ function _scoreCols2324(p){
       prod: b.tPPTS*mult, prospect: (b.tProspect*pw+b.tFanBias)*mult,
       conPpm: b.tPPTSM*mult, conTrj: b.tYouth*mult, conCrv: b.tDelta*mult, conTerm: conTermDisplay, termActive: termIsActive,
       total: draftSubMode2324==='bestAvail' ? p._ds2324Normal : p._ds2324,
-      prodTip: `PPTS × coverage × pressure\n${b.pp} × ${b.coverageMult.toFixed(2)} × ${b.pressMult.toFixed(2)} = ${b.tPPTSBase.toFixed(1)}\ncoverage @ ${b.srcN} src = ${b.coverageMult.toFixed(2)}\npressure @ ${posGroup(p.pos)} = ${b.pressMult.toFixed(2)}${b.tCapUse>0?`\n(cap-use +${b.tCapUse.toFixed(1)})`:''}${mult!==1?`\n(× ${mult.toFixed(2)} pos-budget correction)`:''}`,
+      prodTip: `PPTS × coverage\n${b.pp} × ${b.coverageMult.toFixed(2)} = ${b.tPPTSBase.toFixed(1)}\ncoverage @ ${b.srcN} src = ${b.coverageMult.toFixed(2)}${b.tCapUse>0?`\n(cap-use +${b.tCapUse.toFixed(1)})`:''}${mult!==1?`\n(× ${mult.toFixed(2)} pos-budget correction)`:''}`,
       conPpmTip: `PPTS/$M × coverage × wtPPTSM\n${(getCap2324(p)>0?b.pp/getCap2324(p):0).toFixed(1)} × ${b.coverageMult.toFixed(2)} × ${draftWeights.wtPPTSM} = ${(b.tPPTSM*mult).toFixed(1)}\ncoverage @ ${b.srcN} src = ${b.coverageMult.toFixed(2)}${mult!==1?`\n(× ${mult.toFixed(2)} pos-budget correction)`:''}`,
       conTrjTip: `Peak Trajectory × wtAge × coverage\n${b.youthRaw.toFixed(1)} × ${draftWeights.wtAge} × ${b.coverageMult.toFixed(2)} = ${(b.tYouth*mult).toFixed(1)}\nPeak Trajectory @ age ${b.ageRaw} = ${b.youthRaw.toFixed(1)}\ncoverage @ ${b.srcN} src = ${b.coverageMult.toFixed(2)}${mult!==1?`\n(× ${mult.toFixed(2)} pos-budget correction)`:''}`,
       conCrvTip: `((PPTS × coverage) − curve baseline) × wtDeltaCurve\n((${b.pp} × ${b.coverageMult.toFixed(2)}) − ${(b.curveBase!=null?b.pp*(Math.round(b.coverageMult*100)/100)-b.deltaRaw:0).toFixed(1)}) × ${draftWeights.wtDeltaCurve} = ${(b.tDelta*mult).toFixed(1)}\ncoverage @ ${b.srcN} src = ${b.coverageMult.toFixed(2)}${mult!==1?`\n(× ${mult.toFixed(2)} pos-budget correction)`:''}`,
@@ -4389,7 +4398,7 @@ function render(){
         // tCapUse/posAllocMult are mode-specific (both always no-op in prospect mode, only ever
         // real in bestAvail) - so the tooltip needs BOTH breakdowns and picks whichever matches
         // draftSubMode, not just the prospect one every time.
-        const toParts = (x) => ({tPPTS:x.tPPTS,tPPTSM:x.tPPTSM,yrsRaw:x.yrsRaw,youthRaw:x.youthRaw,tYouth:x.tYouth,ageRaw:x.ageRaw,tProspect:x.tProspect,round:focusRound2627,srcN:x.srcN,coverageMult:x.coverageMult,tDelta:x.tDelta,tFanBias:x.tFanBias,pressRaw:x.pressRaw,pressMult:x.pressMult,posAllocMult:x.posAllocMult,tCapUse:x.tCapUse,tTermValue:x.tTermValue,termGain:x.termGain,termYears:x.termYears,declineDampen:x.declineDampen,pp:x.pp,tPPTSBase:x.tPPTSBase,ppPerM:x.ppPerM,deltaRaw:x.deltaRaw,curveBase:x.curveBase,prospectAgeScore:x.prospectAgeScore,prospectNormPts:x.prospectNormPts,team:viewTeam});
+        const toParts = (x) => ({tPPTS:x.tPPTS,tPPTSM:x.tPPTSM,yrsRaw:x.yrsRaw,youthRaw:x.youthRaw,tYouth:x.tYouth,ageRaw:x.ageRaw,tProspect:x.tProspect,round:focusRound2627,srcN:x.srcN,coverageMult:x.coverageMult,tDelta:x.tDelta,tFanBias:x.tFanBias,posAllocMult:x.posAllocMult,tCapUse:x.tCapUse,tTermValue:x.tTermValue,termGain:x.termGain,termYears:x.termYears,declineDampen:x.declineDampen,pp:x.pp,tPPTSBase:x.tPPTSBase,ppPerM:x.ppPerM,deltaRaw:x.deltaRaw,curveBase:x.curveBase,prospectAgeScore:x.prospectAgeScore,prospectNormPts:x.prospectNormPts,team:viewTeam});
         return Object.assign({},p,{_ds,_dsNormal,_dsParts:toParts(b),_dsPartsNormal:toParts(bNormal)});
       });
     const dsField = sortCol==='prod'?'prod':sortCol==='con_ppm'?'conPpm':sortCol==='con_trj'?'conTrj':sortCol==='con_crv'?'conCrv':sortCol==='con_term'?'conTerm':sortCol==='prospect'?'prospect':sortCol==='score'?'total':null;
@@ -5418,7 +5427,8 @@ function syncSettings(){
   set('s-elcExpF', W.elcExpF); set('s-elcExpD', W.elcExpD); set('s-elcExpG', W.elcExpG);
   set('s-wtCoverageDiscount', W.wtCoverageDiscount);
   set('s-minSrcCoverage', W.minSrcCoverage??0.33);
-  set('s-wtPressure', W.wtPressure);
+  set('s-wtPressure', W.wtPressure??0.6);
+  set('s-pressureQualityThreshold', W.pressureQualityThreshold??95);
   set('s-wtDeltaCurve', W.wtDeltaCurve);
   set('s-wtTermValue', W.wtTermValue??2);
   set('s-wtPosAlloc', W.wtPosAlloc??1.0);
@@ -5442,7 +5452,8 @@ function updateDraftWeight(key, val){
   if(draftWeights.wtProspect === undefined) draftWeights.wtProspect = 12;
   if(draftWeights.wtCoverageDiscount === undefined) draftWeights.wtCoverageDiscount = 0.25;
   if(draftWeights.minSrcCoverage === undefined) draftWeights.minSrcCoverage = 0.33;
-  if(draftWeights.wtPressure === undefined) draftWeights.wtPressure = 0.3;
+  if(draftWeights.wtPressure === undefined) draftWeights.wtPressure = 0.6;
+  if(draftWeights.pressureQualityThreshold === undefined) draftWeights.pressureQualityThreshold = 95;
   if(draftWeights.wtDeltaCurve === undefined) draftWeights.wtDeltaCurve = 8;
   if(draftWeights.wtTermValue === undefined) draftWeights.wtTermValue = 2;
   if(draftWeights.elcExpF === undefined) draftWeights.elcExpF = 35;
@@ -7222,7 +7233,7 @@ function render2425(){
       const _ds2425=prospectScore.score, _ds2425Normal=normalScore.score;
       // Same field names as 26-27's toParts (not suffixed) so _scoreCols2425 can share its
       // draft-mode branch structure with _scoreCols2627 - see the matching 25-26 fix comment.
-      const toParts2425 = (b) => ({tPPTS:b.tPPTS,tPPTSM:b.tPPTSM,yrsRaw:b.yrsRaw,youthRaw:b.youthRaw,tYouth:b.tYouth,ageRaw:b.ageRaw,tProspect:b.tProspect,round:genericRound,srcN:b.srcN,coverageMult:b.coverageMult,tDelta:b.tDelta,tFanBias:b.tFanBias,pressRaw:b.pressRaw,pressMult:b.pressMult,posAllocMult:b.posAllocMult,tCapUse:b.tCapUse,tTermValue:b.tTermValue,termGain:b.termGain,termYears:b.termYears,declineDampen:b.declineDampen,pp:b.pp,tPPTSBase:b.tPPTSBase,ppPerM:b.ppPerM,deltaRaw:b.deltaRaw,curveBase:b.curveBase,prospectAgeScore:b.prospectAgeScore,prospectNormPts:b.prospectNormPts,team:viewTeam2425});
+      const toParts2425 = (b) => ({tPPTS:b.tPPTS,tPPTSM:b.tPPTSM,yrsRaw:b.yrsRaw,youthRaw:b.youthRaw,tYouth:b.tYouth,ageRaw:b.ageRaw,tProspect:b.tProspect,round:genericRound,srcN:b.srcN,coverageMult:b.coverageMult,tDelta:b.tDelta,tFanBias:b.tFanBias,posAllocMult:b.posAllocMult,tCapUse:b.tCapUse,tTermValue:b.tTermValue,termGain:b.termGain,termYears:b.termYears,declineDampen:b.declineDampen,pp:b.pp,tPPTSBase:b.tPPTSBase,ppPerM:b.ppPerM,deltaRaw:b.deltaRaw,curveBase:b.curveBase,prospectAgeScore:b.prospectAgeScore,prospectNormPts:b.prospectNormPts,team:viewTeam2425});
       return Object.assign({},p,{_ds2425,_ds2425Normal,_dsParts2425:toParts2425(prospectScore),_dsPartsNormal2425:toParts2425(normalScore)});
     });
     rows = lastAllScored2425.filter(p=>{
@@ -7709,7 +7720,7 @@ function render2324(){
       const _ds2324=prospectScore.score, _ds2324Normal=normalScore.score;
       // Same field names as 26-27's toParts (not suffixed) so _scoreCols2324 can share its
       // draft-mode branch structure with _scoreCols2627 - see the matching 25-26 fix comment.
-      const toParts2324 = (b) => ({tPPTS:b.tPPTS,tPPTSM:b.tPPTSM,yrsRaw:b.yrsRaw,youthRaw:b.youthRaw,tYouth:b.tYouth,ageRaw:b.ageRaw,tProspect:b.tProspect,round:genericRound2324,srcN:b.srcN,coverageMult:b.coverageMult,tDelta:b.tDelta,tFanBias:b.tFanBias,pressRaw:b.pressRaw,pressMult:b.pressMult,posAllocMult:b.posAllocMult,tCapUse:b.tCapUse,tTermValue:b.tTermValue,termGain:b.termGain,termYears:b.termYears,declineDampen:b.declineDampen,pp:b.pp,tPPTSBase:b.tPPTSBase,ppPerM:b.ppPerM,deltaRaw:b.deltaRaw,curveBase:b.curveBase,prospectAgeScore:b.prospectAgeScore,prospectNormPts:b.prospectNormPts,team:viewTeam2324});
+      const toParts2324 = (b) => ({tPPTS:b.tPPTS,tPPTSM:b.tPPTSM,yrsRaw:b.yrsRaw,youthRaw:b.youthRaw,tYouth:b.tYouth,ageRaw:b.ageRaw,tProspect:b.tProspect,round:genericRound2324,srcN:b.srcN,coverageMult:b.coverageMult,tDelta:b.tDelta,tFanBias:b.tFanBias,posAllocMult:b.posAllocMult,tCapUse:b.tCapUse,tTermValue:b.tTermValue,termGain:b.termGain,termYears:b.termYears,declineDampen:b.declineDampen,pp:b.pp,tPPTSBase:b.tPPTSBase,ppPerM:b.ppPerM,deltaRaw:b.deltaRaw,curveBase:b.curveBase,prospectAgeScore:b.prospectAgeScore,prospectNormPts:b.prospectNormPts,team:viewTeam2324});
       return Object.assign({},p,{_ds2324,_ds2324Normal,_dsParts2324:toParts2324(prospectScore),_dsPartsNormal2324:toParts2324(normalScore)});
     });
     rows = lastAllScored2324.filter(p=>{
@@ -8509,6 +8520,70 @@ function _draftPressureState(players, allTeams, isAssignedFn, ppts, getCap){
   return {need, leagueNeed, avail, pressure};
 }
 
+// ── Position pressure (wtPressure) v2 — replaces the removed 2026-09-16 mechanism, which
+// boosted/penalized a position relative to whichever of F/D/G currently looked scarcest,
+// even when every position still had plenty of supply. A controlled live experiment (one team
+// at a time scored with pressure on, holding every other team at pressure=0, comparing each
+// team's own REAL points against a no-pressure control across all 3 completed seasons — see
+// project_wtpressure_redesign memory) showed that version made teams draft WORSE on average
+// (-10.4 pts/team). This redesign, validated the same way, is genuinely positive across every
+// threshold (60-160) and magnitude (0.1-1.0) tested, peaking at threshold=95/wtPressure=0.6
+// (+10.6 pts/team, 16W-8L-3T of 27 team-seasons).
+//
+// Two real, causal signals instead of a relative ratio:
+// 1. qualityAvail[pg] — league-wide count of UNDRAFTED players at that position scoring above
+//    draftWeights.pressureQualityThreshold in bestAvail mode (team-agnostic). Answers "how many
+//    genuinely good options are left", not "how many warm bodies are left" (the old denominator
+//    counted ANY player with positive points, which never meaningfully distinguishes real scarcity from
+//    a position just having a smaller eligible population, e.g. G vs F).
+// 2. Picks at this position before my own next turn — this app's draft order is a fixed-order
+//    round-robin every round (see _buildSeq: same `for(const t of teams)` order each pass, no
+//    snake reversal), so "how many OTHER teams pick before I'm back" is EXACTLY "how many other
+//    currently-active teams there are" — every active team picks once per lap. Scoping that to
+//    teams with real remaining need at THIS position (not just any pick by anyone) is the fix
+//    the user specifically asked for: "if only 3 teams still need D, picksUntilMyNextTurn at D
+//    is 3" — a direct count, not a probability-weighted estimate.
+// risk = (those intervening at-position picks) / (quality options left) — high when a lot of
+// competing demand is about to hit a thin remaining pool. Never penalizes (multiplier floors at
+// 1), unlike the old symmetric ±1 ratio, since there's no principled "this position is too safe,
+// penalize it" signal here — only "this position is at real risk, protect it."
+let _qualityAvailCache = {count:-1, startField:null, threshold:null, val:null};
+// Scores every real (undrafted, positive pts+cap) free agent team-agnostically in bestAvail
+// mode and counts how many clear draftWeights.pressureQualityThreshold per position. Cached per
+// real pick (keyed on total assigned-player count + threshold) since _rankFACandidates can be
+// called several times for the SAME pick (position-locked previews, splash-target checks)
+// before a pick is finalized.
+function _cachedQualityAvail(startField, ppts, getCap, calcAgeForSim, contractYearAnchor, nextContractField, curveFns, elcMax, srcNFn, maxSrc, capLimit){
+  const threshold = draftWeights.pressureQualityThreshold ?? 95;
+  const count = players.filter(p=>p[startField]).length;
+  if(_qualityAvailCache.count===count && _qualityAvailCache.startField===startField && _qualityAvailCache.threshold===threshold) return _qualityAvailCache.val;
+  const avail = {F:0,D:0,G:0};
+  for(const p of players){
+    if(p[startField]) continue;
+    const pp = ppts(p), cap0 = getCap(p)||0;
+    if(!(pp>0) || !(cap0>0)) continue;
+    const pg = posGroup(p.pos);
+    const { score } = _scoreDraftCandidate(p, {
+      pg, pp, cap0, mode:'bestAvail', round: 99, draftWeights,
+      calcAgeForSim, contractYearAnchor, nextContractField, curveFns, elcMax, srcNFn, maxSrc, capLimit0: capLimit,
+    });
+    if(score > threshold) avail[pg]++;
+  }
+  _qualityAvailCache = {count, startField, threshold, val: avail};
+  return avail;
+}
+
+// pressMult for _scoreDraftCandidate — 1 (no-op) unless a real team + league need map +
+// quality-count reading are all supplied, matching how posAlloc/wtCapUse/wtFanBias already
+// no-op for team-agnostic scoring calls (free-agent display lists, redraft-risk checks).
+function _positionPressureMult(wtPressure, allTeams, need, qualityAvail, team, pg){
+  if(!(wtPressure > 0) || !team || !allTeams || !need || !qualityAvail) return 1;
+  let picksAtPos = 0;
+  for(const t of allTeams){ if(t !== team && (need[t]?.[pg]||0) > 0) picksAtPos++; }
+  const risk = picksAtPos / Math.max(1, qualityAvail[pg]||0);
+  return Math.max(0.1, 1 + wtPressure * Math.min(5, risk));
+}
+
 // Shared per-candidate Rank Score (non-Draft-Mode "★ Rank Players") — the Draft Score sibling of
 // _scoreDraftCandidate below, parameterized the same way (season-specific pp/cap/curveFns/elcMax/
 // srcNFn all supplied by the caller) so the Prod/PpM/Trj/Crv/Prospect formula only exists once
@@ -8603,8 +8678,7 @@ function _computeRankScore(p, { pg, pp, cap, calcAgeForSim, contractYearAnchor, 
 // best-available scoring; posAlloc (D-cap-share correction) only applies in bestAvail mode and
 // only when a specific team's cap context is supplied — a generic "score every free agent" call
 // (no team) skips it, matching this formula's pre-existing, intentional team-agnostic display use.
-function _scoreDraftCandidate(p, { pg, pp, cap0, pressure, mode, round, draftWeights, calcAgeForSim, contractYearAnchor, nextContractField = 'nextTerm2627', curveFns, elcMax, srcNFn, maxSrc, team, teamCap, teamCapByPos, teamField = 'team2627', capLimit0 = CAP_LIMIT }){
-  const pressMult = Math.max(0.1, 1 + draftWeights.wtPressure * (2*(pressure[pg]||0) - 1));
+function _scoreDraftCandidate(p, { pg, pp, cap0, mode, round, draftWeights, calcAgeForSim, contractYearAnchor, nextContractField = 'nextTerm2627', curveFns, elcMax, srcNFn, maxSrc, team, teamCap, teamCapByPos, teamField = 'team2627', capLimit0 = CAP_LIMIT, allTeams, need, qualityAvail }){
   const srcN = srcNFn(p);
   // Coverage discount: shrinks the points used for SCORING (every term below), not the
   // displayed PPTS, when a player is projected by few sources. Replaces an additive "more
@@ -8684,6 +8758,7 @@ function _scoreDraftCandidate(p, { pg, pp, cap0, pressure, mode, round, draftWei
   const prospectMaxAge = PROSPECT_MAX_AGE[pg] ?? 22;
   const prospectAgeScore = (age < 99 && age <= prospectMaxAge) ? prospectMaxAge + 1 - age : 0;
   const prospectNormPts = _curveBaseline(pg, cap0, elcMax, curveFns[pg], draftWeights) ?? _elcExp(pg, draftWeights);
+  const pressMult = _positionPressureMult(draftWeights.wtPressure||0, allTeams, need, qualityAvail, team, pg);
   const tPPTSBase = ppEff * pressMult;
   // Cap-use bonus: Optimize-mode-only (see draftModeByTeam/_runAlgoDraft), 0 everywhere else.
   // tPPTSM already rewards points-per-dollar EFFICIENCY, which structurally favors cheap
@@ -8735,7 +8810,7 @@ function _scoreDraftCandidate(p, { pg, pp, cap0, pressure, mode, round, draftWei
       }
     }
   }
-  return { score, tPPTS, tPPTSM, yrsRaw, youthRaw, tYouth, ageRaw: age, tProspect: prospect, srcN, coverageMult, tDelta, tCapUse, tFanBias, tTermValue, termGain, termYears, declineDampen, pressRaw: pressure[pg], pressMult, posAllocMult, pp, tPPTSBase, ppPerM, deltaRaw, curveBase: deltaCurveBase, prospectAgeScore, prospectNormPts };
+  return { score, tPPTS, tPPTSM, yrsRaw, youthRaw, tYouth, ageRaw: age, tProspect: prospect, srcN, coverageMult, tDelta, tCapUse, tFanBias, tTermValue, termGain, termYears, declineDampen, posAllocMult, pressMult, pp, tPPTSBase, ppPerM, deltaRaw, curveBase: deltaCurveBase, prospectAgeScore, prospectNormPts };
 }
 
 // ── Fully-uncontested batch drafting ─────────────────────────────────────────
@@ -8923,13 +8998,13 @@ function _rankFACandidates(team, round, mode, ctx){
   });
   if(!fas.length) return null;
 
-  const { pressure } = _draftPressureState(players, allTeams, getAssignedTeam, ppts, getCap);
   const rosteredNow = players.filter(p => p[startField] && getCap(p) > 0);
   const curveFnsRich = {
     F: fitQuadratic(rosteredNow.filter(p => posGroup(p.pos)==='F').map(p => ({x: getCap(p), y: ppts(p)}))),
     D: fitQuadratic(rosteredNow.filter(p => posGroup(p.pos)==='D').map(p => ({x: getCap(p), y: ppts(p)}))),
     G: fitQuadratic(rosteredNow.filter(p => posGroup(p.pos)==='G').map(p => ({x: getCap(p), y: ppts(p)}))),
   };
+  const qualityAvail = _cachedQualityAvail(startField, ppts, getCap, calcAgeForSim, contractYearAnchor, nextContractFld, curveFnsRich, elcMax, srcNFn, maxSrc, capLimit);
 
   // Suppress wtCapUse's cap-spending bonus for any candidate strictly dominated by a same-
   // position alternative already in this pool (equal-or-better PPTS at strictly lower cap) —
@@ -8963,9 +9038,9 @@ function _rankFACandidates(team, round, mode, ctx){
     const cap0 = getCap(p) || 0;
     const dwForThis = dominatedIds.has(p.id) ? {...draftWeights, wtCapUse: 0} : draftWeights;
     const { score } = _scoreDraftCandidate(p, {
-      pg, pp, cap0, pressure, mode, round, draftWeights: dwForThis,
+      pg, pp, cap0, mode, round, draftWeights: dwForThis,
       calcAgeForSim, contractYearAnchor, nextContractField: nextContractFld, curveFns: curveFnsRich, elcMax, srcNFn, maxSrc,
-      team, teamCap, teamCapByPos, teamField, capLimit0: capLimit,
+      team, teamCap, teamCapByPos, teamField, capLimit0: capLimit, allTeams, need, qualityAvail,
     });
     return {p, score, pp};
   }).sort((a,b) => b.score - a.score);
@@ -9209,13 +9284,14 @@ function _runAlgoDraft({ season, actualDraft, allTeams, buildSeq, startField, pp
       const fullyUncontested = neededPgs.every(pg => (need[team][pg]||0) === leagueNeedForFull[pg]);
       if(fullyUncontested){
         const budget = capLimit - (teamCap[team]||0);
-        const { pressure } = _draftPressureState(players, allTeams, getAssignedTeam, ppts, getCap);
         const rosteredNow = players.filter(p => p[startField] && getCap(p) > 0);
         const curveFnsRich = {
           F: fitQuadratic(rosteredNow.filter(p=>posGroup(p.pos)==='F').map(p=>({x:getCap(p),y:ppts(p)}))),
           D: fitQuadratic(rosteredNow.filter(p=>posGroup(p.pos)==='D').map(p=>({x:getCap(p),y:ppts(p)}))),
           G: fitQuadratic(rosteredNow.filter(p=>posGroup(p.pos)==='G').map(p=>({x:getCap(p),y:ppts(p)}))),
         };
+        const nextContractFldBatch = nextContractField||'nextTerm2627';
+        const qualityAvail = _cachedQualityAvail(startField, ppts, getCap, calcAgeForSim, contractYearAnchor, nextContractFldBatch, curveFnsRich, elcMax, srcNFn, maxSrc, capLimit);
         const minCov = draftWeights.minSrcCoverage||0;
         const candidatesByPos = {};
         for(const pg of neededPgs){
@@ -9229,9 +9305,9 @@ function _runAlgoDraft({ season, actualDraft, allTeams, buildSeq, startField, pp
           }).map(p => {
             const cap0 = getCap(p)||0;
             const { score } = _scoreDraftCandidate(p, {
-              pg, pp: ppts(p), cap0, pressure, mode, round, draftWeights, calcAgeForSim, contractYearAnchor,
-              nextContractField: nextContractField||'nextTerm2627', curveFns: curveFnsRich,
-              elcMax, srcNFn, maxSrc, team, teamCap, teamCapByPos, teamField, capLimit0: capLimit,
+              pg, pp: ppts(p), cap0, mode, round, draftWeights, calcAgeForSim, contractYearAnchor,
+              nextContractField: nextContractFldBatch, curveFns: curveFnsRich,
+              elcMax, srcNFn, maxSrc, team, teamCap, teamCapByPos, teamField, capLimit0: capLimit, allTeams, need, qualityAvail,
             });
             return { p, cap: cap0, score };
           });
@@ -10146,7 +10222,7 @@ function render2526(){
         // tPPTSBase/ppPerM/deltaRaw/prospectAgeScore/prospectNormPts entirely and used
         // inconsistent per-field suffixes (ageRaw2526/tProspect2526/srcN2526d/coverageMult2526/
         // pressMult2526/pressRaw2526) that nothing else in the codebase matched.
-        const toParts2526 = (x) => ({tPPTS:x.tPPTS,tPPTSM:x.tPPTSM,yrsRaw:x.yrsRaw,youthRaw:x.youthRaw,tYouth:x.tYouth,ageRaw:x.ageRaw,tProspect:x.tProspect,round:focusRound2526,srcN:x.srcN,coverageMult:x.coverageMult,tDelta:x.tDelta,tFanBias:x.tFanBias,pressRaw:x.pressRaw,pressMult:x.pressMult,posAllocMult:x.posAllocMult,tCapUse:x.tCapUse,tTermValue:x.tTermValue,termGain:x.termGain,termYears:x.termYears,declineDampen:x.declineDampen,pp:x.pp,tPPTSBase:x.tPPTSBase,ppPerM:x.ppPerM,deltaRaw:x.deltaRaw,curveBase:x.curveBase,prospectAgeScore:x.prospectAgeScore,prospectNormPts:x.prospectNormPts,team:viewTeam2526});
+        const toParts2526 = (x) => ({tPPTS:x.tPPTS,tPPTSM:x.tPPTSM,yrsRaw:x.yrsRaw,youthRaw:x.youthRaw,tYouth:x.tYouth,ageRaw:x.ageRaw,tProspect:x.tProspect,round:focusRound2526,srcN:x.srcN,coverageMult:x.coverageMult,tDelta:x.tDelta,tFanBias:x.tFanBias,posAllocMult:x.posAllocMult,tCapUse:x.tCapUse,tTermValue:x.tTermValue,termGain:x.termGain,termYears:x.termYears,declineDampen:x.declineDampen,pp:x.pp,tPPTSBase:x.tPPTSBase,ppPerM:x.ppPerM,deltaRaw:x.deltaRaw,curveBase:x.curveBase,prospectAgeScore:x.prospectAgeScore,prospectNormPts:x.prospectNormPts,team:viewTeam2526});
         return Object.assign({},p,{_ds2526,_ds2526Normal,_dsParts2526:toParts2526(b),_dsPartsNormal2526:toParts2526(bNormal)});
       });
     const dsField2526 = sortCol2526==='prod2526'?'prod':sortCol2526==='con_ppm2526'?'conPpm':sortCol2526==='con_trj2526'?'conTrj':sortCol2526==='con_crv2526'?'conCrv':sortCol2526==='con_term2526'?'conTerm':sortCol2526==='prospect2526'?'prospect':sortCol2526==='score2526'?'total':null;
