@@ -22,7 +22,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#1
 .view-tab{padding:.5rem .9rem;font-size:13px;font-weight:500;color:#888;cursor:pointer;border:none;background:none;border-bottom:3px solid transparent;margin-bottom:-2px;transition:color .15s;white-space:nowrap;flex-shrink:0}
 .view-tab:hover{color:#1a1a18}
 .view-tab.active{color:#1a1a18;border-bottom-color:#185FA5;font-weight:700;font-size:14px}
-.draft-col{display:flex;flex-direction:column;gap:3px;max-width:1100px;max-height:70vh;overflow-y:auto}
+.draft-col{display:flex;flex-direction:column;gap:3px;max-width:1100px;max-height:58vh;overflow-y:auto}
 .draft-round-hdr{font-size:16px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#9ca3af;padding:.1rem 0 .1rem .875rem;margin-top:.1rem;position:sticky;top:0;background:#fff;z-index:1}
 .draft-row{display:grid;grid-template-columns:28px 1fr 215px 118px 2fr;align-items:center;gap:12px;padding:.2rem .875rem;border-radius:6px;background:#f7f7f5;border:2px solid transparent;transition:border-color .15s}
 .draft-row-pos{display:flex;gap:4px;font-size:16px;font-weight:500;white-space:nowrap}
@@ -5070,14 +5070,17 @@ function makeDraftPick(player, pos, nhlTeam, cap, projPts){
   document.getElementById('draftSearch').value = '';
   document.getElementById('draftResults').style.display = 'none';
   resetDraftTimer();
-  renderDraftView();
-  // Direct call, not a side effect of render() — render() now early-returns whenever the
-  // Players tab isn't the active view (see its 2026-09-16 perf guard), which used to run
-  // updateStats() unconditionally as a side effect and silently stopped refreshing the Big
-  // Board's own team-card bubbles (cap left/$ per pick/F-D-G remaining) on every real pick.
-  // Found live 2026-09-20: bubbles showed stale F/D/G counts that didn't match what the pick
-  // rows below them displayed for the same team.
-  updateStats();
+  // renderBigBoard (not a bare renderDraftView/updateStats) — the VISIBLE bubble row is
+  // #bbTeamCards, which only gets refreshed by copying #statCards' freshly-rebuilt HTML into
+  // it, and that copy step lives inside renderBigBoard(), not updateStats() itself. An earlier
+  // fix (2026-09-20) called updateStats() directly here, which rebuilt the invisible #statCards
+  // element but never copied it into #bbTeamCards — bubbles still looked stale despite the fix.
+  // Also: render()'s 2026-09-16 perf guard early-returns off the Players tab, which used to run
+  // updateStats() as a side effect and silently broke this whole chain in the first place.
+  // Guarded by currentView (matching algoDraft2627/undoLastPick2526's own pattern) since
+  // renderBigBoard's own 26-27 branch already calls renderDraftView() — calling both
+  // unconditionally would render the (often off-screen) draft column twice per pick.
+  if(currentView==='draft') renderBigBoard(); else renderDraftView();
   updateDraftTab();
 }
 
@@ -5117,8 +5120,7 @@ function undoLastPick(){
   }
   saveDraft();
   resetDraftTimer();
-  renderDraftView();
-  updateStats(); // see makeDraftPick's comment — same bubble-staleness gap, same fix.
+  if(currentView==='draft') renderBigBoard(); else renderDraftView(); // see makeDraftPick's comment
   updateDraftTab();
 }
 function undoLastPick2526(){
@@ -6158,8 +6160,7 @@ function passCurrentPick(){
   if(!onClock) return;
   draftState2627.picks.push({team:onClock, player:null, pos:null, nhlTeam:'', cap:0, projPts:0});
   saveDraft();
-  renderDraftView();
-  updateStats(); // moves the bubble row's "On Clock" badge to the next team — see makeDraftPick's comment.
+  if(currentView==='draft') renderBigBoard(); else renderDraftView(); // see makeDraftPick's comment
 }
 
 function passCurrentPick2425(){
