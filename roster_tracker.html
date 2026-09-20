@@ -283,6 +283,10 @@ tr:hover td{background:#fafaf8}
     <option value="hide">SCORE&gt;0</option>
     <option value="all">All</option>
   </select>
+  <select id="hideLowCov2425" onchange="toggleHideLowCov2425()" title="Hides free agents below minSrcCoverage — the same source-coverage floor the real draft engine already requires to consider a player at all. Never hides a rostered player.">
+    <option value="hide">COV&#10003;</option>
+    <option value="all">All</option>
+  </select>
   <button class="btn" onclick="clearFilters2425()" style="flex-shrink:0;font-size:12px;padding:0 10px;height:32px;color:#9ca3af;border-color:#e5e7eb">✕ Clear filters</button>
 </div>
 
@@ -385,6 +389,10 @@ tr:hover td{background:#fafaf8}
   <select id="filterSim2324" onchange="render2324()"><option value="">All 23-24 Y! teams</option></select>
   <select id="hideIrrelevant2324" onchange="toggleHideIrrelevant2324()" style="margin-left:auto" title="Hides free agents with no positive rank score — the fringe/depth pool nobody's actually looking at. Never hides a rostered player, even a low-scoring one.">
     <option value="hide">SCORE&gt;0</option>
+    <option value="all">All</option>
+  </select>
+  <select id="hideLowCov2324" onchange="toggleHideLowCov2324()" title="Hides free agents below minSrcCoverage — the same source-coverage floor the real draft engine already requires to consider a player at all. Never hides a rostered player.">
+    <option value="hide">COV&#10003;</option>
     <option value="all">All</option>
   </select>
   <button class="btn" onclick="clearFilters2324()" style="flex-shrink:0;font-size:12px;padding:0 10px;height:32px;color:#9ca3af;border-color:#e5e7eb">✕ Clear filters</button>
@@ -497,6 +505,10 @@ tr:hover td{background:#fafaf8}
   <select id="filterFT2526" onchange="render2526()"><option value="">All 25-26 Y! teams</option></select>
   <select id="hideIrrelevant2526" onchange="toggleHideIrrelevant2526()" style="margin-left:auto" title="Hides free agents with no positive rank score — the fringe/depth pool nobody's actually looking at. Never hides a rostered player, even a low-scoring one.">
     <option value="hide">SCORE&gt;0</option>
+    <option value="all">All</option>
+  </select>
+  <select id="hideLowCov2526" onchange="toggleHideLowCov2526()" title="Hides free agents below minSrcCoverage — the same source-coverage floor the real draft engine already requires to consider a player at all. Never hides a rostered player.">
+    <option value="hide">COV&#10003;</option>
     <option value="all">All</option>
   </select>
   <button class="btn" onclick="clearFilters2526()" style="flex-shrink:0;font-size:12px;padding:0 10px;height:32px;color:#9ca3af;border-color:#e5e7eb">✕ Clear filters</button>
@@ -673,6 +685,10 @@ tr:hover td{background:#fafaf8}
   </select>
   <select id="hideIrrelevant" onchange="toggleHideIrrelevant()" style="margin-left:auto" title="Hides free agents with no positive rank score — the fringe/depth pool nobody's actually looking at. Never hides a rostered player, even a low-scoring one.">
     <option value="hide">SCORE&gt;0</option>
+    <option value="all">All</option>
+  </select>
+  <select id="hideLowCov" onchange="toggleHideLowCov()" title="Hides free agents below minSrcCoverage — the same source-coverage floor the real draft engine already requires to consider a player at all (e.g. Charlie Cerrato, Owen Michaels: 1-source flyers the algo would never actually recommend). Never hides a rostered player.">
+    <option value="hide">COV&#10003;</option>
     <option value="all">All</option>
   </select>
   <button class="btn" onclick="clearFilters()" style="flex-shrink:0;font-size:12px;padding:0 10px;height:32px;color:#9ca3af;border-color:#e5e7eb">✕ Clear filters</button>
@@ -1380,6 +1396,22 @@ const LS_HIDE_IRRELEVANT_2324 = 'hghl_hide_irrelevant_2324';
 let hideIrrelevant2526 = true;
 let hideIrrelevant2425 = true;
 let hideIrrelevant2324 = true;
+
+// Coverage filter — hides free agents below minSrcCoverage, the SAME floor the real draft
+// engine already enforces ("a free agent needs coverage from at least this fraction of
+// sources to be draft-eligible AT ALL, not just discounted" — see minSrcCoverage's Settings
+// tooltip). These are players the algo would never actually recommend regardless of their
+// raw score, e.g. a 1-source flyer like Charlie Cerrato or Owen Michaels — added 2026-09-20
+// per user request as a second, independent declutter filter alongside SCORE>0/All. Never
+// hides a rostered player, same rule as hideIrrelevant.
+const LS_HIDE_LOWCOV = 'hghl_hide_lowcov';
+const LS_HIDE_LOWCOV_2526 = 'hghl_hide_lowcov_2526';
+const LS_HIDE_LOWCOV_2425 = 'hghl_hide_lowcov_2425';
+const LS_HIDE_LOWCOV_2324 = 'hghl_hide_lowcov_2324';
+let hideLowCov = true;
+let hideLowCov2526 = true;
+let hideLowCov2425 = true;
+let hideLowCov2324 = true;
 const LS_SIGNINGS_HWM = 'hghl_signings_hwm'; // YYYY-MM-DD high-water mark for incremental signings
 // Per-source YYYY-MM-DD dates of the last time EACH 26-27 projection source was scraped/
 // uploaded — JSON object keyed by source (ath/dfo/dtz/dob/espn/cbs/nhl). Originally a single
@@ -2740,6 +2772,10 @@ function load(){
   hideIrrelevant2526 = lsGet(LS_HIDE_IRRELEVANT_2526) ?? true;
   hideIrrelevant2425 = lsGet(LS_HIDE_IRRELEVANT_2425) ?? true;
   hideIrrelevant2324 = lsGet(LS_HIDE_IRRELEVANT_2324) ?? true;
+  hideLowCov = lsGet(LS_HIDE_LOWCOV) ?? true;
+  hideLowCov2526 = lsGet(LS_HIDE_LOWCOV_2526) ?? true;
+  hideLowCov2425 = lsGet(LS_HIDE_LOWCOV_2425) ?? true;
+  hideLowCov2324 = lsGet(LS_HIDE_LOWCOV_2324) ?? true;
   xactions2425   = lsGet(LS_XACTIONS_2425) || [];
   xactions2526   = lsGet(LS_XACTIONS_2526) || [];
   xactions2627   = lsGet(LS_XACTIONS_2627) || [];
@@ -4262,6 +4298,27 @@ function toggleHideIrrelevant2324(){
   render2324();
 }
 
+function toggleHideLowCov(){
+  hideLowCov = document.getElementById('hideLowCov').value === 'hide';
+  lsSet(LS_HIDE_LOWCOV, hideLowCov);
+  render();
+}
+function toggleHideLowCov2526(){
+  hideLowCov2526 = document.getElementById('hideLowCov2526').value === 'hide';
+  lsSet(LS_HIDE_LOWCOV_2526, hideLowCov2526);
+  render2526();
+}
+function toggleHideLowCov2425(){
+  hideLowCov2425 = document.getElementById('hideLowCov2425').value === 'hide';
+  lsSet(LS_HIDE_LOWCOV_2425, hideLowCov2425);
+  render2425();
+}
+function toggleHideLowCov2324(){
+  hideLowCov2324 = document.getElementById('hideLowCov2324').value === 'hide';
+  lsSet(LS_HIDE_LOWCOV_2324, hideLowCov2324);
+  render2324();
+}
+
 function render(){
   // Skip the ~35,000-node DOM rebuild when this tab isn't even visible — every caller
   // (33 call sites) invoked this unconditionally, so switching tabs never stopped it from
@@ -4291,6 +4348,7 @@ function render(){
     // from a 3-part (no cap/no pts/no score) AND down to just "no positive score" — catches
     // real free agents with SOME cap/pts but a non-positive score too, not just total blanks.
     if(hideIrrelevant && !p.start2627 && !(p.rankScore2627 > 0)) return false;
+    if(hideLowCov && !p.start2627 && (srcNFn2627(p)/MAX_SRC_2627) < (draftWeights.minSrcCoverage??0.33)) return false;
     return true;
   });
 
@@ -5013,6 +5071,13 @@ function makeDraftPick(player, pos, nhlTeam, cap, projPts){
   document.getElementById('draftResults').style.display = 'none';
   resetDraftTimer();
   renderDraftView();
+  // Direct call, not a side effect of render() — render() now early-returns whenever the
+  // Players tab isn't the active view (see its 2026-09-16 perf guard), which used to run
+  // updateStats() unconditionally as a side effect and silently stopped refreshing the Big
+  // Board's own team-card bubbles (cap left/$ per pick/F-D-G remaining) on every real pick.
+  // Found live 2026-09-20: bubbles showed stale F/D/G counts that didn't match what the pick
+  // rows below them displayed for the same team.
+  updateStats();
   updateDraftTab();
 }
 
@@ -5053,6 +5118,7 @@ function undoLastPick(){
   saveDraft();
   resetDraftTimer();
   renderDraftView();
+  updateStats(); // see makeDraftPick's comment — same bubble-staleness gap, same fix.
   updateDraftTab();
 }
 function undoLastPick2526(){
@@ -5269,7 +5335,7 @@ function _renderBBDraftBoard(picks, draftSeq, startField, getCap, capLimit, targ
   const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 150;
   const total = picks.length;
   const startN = 0; // full history from round 1 — container scrolls (see .draft-col)
-  const endN = total + 7; // plus ~1 round preview of upcoming picks
+  const endN = total + 6; // plus ~1 round preview of upcoming picks
   const posColors = {F:'#dbeafe',D:'#dcfce7',G:'#fef3c7'};
   const posText   = {F:'#1e40af',D:'#166534',G:'#92400e'};
   let html = '', lastRound = null;
@@ -6093,6 +6159,7 @@ function passCurrentPick(){
   draftState2627.picks.push({team:onClock, player:null, pos:null, nhlTeam:'', cap:0, projPts:0});
   saveDraft();
   renderDraftView();
+  updateStats(); // moves the bubble row's "On Clock" badge to the next team — see makeDraftPick's comment.
 }
 
 function passCurrentPick2425(){
@@ -7166,6 +7233,7 @@ function render2425(){
     else if(fsim==='__none__' && p.start2425) return false;
     else if(fsim && fsim!=='__none__' && fsim!=='__any__' && (p.start2425||'')!==fsim) return false;
     if(hideIrrelevant2425 && !p.start2425 && !(p.rankScore2425 > 0)) return false;
+    if(hideLowCov2425 && !p.start2425 && (srcNFn2425(p)/MAX_SRC_2425) < (draftWeights.minSrcCoverage??0.33)) return false;
     return true;
   });
 
@@ -7683,6 +7751,7 @@ function render2324(){
     else if(fsim==='__none__' && p.start2324) return false;
     else if(fsim && fsim!=='__none__' && fsim!=='__any__' && (p.start2324||'')!==fsim) return false;
     if(hideIrrelevant2324 && !p.start2324 && !(p.rankScore2324 > 0)) return false;
+    if(hideLowCov2324 && !p.start2324 && (srcNFn2324(p)/MAX_SRC_2324) < (draftWeights.minSrcCoverage??0.33)) return false;
     return true;
   });
 
@@ -10238,6 +10307,7 @@ function render2526(){
     else if(ft2526==='__none__' && p.start2526) return false;
     else if(ft2526 && ft2526!=='__none__' && ft2526!=='__any__' && (p.start2526||'')!==ft2526) return false;
     if(hideIrrelevant2526 && !p.start2526 && !(p.rankScore2526 > 0)) return false;
+    if(hideLowCov2526 && !p.start2526 && (srcNFn2526(p)/MAX_SRC_2526) < (draftWeights.minSrcCoverage??0.33)) return false;
     return true;
   });
 
@@ -10499,7 +10569,7 @@ function renderDraftView(){
   // Full history from round 1 — container scrolls (see .draft-col) — plus
   // ~1 round preview of upcoming picks past the current one.
   const startN      = 0;
-  const endN = total + 7;
+  const endN = total + 6;
 
   // Precompute each team's current cap/position-need snapshot ONCE (a single pass over all
   // players) instead of re-scanning the whole ~2874-player pool per pick row below — every row
@@ -11276,6 +11346,10 @@ document.getElementById('hideIrrelevant').value = hideIrrelevant ? 'hide' : 'all
 document.getElementById('hideIrrelevant2526').value = hideIrrelevant2526 ? 'hide' : 'all';
 document.getElementById('hideIrrelevant2425').value = hideIrrelevant2425 ? 'hide' : 'all';
 document.getElementById('hideIrrelevant2324').value = hideIrrelevant2324 ? 'hide' : 'all';
+document.getElementById('hideLowCov').value = hideLowCov ? 'hide' : 'all';
+document.getElementById('hideLowCov2526').value = hideLowCov2526 ? 'hide' : 'all';
+document.getElementById('hideLowCov2425').value = hideLowCov2425 ? 'hide' : 'all';
+document.getElementById('hideLowCov2324').value = hideLowCov2324 ? 'hide' : 'all';
 updateSigningsBtn();
 renderDraftModeSettings();
 updateYahooDropBtnTooltips();
