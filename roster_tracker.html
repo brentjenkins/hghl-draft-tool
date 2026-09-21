@@ -5274,6 +5274,9 @@ function renderBigBoard(){
     document.getElementById('draftOnClock').textContent = onClock
       ? `Round ${seq.rounds[total]} — On the clock: ${onClock} — Pick ${total+1}`
       : 'Draft complete';
+    // Auto-advance the Prospect/Best Available toggle past draftProspectRounds — see
+    // renderDraftView's identical 26-27 comment for the full rationale.
+    if(onClock && seq.rounds[total] > draftProspectRounds && draftSubMode2324 === 'prospect') setDraftSubMode2324('bestAvail');
     _renderBBStandings('start2324', DRAFT_TEAMS_2324, p => ppts2324blend(p));
     updateStats2324();
     document.getElementById('bbTeamCards').innerHTML = document.getElementById('statCards2324').innerHTML;
@@ -5287,6 +5290,7 @@ function renderBigBoard(){
     document.getElementById('draftOnClock').textContent = onClock
       ? `Round ${seq.rounds[total]} — On the clock: ${onClock} — Pick ${total+1}`
       : 'Draft complete';
+    if(onClock && seq.rounds[total] > draftProspectRounds && draftSubMode2425 === 'prospect') setDraftSubMode2425('bestAvail');
     _renderBBStandings('start2425', DRAFT_TEAMS_2425, p => ppts2425blend(p));
     updateStats2425();
     document.getElementById('bbTeamCards').innerHTML = document.getElementById('statCards2425').innerHTML;
@@ -5300,6 +5304,7 @@ function renderBigBoard(){
     document.getElementById('draftOnClock').textContent = onClock
       ? `Round ${seq.rounds[total]} — On the clock: ${onClock} — Pick ${total+1}`
       : 'Draft complete';
+    if(onClock && seq.rounds[total] > draftProspectRounds && draftSubMode2526 === 'prospect') setDraftSubMode2526('bestAvail');
     _renderBBStandings('start2526', DRAFT_TEAMS_2526, p => ppts2526blend(p));
     updateStats2526();
     document.getElementById('bbTeamCards').innerHTML = document.getElementById('statCards2526').innerHTML;
@@ -10559,6 +10564,13 @@ function renderDraftView(){
   document.getElementById('draftOnClock').textContent = onClock
     ? `Round ${curRound} — On the clock: ${onClock} — Pick ${total + 1}`
     : 'Draft complete';
+
+  // Auto-advance the global Prospect/Best Available toggle once the draft passes
+  // draftProspectRounds, mirroring the per-team round-based mode the bubbles already use
+  // (see _getTeamDraftBoard's mode calc in top5Html). One-directional: only nudges
+  // prospect->bestAvail on a pick/undo/pass re-render, so a manual switch back to Prospect
+  // after that point sticks until the next pick moves the round forward again.
+  if(onClock && curRound > draftProspectRounds && draftSubMode === 'prospect') setDraftSubMode('bestAvail');
 
   // Shared with the historical-season (23-24/24-25/25-26) Big Board draft replay — see
   // _renderBBDraftBoard's own definition. Consolidated 2026-09-20 after the two copies of this
