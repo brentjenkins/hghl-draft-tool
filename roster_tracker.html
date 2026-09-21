@@ -8739,6 +8739,20 @@ function _positionPressureMult(wtPressure, allTeams, need, qualityAvail, team, p
   return Math.max(0.1, 1 + wtPressure * Math.min(5, risk));
 }
 
+// Coverage confidence curve — replaces a straight-line srcN/maxSrc ratio (which silently
+// discounted every player more each year purely because maxSrc grows as sources get added,
+// same denominator-creep bug fixed for minSources — see its own comment in _rankFACandidates)
+// with a FIXED, absolute-source-count curve derived directly from real outcomes: a live
+// backtest 2026-09-21 correlating source count with actual games played, pooled across all 3
+// complete seasons (r=0.587, n=2849 — 0.61 to 0.69 per individual season). GP rises sharply
+// 1->2->3 sources then plateaus by 4 (avgGP ~65, essentially a full healthy season), so this
+// curve mirrors that shape instead of a straight line, and — being keyed on absolute count, not
+// a fraction of that season's total sources — stops silently changing year to year.
+const COVERAGE_CONFIDENCE = {0:0, 1:0.22, 2:0.44, 3:0.90, 4:1};
+function _coverageConfidence(srcN){
+  return COVERAGE_CONFIDENCE[Math.min(srcN, 4)] ?? 1;
+}
+
 // Shared per-candidate Rank Score (non-Draft-Mode "★ Rank Players") — the Draft Score sibling of
 // _scoreDraftCandidate below, parameterized the same way (season-specific pp/cap/curveFns/elcMax/
 // srcNFn all supplied by the caller) so the Prod/PpM/Trj/Crv/Prospect formula only exists once
@@ -8753,7 +8767,7 @@ function _positionPressureMult(wtPressure, allTeams, need, qualityAvail, team, p
 function _computeRankScore(p, { pg, pp, cap, calcAgeForSim, contractYearAnchor, nextContractField = 'nextTerm2627', curveFn, elcMax, srcNFn, maxSrc, draftWeights, capLimit }){
   const W = draftWeights;
   const srcN = srcNFn(p);
-  const covRatio = maxSrc > 0 ? Math.min(1, srcN / maxSrc) : 1;
+  const covRatio = _coverageConfidence(srcN);
   const coverageMult = 1 - (W.wtCoverageDiscount||0) * (1 - covRatio);
   const ppEff = pp * coverageMult;
   const prod = ppEff;
@@ -8841,8 +8855,9 @@ function _scoreDraftCandidate(p, { pg, pp, cap0, mode, round, draftWeights, calc
   // its weight (max(0, srcN-1) = 0 at srcN=1) — found 2026-07-24 that 1-source players in the
   // draftable tier bust ~2x as often (56% vs 25%) and overproject by ~3x as much (-34% vs -12%
   // mean error) than fully-covered players. Shrinking the scoring input directly suppresses the
-  // reach instead of just failing to reward the alternative.
-  const covRatio = maxSrc > 0 ? Math.min(1, srcN / maxSrc) : 1;
+  // reach instead of just failing to reward the alternative. Curve shape (not a straight
+  // srcN/maxSrc ratio) — see _coverageConfidence's own comment.
+  const covRatio = _coverageConfidence(srcN);
   const coverageMult = 1 - (draftWeights.wtCoverageDiscount||0) * (1 - covRatio);
   const ppEff = pp * coverageMult;
   const ppPerM = (ppEff>0 && cap0>0) ? ppEff/cap0 : 0;
