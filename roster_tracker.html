@@ -283,7 +283,7 @@ tr:hover td{background:#fafaf8}
     <option value="hide">SCORE&gt;0</option>
     <option value="all">All</option>
   </select>
-  <select id="hideLowCov2425" onchange="toggleHideLowCov2425()" title="Hides free agents below minSrcCoverage — the same source-coverage floor the real draft engine already requires to consider a player at all. Never hides a rostered player.">
+  <select id="hideLowCov2425" onchange="toggleHideLowCov2425()" title="Hides free agents below minSources — the same source-coverage floor the real draft engine already requires to consider a player at all. Never hides a rostered player.">
     <option value="hide">COV&#10003;</option>
     <option value="all">All</option>
   </select>
@@ -391,7 +391,7 @@ tr:hover td{background:#fafaf8}
     <option value="hide">SCORE&gt;0</option>
     <option value="all">All</option>
   </select>
-  <select id="hideLowCov2324" onchange="toggleHideLowCov2324()" title="Hides free agents below minSrcCoverage — the same source-coverage floor the real draft engine already requires to consider a player at all. Never hides a rostered player.">
+  <select id="hideLowCov2324" onchange="toggleHideLowCov2324()" title="Hides free agents below minSources — the same source-coverage floor the real draft engine already requires to consider a player at all. Never hides a rostered player.">
     <option value="hide">COV&#10003;</option>
     <option value="all">All</option>
   </select>
@@ -507,7 +507,7 @@ tr:hover td{background:#fafaf8}
     <option value="hide">SCORE&gt;0</option>
     <option value="all">All</option>
   </select>
-  <select id="hideLowCov2526" onchange="toggleHideLowCov2526()" title="Hides free agents below minSrcCoverage — the same source-coverage floor the real draft engine already requires to consider a player at all. Never hides a rostered player.">
+  <select id="hideLowCov2526" onchange="toggleHideLowCov2526()" title="Hides free agents below minSources — the same source-coverage floor the real draft engine already requires to consider a player at all. Never hides a rostered player.">
     <option value="hide">COV&#10003;</option>
     <option value="all">All</option>
   </select>
@@ -687,7 +687,7 @@ tr:hover td{background:#fafaf8}
     <option value="hide">SCORE&gt;0</option>
     <option value="all">All</option>
   </select>
-  <select id="hideLowCov" onchange="toggleHideLowCov()" title="Hides free agents below minSrcCoverage — the same source-coverage floor the real draft engine already requires to consider a player at all (e.g. Charlie Cerrato, Owen Michaels: 1-source flyers the algo would never actually recommend). Never hides a rostered player.">
+  <select id="hideLowCov" onchange="toggleHideLowCov()" title="Hides free agents below minSources — the same source-coverage floor the real draft engine already requires to consider a player at all (e.g. Charlie Cerrato, Owen Michaels: 1-source flyers the algo would never actually recommend). Never hides a rostered player.">
     <option value="hide">COV&#10003;</option>
     <option value="all">All</option>
   </select>
@@ -966,13 +966,13 @@ tr:hover td{background:#fafaf8}
   <div>
     <div class="section-label">Projections <span class="section-line"></span><span class="section-desc">Confidence weight per projection source when blending PPTS/PPP (higher = trusted more). Defaults re-derived 2026-09-02 from a pooled multi-season backtest (23-24/24-25/25-26 real season data, wherever each source has a file) — DTZ/Athletic tracked actuals most closely, NHL.com least (worst in every individual season too, not just pooled). Per-source r/MAE/n figures below.</span></div>
     <div style="display:flex;flex-wrap:wrap;gap:10px">
-      <label style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:#9ca3af" title="Pooled backtest (23-24/24-25/25-26): r=0.820, MAE=10.93, n=1861">Athletic<input type="number" id="s-wAthletic" value="1.24" min="0" max="3" step="0.1" onchange="updateProjWeight('athletic',+this.value)" style="width:64px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center;color:#1a1a18"></label>
-      <label style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:#9ca3af" title="Pooled backtest (24-25/25-26 — no 23-24 source file): r=0.813, MAE=10.87, n=1263">DFO<input type="number" id="s-wDFO" value="1.26" min="0" max="3" step="0.1" onchange="updateProjWeight('dfo',+this.value)" style="width:64px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center;color:#1a1a18"></label>
-      <label style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:#9ca3af" title="Pooled backtest (23-24/24-25/25-26): r=0.826, MAE=11.10, n=2161">DTZ<input type="number" id="s-wDTZ" value="1.21" min="0" max="3" step="0.1" onchange="updateProjWeight('dtz',+this.value)" style="width:64px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center;color:#1a1a18"></label>
-      <label style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:#9ca3af" title="Backtest (2023-24, still only season with a source file): r=0.812, MAE=11.66, n=753 — directly comparable to ATH/DTZ's own 23-24 numbers (0.812/0.822) on the same pooled methodology">Dobbers<input type="number" id="s-wDOB" value="1.09" min="0" max="3" step="0.1" onchange="updateProjWeight('dob',+this.value)" style="width:64px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center;color:#1a1a18"></label>
-      <label style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:#9ca3af" title="Backtest (25-26 only season with a baked source): r=0.783, MAE=12.93, n=767">CBS<input type="number" id="s-wCBS" value="0.89" min="0" max="3" step="0.1" onchange="updateProjWeight('cbs',+this.value)" style="width:64px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center;color:#1a1a18"></label>
-      <label style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:#9ca3af" title="Backtest (25-26 only season with a baked source): r=0.723, MAE=14.73, n=428">ESPN<input type="number" id="s-wESPN" value="0.69" min="0" max="3" step="0.1" onchange="updateProjWeight('espn',+this.value)" style="width:64px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center;color:#1a1a18"></label>
-      <label style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:#9ca3af" title="Pooled backtest (23-24/24-25/25-26) — worst source in all 3 individual seasons (r=0.719/0.722/0.714): r=0.716, MAE=15.48, n=1036">NHL.com<input type="number" id="s-wNHL" value="0.62" min="0" max="3" step="0.1" onchange="updateProjWeight('nhl',+this.value)" style="width:64px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center;color:#1a1a18"></label>
+      <label style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:#9ca3af" title="Tracks real points closely (r=0.82) — weighted accordingly.">Athletic<input type="number" id="s-wAthletic" value="1.24" min="0" max="3" step="0.1" onchange="updateProjWeight('athletic',+this.value)" style="width:64px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center;color:#1a1a18"></label>
+      <label style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:#9ca3af" title="Tracks real points closely (r=0.81) — weighted accordingly.">DFO<input type="number" id="s-wDFO" value="1.26" min="0" max="3" step="0.1" onchange="updateProjWeight('dfo',+this.value)" style="width:64px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center;color:#1a1a18"></label>
+      <label style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:#9ca3af" title="Tracks real points closely (r=0.83) — weighted accordingly.">DTZ<input type="number" id="s-wDTZ" value="1.21" min="0" max="3" step="0.1" onchange="updateProjWeight('dtz',+this.value)" style="width:64px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center;color:#1a1a18"></label>
+      <label style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:#9ca3af" title="Tracks real points closely (r=0.81) — weighted accordingly.">Dobbers<input type="number" id="s-wDOB" value="1.09" min="0" max="3" step="0.1" onchange="updateProjWeight('dob',+this.value)" style="width:64px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center;color:#1a1a18"></label>
+      <label style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:#9ca3af" title="Tracks real points moderately well (r=0.78) — weighted accordingly.">CBS<input type="number" id="s-wCBS" value="0.89" min="0" max="3" step="0.1" onchange="updateProjWeight('cbs',+this.value)" style="width:64px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center;color:#1a1a18"></label>
+      <label style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:#9ca3af" title="Tracks real points less closely (r=0.72) — weighted down accordingly.">ESPN<input type="number" id="s-wESPN" value="0.69" min="0" max="3" step="0.1" onchange="updateProjWeight('espn',+this.value)" style="width:64px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center;color:#1a1a18"></label>
+      <label style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:#9ca3af" title="The least reliable source (r=0.72) — weighted lowest of the 7.">NHL.com<input type="number" id="s-wNHL" value="0.62" min="0" max="3" step="0.1" onchange="updateProjWeight('nhl',+this.value)" style="width:64px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center;color:#1a1a18"></label>
       <label style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:#9ca3af" title="Once 26-27 games exist, PPTS = banked actual points (certain — drops/draft apply retroactively) + this-weighted blend of preseason rate vs actual pace for games remaining. Small on purpose — 14 games is a noisy sample.">Early pace wt<input type="number" id="s-earlyPaceWeight" value="0.2" min="0" max="1" step="0.05" onchange="updateSetting('earlyPaceWeight',+this.value)" style="width:64px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center;color:#1a1a18"></label>
     </div>
   </div>
@@ -1091,7 +1091,7 @@ tr:hover td{background:#fafaf8}
       <div style="border:1px solid #bfdbfe;border-radius:8px;padding:8px 10px;background:#eff6ff">
         <div style="font-size:10px;font-weight:700;color:#1d4ed8;letter-spacing:.02em">PASS 8 — PROTECTION <span style="font-weight:400;color:#6b7280">Before a Pass 3/5/6 drop happens, skip it entirely (nothing is ever dropped-then-undone) if the player would likely be re-drafted early by someone anyway.</span></div>
         <div style="display:flex;flex-direction:column;gap:4px;max-width:220px;margin-top:6px">
-          <span style="font-size:11px;color:#9ca3af" title="Past the minimum, don't spend an optional drop on a player who'd rank in the top N of the WHOLE leaguewide draftable pool (kept players and free agents together) by the same Optimize-mode formula the draft engine uses — they're a near-lock to be rostered by someone, possibly you. Defaults to teams × full roster size (e.g. 9 × 20 = 180) — backtested via Compare Drops 2026-09-02: a lower 160 tied or lost to 180 in every one of the 3 completed seasons, never won.">Early re-draft protection: top N leaguewide (<span style="font-family:monospace;color:#b0b0ac">earlyRedraftTopN</span>)</span>
+          <span style="font-size:11px;color:#9ca3af" title="Past the minimum, don't spend an optional drop on a player who'd rank in the top N of the WHOLE leaguewide draftable pool (kept players and free agents together) by the same Optimize-mode formula the draft engine uses — they're a near-lock to be rostered by someone, possibly you. Defaults to teams × full roster size (e.g. 9 × 20 = 180).">Early re-draft protection: top N leaguewide (<span style="font-family:monospace;color:#b0b0ac">earlyRedraftTopN</span>)</span>
           <input type="number" id="s-earlyRedraftTopN" value="180" min="0" max="500" step="1" onchange="updateSetting('earlyRedraftTopN',+this.value)" style="width:80px;height:32px;border:1px solid #ddd;border-radius:8px;padding:0 8px;font-size:13px;text-align:center">
         </div>
       </div>
@@ -1120,20 +1120,20 @@ tr:hover td{background:#fafaf8}
 
             <div>
               <div style="display:flex;flex-direction:column;gap:3px">
-                <span style="font-size:11px;color:#9ca3af" title="Shrinks the points used for scoring (not the displayed PPTS) when a player has few projection sources — a 1-source player gets a real haircut on its score, not just a missing bonus. Backtested 2026-07-24: low-coverage players bust ~2x as often and overproject ~3x as much as fully-covered ones.">Coverage discount (<span style="font-family:monospace;color:#b0b0ac">wtCoverageDiscount</span>)</span>
+                <span style="font-size:11px;color:#9ca3af" title="Shrinks the points used for scoring (not the displayed PPTS) when a player has few projection sources — a 1-source player gets a real haircut on its score, not just a missing bonus. Low-coverage players bust and overproject more often than fully-covered ones.">Coverage discount (<span style="font-family:monospace;color:#b0b0ac">wtCoverageDiscount</span>)</span>
                 <input type="number" id="s-wtCoverageDiscount" value="0.25" min="0" max="1" step="0.05" onchange="updateDraftWeight('wtCoverageDiscount',+this.value)" style="width:70px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center">
               </div>
             </div>
 
             <div>
               <div style="display:flex;flex-direction:column;gap:3px">
-                <span style="font-size:11px;color:#9ca3af" title="Hard floor: a free agent needs coverage from at least this fraction of that season's available projection sources to be draft-eligible at all (not just discounted). Backtested 2026-07-28 against all 3 real drafts: real GMs never drafted below ~1/3 coverage in any season (23-24 w/ 3 sources, 24-25 w/ 4, 25-26 w/ 6), while the algo's own 25-26 misses were 100% single-source (all CBS). 0-source players are already unscoreable (ppts=0) so this only bites the 'has SOME points, but from a lone uncorroborated source' case. Shared across all 4 seasons — raised to 0.33 on 2026-09-01 once 26-27 reached 6 sources (parity with 25-26's precedent).">Min source coverage (<span style="font-family:monospace;color:#b0b0ac">minSrcCoverage</span>)</span>
-                <input type="number" id="s-minSrcCoverage" value="0.33" min="0" max="1" step="0.01" onchange="updateDraftWeight('minSrcCoverage',+this.value)" style="width:70px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center">
+                <span style="font-size:11px;color:#9ca3af" title="Hard floor: a free agent needs coverage from at least this many projection sources to be draft-eligible at all. Single-source players miss often; 2-source players get drafted and succeed at a much better rate.">Min sources (<span style="font-family:monospace;color:#b0b0ac">minSources</span>)</span>
+                <input type="number" id="s-minSources" value="2" min="0" max="10" step="1" onchange="updateDraftWeight('minSources',+this.value)" style="width:70px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center">
               </div>
             </div>
 
             <div>
-              <div style="font-size:10px;color:#9ca3af;margin-bottom:2px" title="Boosts a candidate's score when OTHER teams currently needing the same position are about to pick before this team's own next turn, AND few genuinely good options (score above the quality threshold) remain at that position league-wide. Draft-Mode only (needs live team/need context); no-op in the static Rank Score above. Redesigned 2026-09-19 after a controlled live experiment showed the original relative-ratio version (see git history) made teams draft WORSE on average — this version is validated positive across every threshold (60-160) and magnitude (0.1-1.0) tested, peaking at threshold=95/weight=0.6.">Position pressure (<span style="font-family:monospace;color:#b0b0ac">wtPressure</span>) — Draft Mode only</div>
+              <div style="font-size:10px;color:#9ca3af;margin-bottom:2px" title="Boosts a candidate's score when OTHER teams currently needing the same position are about to pick before this team's own next turn, AND few genuinely good options (score above the quality threshold) remain at that position league-wide. Draft-Mode only (needs live team/need context); no-op in the static Rank Score above.">Position pressure (<span style="font-family:monospace;color:#b0b0ac">wtPressure</span>) — Draft Mode only</div>
               <div style="font-size:11px;color:#6b7280;font-family:monospace;margin-bottom:8px">(picks at position before my turn / quality left) × wtPressure</div>
               <div style="display:flex;flex-wrap:wrap;gap:8px">
                 <div style="display:flex;flex-direction:column;gap:3px">
@@ -1141,7 +1141,7 @@ tr:hover td{background:#fafaf8}
                   <input type="number" id="s-wtPressure" value="0.6" min="0" max="3" step="0.05" onchange="updateDraftWeight('wtPressure',+this.value)" style="width:70px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center">
                 </div>
                 <div style="display:flex;flex-direction:column;gap:3px">
-                  <span style="font-size:11px;color:#9ca3af" title="A free agent's SCORE (team-agnostic, bestAvail mode) must exceed this to count as a 'quality' option remaining at their position — the denominator of the pressure ratio. Backtested 2026-09-19 across 60-160; 95 gave the best combined average-value and win-rate result.">Quality threshold (<span style="font-family:monospace;color:#b0b0ac">pressureQualityThreshold</span>)</span>
+                  <span style="font-size:11px;color:#9ca3af" title="A free agent's SCORE (team-agnostic, bestAvail mode) must exceed this to count as a 'quality' option remaining at their position — the denominator of the pressure ratio.">Quality threshold (<span style="font-family:monospace;color:#b0b0ac">pressureQualityThreshold</span>)</span>
                   <input type="number" id="s-pressureQualityThreshold" value="95" min="0" max="300" step="5" onchange="updateDraftWeight('pressureQualityThreshold',+this.value)" style="width:70px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center">
                 </div>
               </div>
@@ -1397,9 +1397,9 @@ let hideIrrelevant2526 = true;
 let hideIrrelevant2425 = true;
 let hideIrrelevant2324 = true;
 
-// Coverage filter — hides free agents below minSrcCoverage, the SAME floor the real draft
-// engine already enforces ("a free agent needs coverage from at least this fraction of
-// sources to be draft-eligible AT ALL, not just discounted" — see minSrcCoverage's Settings
+// Coverage filter — hides free agents below minSources, the SAME floor the real draft
+// engine already enforces ("a free agent needs coverage from at least this many sources
+// to be draft-eligible AT ALL, not just discounted" — see minSources's Settings
 // tooltip). These are players the algo would never actually recommend regardless of their
 // raw score, e.g. a 1-source flyer like Charlie Cerrato or Owen Michaels — added 2026-09-20
 // per user request as a second, independent declutter filter alongside SCORE>0/All. Never
@@ -1465,7 +1465,7 @@ let sortColSignings = 'sign_date', sortDirSignings = -1;
 // side (7/21 otherwise-unexplained "GM kept a below-curve player forever" cases matched the
 // GM's fan team, ~10x the ~3% chance baseline) and explicitly flagged then to revisit for draft
 // accuracy too. See GM_FAN_TEAM / project_gm_nhl_affiliation memory.
-let draftWeights = { wtPPTSM: 0.75, wtAge: 1, wtProspect: 12, wtCoverageDiscount: 0.25, wtPressure: 0.6, pressureQualityThreshold: 95, wtDeltaCurve: 8, elcExpF: 41, elcExpD: 26, elcExpG: 35, wtPosAlloc: 1.0, minSrcCoverage: 0.33, wtCapUse: 0, wtFanBias: 0, wtTermValue: 2 };
+let draftWeights = { wtPPTSM: 0.75, wtAge: 1, wtProspect: 12, wtCoverageDiscount: 0.25, wtPressure: 0.6, pressureQualityThreshold: 95, wtDeltaCurve: 8, elcExpF: 41, elcExpD: 26, elcExpG: 35, wtPosAlloc: 1.0, minSources: 2, wtCapUse: 0, wtFanBias: 0, wtTermValue: 2 };
 // Knapsack-optimal cap fractions: F=58%, D=35%, G=7% (derived from 26-27 player pool, $104M cap)
 const OPT_POS_FRACS = {F: 0.58, D: 0.35, G: 0.07};
 
@@ -2506,7 +2506,7 @@ function dedup(){
 // Projections.
 let PROJ_SOURCE_WEIGHTS = { athletic: 1.24, dfo: 1.26, dtz: 1.21, cbs: 0.89, nhl: 0.62, espn: 0.69, dob: 1.09 };
 
-// Shared 26-27 source-coverage counter (draft-confidence minSrcCoverage floor) — used to be
+// Shared 26-27 source-coverage counter (draft-confidence minSources floor) — used to be
 // redefined inline at 4 separate call sites, 3 of which agreed (6 sources, maxSrc=6) while
 // algoDraft2627's own copy silently omitted ptsNHL (5 sources, maxSrc=5) — an unintentional
 // drift from its 3 siblings, not obviously stricter or looser (a smaller denominator raises
@@ -4348,7 +4348,7 @@ function render(){
     // from a 3-part (no cap/no pts/no score) AND down to just "no positive score" — catches
     // real free agents with SOME cap/pts but a non-positive score too, not just total blanks.
     if(hideIrrelevant && !p.start2627 && !(p.rankScore2627 > 0)) return false;
-    if(hideLowCov && !p.start2627 && (srcNFn2627(p)/MAX_SRC_2627) < (draftWeights.minSrcCoverage??0.33)) return false;
+    if(hideLowCov && !p.start2627 && srcNFn2627(p) < (draftWeights.minSources??2)) return false;
     return true;
   });
 
@@ -5500,7 +5500,7 @@ function syncSettings(){
   set('s-wtProspect', W.wtProspect);
   set('s-elcExpF', W.elcExpF); set('s-elcExpD', W.elcExpD); set('s-elcExpG', W.elcExpG);
   set('s-wtCoverageDiscount', W.wtCoverageDiscount);
-  set('s-minSrcCoverage', W.minSrcCoverage??0.33);
+  set('s-minSources', W.minSources??2);
   set('s-wtPressure', W.wtPressure??0.6);
   set('s-pressureQualityThreshold', W.pressureQualityThreshold??95);
   set('s-wtDeltaCurve', W.wtDeltaCurve);
@@ -5525,7 +5525,7 @@ function syncSettings(){
 function updateDraftWeight(key, val){
   if(draftWeights.wtProspect === undefined) draftWeights.wtProspect = 12;
   if(draftWeights.wtCoverageDiscount === undefined) draftWeights.wtCoverageDiscount = 0.25;
-  if(draftWeights.minSrcCoverage === undefined) draftWeights.minSrcCoverage = 0.33;
+  if(draftWeights.minSources === undefined) draftWeights.minSources = 2;
   if(draftWeights.wtPressure === undefined) draftWeights.wtPressure = 0.6;
   if(draftWeights.pressureQualityThreshold === undefined) draftWeights.pressureQualityThreshold = 95;
   if(draftWeights.wtDeltaCurve === undefined) draftWeights.wtDeltaCurve = 8;
@@ -7240,7 +7240,7 @@ function render2425(){
     else if(fsim==='__none__' && p.start2425) return false;
     else if(fsim && fsim!=='__none__' && fsim!=='__any__' && (p.start2425||'')!==fsim) return false;
     if(hideIrrelevant2425 && !p.start2425 && !(p.rankScore2425 > 0)) return false;
-    if(hideLowCov2425 && !p.start2425 && (srcNFn2425(p)/MAX_SRC_2425) < (draftWeights.minSrcCoverage??0.33)) return false;
+    if(hideLowCov2425 && !p.start2425 && srcNFn2425(p) < (draftWeights.minSources??2)) return false;
     return true;
   });
 
@@ -7758,7 +7758,7 @@ function render2324(){
     else if(fsim==='__none__' && p.start2324) return false;
     else if(fsim && fsim!=='__none__' && fsim!=='__any__' && (p.start2324||'')!==fsim) return false;
     if(hideIrrelevant2324 && !p.start2324 && !(p.rankScore2324 > 0)) return false;
-    if(hideLowCov2324 && !p.start2324 && (srcNFn2324(p)/MAX_SRC_2324) < (draftWeights.minSrcCoverage??0.33)) return false;
+    if(hideLowCov2324 && !p.start2324 && srcNFn2324(p) < (draftWeights.minSources??2)) return false;
     return true;
   });
 
@@ -9128,21 +9128,26 @@ function _rankFACandidates(team, round, mode, ctx){
   const totalReserve = Math.min(genericFutureReserve + reservedCap, Math.max(0, roomAvailable - elcMax*ELC_SIGNING_BONUS_WIGGLE));
   const maxPickCapAdj = roomAvailable - totalReserve;
 
-  // Hard coverage floor: real GMs never draft a player backed by less than ~1/3 of that
-  // season's available projection sources (23-24 w/ 3 sources: floor was 1/3; 24-25 w/ 4:
-  // floor was 2/4; 25-26 w/ 6: floor was 2/6 — same ratio every season). The algo's own
-  // wtCoverageDiscount only shrinks a low-coverage player's score, which wasn't enough to
-  // keep 25-26's 12 CBS-solo players from still winning empty late-round slots — see
-  // session_2026-07-28_min_src_coverage memory. 0-source players are already excluded above
-  // by the ppts(p)<=0 check (an uncovered player scores 0), so this only bites the "has SOME
-  // points, but from a single uncorroborated source" case.
-  const minCov = draftWeights.minSrcCoverage||0;
+  // Hard coverage floor: real GMs never draft a player backed by fewer than ~2 independent
+  // projection sources. Originally a fraction of that season's source count (23-24 w/ 3
+  // sources: floor was 1/3; 24-25 w/ 4: 2/4; 25-26 w/ 6: 2/6 — same ratio every season, per
+  // the 2026-07-28 backtest), but a fraction silently re-tightens every time a new source
+  // gets added to the count — by 26-27's 7 sources, that same ratio would exclude 2-source
+  // players for the first time, even though every real 2-source pick across all 3 complete
+  // seasons (13 total) was a legitimate GM pick. Switched to a flat integer floor 2026-09-21
+  // so it stops drifting as more sources get added. The algo's own wtCoverageDiscount only
+  // shrinks a low-coverage player's score, which wasn't enough to keep 25-26's 12 CBS-solo
+  // players from still winning empty late-round slots — see session_2026-07-28_min_src_
+  // coverage memory. 0-source players are already excluded above by the ppts(p)<=0 check
+  // (an uncovered player scores 0), so this only bites the "has SOME points, but from too
+  // few corroborating sources" case.
+  const minCov = draftWeights.minSources||0;
   const fas = players.filter(p => {
     if(getAssignedTeam(p)) return false;
     if(ppts(p) <= 0) return false;
     if(getCap(p) <= 0) return false;
     if(getCap(p) > maxPickCapAdj) return false;
-    if(srcNFn && maxSrc > 0 && (srcNFn(p)/maxSrc) < minCov) return false;
+    if(srcNFn && srcNFn(p) < minCov) return false;
     const pg = posGroup(p.pos);
     if(excludePositions && excludePositions.has(pg)) return false;
     if(onlyPosition && pg !== onlyPosition) return false;
@@ -9447,13 +9452,13 @@ function _runAlgoDraft({ season, actualDraft, allTeams, buildSeq, startField, pp
         };
         const nextContractFldBatch = nextContractField||'nextTerm2627';
         const qualityAvail = _cachedQualityAvail(startField, ppts, getCap, calcAgeForSim, contractYearAnchor, nextContractFldBatch, curveFnsRich, elcMax, srcNFn, maxSrc, capLimit);
-        const minCov = draftWeights.minSrcCoverage||0;
+        const minCov = draftWeights.minSources||0;
         const candidatesByPos = {};
         for(const pg of neededPgs){
           candidatesByPos[pg] = players.filter(p => {
             if(getAssignedTeam(p) || !(ppts(p) > 0) || !(getCap(p) > 0)) return false;
             if(posGroup(p.pos) !== pg) return false;
-            if(srcNFn && maxSrc > 0 && (srcNFn(p)/maxSrc) < minCov) return false;
+            if(srcNFn && srcNFn(p) < minCov) return false;
             if(DRAFT_NEVER.has(`${normName(p.name).toLowerCase()}_${pg}`)) return false;
             if((injurySet||new Set()).has(normName(p.name).toLowerCase())) return false;
             return true;
@@ -10314,7 +10319,7 @@ function render2526(){
     else if(ft2526==='__none__' && p.start2526) return false;
     else if(ft2526 && ft2526!=='__none__' && ft2526!=='__any__' && (p.start2526||'')!==ft2526) return false;
     if(hideIrrelevant2526 && !p.start2526 && !(p.rankScore2526 > 0)) return false;
-    if(hideLowCov2526 && !p.start2526 && (srcNFn2526(p)/MAX_SRC_2526) < (draftWeights.minSrcCoverage??0.33)) return false;
+    if(hideLowCov2526 && !p.start2526 && srcNFn2526(p) < (draftWeights.minSources??2)) return false;
     return true;
   });
 
