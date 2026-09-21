@@ -1455,17 +1455,13 @@ let sortColSignings = 'sign_date', sortDirSignings = -1;
 // but the user explicitly chose data-driven accuracy over draft-pick-matching as the priority
 // going forward. elcExpG left at 35 — its own projected-basis sample was tiny (n=6) and already
 // close to the guessed value.
-// wtCapUse defaults to 0 here — it's an Optimize-mode-only bonus applied selectively per team
-// inside _runAlgoDraft (see draftModeByTeam), not a general scoring term. Leaving it 0 in the
-// shared object keeps every other call site (display-only SCORE columns, Simulate-mode teams,
-// drops) exactly as they were before this existed.
-// wtFanBias defaults to 0 here too — Simulate-mode-only (see draftModeByTeam/_runAlgoDraft),
-// the mirror image of wtCapUse (Optimize-only). Real GMs show a measurable homer bias toward
-// their own favorite NHL team even when it costs them value — confirmed 2026-07-21 on the drop
-// side (7/21 otherwise-unexplained "GM kept a below-curve player forever" cases matched the
-// GM's fan team, ~10x the ~3% chance baseline) and explicitly flagged then to revisit for draft
-// accuracy too. See GM_FAN_TEAM / project_gm_nhl_affiliation memory.
-let draftWeights = { wtPPTSM: 0.75, wtAge: 1, wtProspect: 12, wtCoverageDiscount: 0.25, wtPressure: 0.6, pressureQualityThreshold: 95, wtDeltaCurve: 8, elcExpF: 41, elcExpD: 26, elcExpG: 35, wtPosAlloc: 1.0, minSources: 2, wtCapUse: 0, wtFanBias: 0, wtTermValue: 2 };
+// wtFanBias defaults to 0 here — Simulate-mode-only (see draftModeByTeam/_runAlgoDraft). Real
+// GMs show a measurable homer bias toward their own favorite NHL team even when it costs them
+// value — confirmed 2026-07-21 on the drop side (7/21 otherwise-unexplained "GM kept a
+// below-curve player forever" cases matched the GM's fan team, ~10x the ~3% chance baseline)
+// and explicitly flagged then to revisit for draft accuracy too. See GM_FAN_TEAM /
+// project_gm_nhl_affiliation memory.
+let draftWeights = { wtPPTSM: 0.75, wtAge: 1, wtProspect: 12, wtCoverageDiscount: 0.25, wtPressure: 0.6, pressureQualityThreshold: 95, wtDeltaCurve: 8, elcExpF: 41, elcExpD: 26, elcExpG: 35, wtPosAlloc: 1.0, minSources: 2, wtFanBias: 0, wtTermValue: 2 };
 // Knapsack-optimal cap fractions: F=58%, D=35%, G=7% (derived from 26-27 player pool, $104M cap)
 const OPT_POS_FRACS = {F: 0.58, D: 0.35, G: 0.07};
 
@@ -1818,26 +1814,31 @@ function _draftModeFor(team){ return draftModeByTeam[team] || 'simulate'; }
 // candidate FOR A SPECIFIC TEAM (not just _runAlgoDraft's own simulation loop, which already
 // applied this inline) matches what the real engine would actually compute. Simulate mode
 // reverts elcExpF/elcExpD to the pre-data-driven-backtest values and adds wtFanBias (predicting
-// what a real GM will pick, homer bias included); Optimize mode adds wtCapUse (a cap-spending
-// bonus) instead. Found live 2026-08-06: KIL (Simulate mode) on the clock, but the live table's
-// score tooltip showed zero fan-team bonus for an SJS-affiliated prospect, because render()'s
-// SCORE column — and simulateBestPick, and the Team Summary "top 5" board — were all scoring
-// with flat/raw draftWeights, never applying this override at all, regardless of the team's
-// actual mode. Only _runAlgoDraft's own simulation loop (Algo Draft/Animate Draft buttons) had
-// ever applied it correctly.
-// wtTermValue: Optimize-mode-only (mirrors wtCapUse), drives tTermValue in _scoreDraftCandidate —
-// rewards a candidate's ALREADY-SIGNED contract term (yrsRaw) for how much cheaper its flat AAV
-// becomes against the rising cap ceiling the longer it's held. See CAP_SCHEDULE_KNOWN /
+// what a real GM will pick, homer bias included). Found live 2026-08-06: KIL (Simulate mode) on
+// the clock, but the live table's score tooltip showed zero fan-team bonus for an SJS-affiliated
+// prospect, because render()'s SCORE column — and simulateBestPick, and the Team Summary "top 5"
+// board — were all scoring with flat/raw draftWeights, never applying this override at all,
+// regardless of the team's actual mode. Only _runAlgoDraft's own simulation loop (Algo
+// Draft/Animate Draft buttons) had ever applied it correctly.
+// wtTermValue: Optimize-mode-only, drives tTermValue in _scoreDraftCandidate — rewards a
+// candidate's ALREADY-SIGNED contract term (yrsRaw) for how much cheaper its flat AAV becomes
+// against the rising cap ceiling the longer it's held. See CAP_SCHEDULE_KNOWN /
 // project_cap_growth_vs_star_contracts memory (2026-08-25): the cap is growing faster each year
 // (5.4%→8.9%→CBA-committed 8.9% for 27-28) while young stars' post-ELC deals now sign at max AAV
 // immediately (no more cheap bridge window) — so cap-efficiency value has shifted toward locking
 // flat-AAV complementary contracts (Rust/Hyman/Trocheck/Cooley-tier) for multiple years rather
 // than assuming any player's NEXT deal will be cheap.
+// wtCapUse (a multiplicative "spend more of your remaining budget" bonus, Optimize-mode-only)
+// removed entirely 2026-09-21 — three separate real regressions with no backtest ever solid
+// enough to justify keeping it: goalie front-loading and prospect-round distortion (fixed
+// 2026-08-03), then found live again ranking a cap-inefficient player (worse PPTS/$M, further
+// below curve) above strictly better options purely for costing more. See
+// session_2026-08-03_fanbias_and_wtcapuse_fixes memory for the earlier history.
 function _effectiveDraftWeights(team, draftWeightsBase){
   const teamMode = _draftModeFor(team);
   return teamMode === 'simulate'
-    ? { ...draftWeightsBase, elcExpF: 35, elcExpD: 25, wtCapUse: 0, wtFanBias: draftWeightsBase.wtFanBias || 5, wtTermValue: 0, _flatElcBaseline: true }
-    : { ...draftWeightsBase, wtCapUse: draftWeightsBase.wtCapUse || 0.15, wtFanBias: 0, wtTermValue: draftWeightsBase.wtTermValue || 2 };
+    ? { ...draftWeightsBase, elcExpF: 35, elcExpD: 25, wtFanBias: draftWeightsBase.wtFanBias || 5, wtTermValue: 0, _flatElcBaseline: true }
+    : { ...draftWeightsBase, wtFanBias: 0, wtTermValue: draftWeightsBase.wtTermValue || 2 };
 }
 let ptsTarget = 1200; // historically the real points needed to win the championship, apart from last year
 let minDropF = 1, minDropD = 1; // every team must drop at least this many F and D (G excluded)
@@ -4023,7 +4024,7 @@ function _scoreCols2627(p){
       prod: b.tPPTS*mult, prospect: (b.tProspect*pw+b.tFanBias)*mult,
       conPpm: b.tPPTSM*mult, conTrj: b.tYouth*mult, conCrv: b.tDelta*mult, conTerm: conTermDisplay, termActive: termIsActive,
       total: draftSubMode==='bestAvail' ? p._dsNormal : p._ds,
-      prodTip: `PPTS × coverage\n${b.pp} × ${b.coverageMult.toFixed(2)} = ${b.tPPTSBase.toFixed(1)}\ncoverage @ ${b.srcN} src = ${b.coverageMult.toFixed(2)}${b.tCapUse>0?`\n(cap-use +${b.tCapUse.toFixed(1)})`:''}${mult!==1?`\n(× ${mult.toFixed(2)} pos-budget correction)`:''}`,
+      prodTip: `PPTS × coverage\n${b.pp} × ${b.coverageMult.toFixed(2)} = ${b.tPPTSBase.toFixed(1)}\ncoverage @ ${b.srcN} src = ${b.coverageMult.toFixed(2)}${mult!==1?`\n(× ${mult.toFixed(2)} pos-budget correction)`:''}`,
       conPpmTip: `PPTS/$M × coverage × wtPPTSM\n${(p.cap2627>0?b.pp/p.cap2627:0).toFixed(1)} × ${b.coverageMult.toFixed(2)} × ${draftWeights.wtPPTSM} = ${(b.tPPTSM*mult).toFixed(1)}\ncoverage @ ${b.srcN} src = ${b.coverageMult.toFixed(2)}${mult!==1?`\n(× ${mult.toFixed(2)} pos-budget correction)`:''}`,
       conTrjTip: `Peak Trajectory × wtAge × coverage\n${b.youthRaw.toFixed(1)} × ${draftWeights.wtAge} × ${b.coverageMult.toFixed(2)} = ${(b.tYouth*mult).toFixed(1)}\nPeak Trajectory @ age ${b.ageRaw} = ${b.youthRaw.toFixed(1)}\ncoverage @ ${b.srcN} src = ${b.coverageMult.toFixed(2)}${mult!==1?`\n(× ${mult.toFixed(2)} pos-budget correction)`:''}`,
       conCrvTip: `((PPTS × coverage) − curve baseline) × wtDeltaCurve\n((${b.pp} × ${b.coverageMult.toFixed(2)}) − ${(b.curveBase!=null?b.pp*(Math.round(b.coverageMult*100)/100)-b.deltaRaw:0).toFixed(1)}) × ${draftWeights.wtDeltaCurve} = ${(b.tDelta*mult).toFixed(1)}\ncoverage @ ${b.srcN} src = ${b.coverageMult.toFixed(2)}${mult!==1?`\n(× ${mult.toFixed(2)} pos-budget correction)`:''}`,
@@ -4096,7 +4097,7 @@ function _scoreCols2526(p){
       prod: b.tPPTS*mult, prospect: (b.tProspect*pw+b.tFanBias)*mult,
       conPpm: b.tPPTSM*mult, conTrj: b.tYouth*mult, conCrv: b.tDelta*mult, conTerm: conTermDisplay, termActive: termIsActive,
       total: draftSubMode2526==='bestAvail' ? p._ds2526Normal : p._ds2526,
-      prodTip: `PPTS × coverage\n${b.pp} × ${b.coverageMult.toFixed(2)} = ${b.tPPTSBase.toFixed(1)}\ncoverage @ ${b.srcN} src = ${b.coverageMult.toFixed(2)}${b.tCapUse>0?`\n(cap-use +${b.tCapUse.toFixed(1)})`:''}${mult!==1?`\n(× ${mult.toFixed(2)} pos-budget correction)`:''}`,
+      prodTip: `PPTS × coverage\n${b.pp} × ${b.coverageMult.toFixed(2)} = ${b.tPPTSBase.toFixed(1)}\ncoverage @ ${b.srcN} src = ${b.coverageMult.toFixed(2)}${mult!==1?`\n(× ${mult.toFixed(2)} pos-budget correction)`:''}`,
       conPpmTip: `PPTS/$M × coverage × wtPPTSM\n${(getCap2526(p)>0?b.pp/getCap2526(p):0).toFixed(1)} × ${b.coverageMult.toFixed(2)} × ${draftWeights.wtPPTSM} = ${(b.tPPTSM*mult).toFixed(1)}\ncoverage @ ${b.srcN} src = ${b.coverageMult.toFixed(2)}${mult!==1?`\n(× ${mult.toFixed(2)} pos-budget correction)`:''}`,
       conTrjTip: `Peak Trajectory × wtAge × coverage\n${b.youthRaw.toFixed(1)} × ${draftWeights.wtAge} × ${b.coverageMult.toFixed(2)} = ${(b.tYouth*mult).toFixed(1)}\nPeak Trajectory @ age ${b.ageRaw} = ${b.youthRaw.toFixed(1)}\ncoverage @ ${b.srcN} src = ${b.coverageMult.toFixed(2)}${mult!==1?`\n(× ${mult.toFixed(2)} pos-budget correction)`:''}`,
       conCrvTip: `((PPTS × coverage) − curve baseline) × wtDeltaCurve\n((${b.pp} × ${b.coverageMult.toFixed(2)}) − ${(b.curveBase!=null?b.pp*(Math.round(b.coverageMult*100)/100)-b.deltaRaw:0).toFixed(1)}) × ${draftWeights.wtDeltaCurve} = ${(b.tDelta*mult).toFixed(1)}\ncoverage @ ${b.srcN} src = ${b.coverageMult.toFixed(2)}${mult!==1?`\n(× ${mult.toFixed(2)} pos-budget correction)`:''}`,
@@ -4161,7 +4162,7 @@ function _scoreCols2425(p){
       prod: b.tPPTS*mult, prospect: (b.tProspect*pw+b.tFanBias)*mult,
       conPpm: b.tPPTSM*mult, conTrj: b.tYouth*mult, conCrv: b.tDelta*mult, conTerm: conTermDisplay, termActive: termIsActive,
       total: draftSubMode2425==='bestAvail' ? p._ds2425Normal : p._ds2425,
-      prodTip: `PPTS × coverage\n${b.pp} × ${b.coverageMult.toFixed(2)} = ${b.tPPTSBase.toFixed(1)}\ncoverage @ ${b.srcN} src = ${b.coverageMult.toFixed(2)}${b.tCapUse>0?`\n(cap-use +${b.tCapUse.toFixed(1)})`:''}${mult!==1?`\n(× ${mult.toFixed(2)} pos-budget correction)`:''}`,
+      prodTip: `PPTS × coverage\n${b.pp} × ${b.coverageMult.toFixed(2)} = ${b.tPPTSBase.toFixed(1)}\ncoverage @ ${b.srcN} src = ${b.coverageMult.toFixed(2)}${mult!==1?`\n(× ${mult.toFixed(2)} pos-budget correction)`:''}`,
       conPpmTip: `PPTS/$M × coverage × wtPPTSM\n${(getCap2425(p)>0?b.pp/getCap2425(p):0).toFixed(1)} × ${b.coverageMult.toFixed(2)} × ${draftWeights.wtPPTSM} = ${(b.tPPTSM*mult).toFixed(1)}\ncoverage @ ${b.srcN} src = ${b.coverageMult.toFixed(2)}${mult!==1?`\n(× ${mult.toFixed(2)} pos-budget correction)`:''}`,
       conTrjTip: `Peak Trajectory × wtAge × coverage\n${b.youthRaw.toFixed(1)} × ${draftWeights.wtAge} × ${b.coverageMult.toFixed(2)} = ${(b.tYouth*mult).toFixed(1)}\nPeak Trajectory @ age ${b.ageRaw} = ${b.youthRaw.toFixed(1)}\ncoverage @ ${b.srcN} src = ${b.coverageMult.toFixed(2)}${mult!==1?`\n(× ${mult.toFixed(2)} pos-budget correction)`:''}`,
       conCrvTip: `((PPTS × coverage) − curve baseline) × wtDeltaCurve\n((${b.pp} × ${b.coverageMult.toFixed(2)}) − ${(b.curveBase!=null?b.pp*(Math.round(b.coverageMult*100)/100)-b.deltaRaw:0).toFixed(1)}) × ${draftWeights.wtDeltaCurve} = ${(b.tDelta*mult).toFixed(1)}\ncoverage @ ${b.srcN} src = ${b.coverageMult.toFixed(2)}${mult!==1?`\n(× ${mult.toFixed(2)} pos-budget correction)`:''}`,
@@ -4226,7 +4227,7 @@ function _scoreCols2324(p){
       prod: b.tPPTS*mult, prospect: (b.tProspect*pw+b.tFanBias)*mult,
       conPpm: b.tPPTSM*mult, conTrj: b.tYouth*mult, conCrv: b.tDelta*mult, conTerm: conTermDisplay, termActive: termIsActive,
       total: draftSubMode2324==='bestAvail' ? p._ds2324Normal : p._ds2324,
-      prodTip: `PPTS × coverage\n${b.pp} × ${b.coverageMult.toFixed(2)} = ${b.tPPTSBase.toFixed(1)}\ncoverage @ ${b.srcN} src = ${b.coverageMult.toFixed(2)}${b.tCapUse>0?`\n(cap-use +${b.tCapUse.toFixed(1)})`:''}${mult!==1?`\n(× ${mult.toFixed(2)} pos-budget correction)`:''}`,
+      prodTip: `PPTS × coverage\n${b.pp} × ${b.coverageMult.toFixed(2)} = ${b.tPPTSBase.toFixed(1)}\ncoverage @ ${b.srcN} src = ${b.coverageMult.toFixed(2)}${mult!==1?`\n(× ${mult.toFixed(2)} pos-budget correction)`:''}`,
       conPpmTip: `PPTS/$M × coverage × wtPPTSM\n${(getCap2324(p)>0?b.pp/getCap2324(p):0).toFixed(1)} × ${b.coverageMult.toFixed(2)} × ${draftWeights.wtPPTSM} = ${(b.tPPTSM*mult).toFixed(1)}\ncoverage @ ${b.srcN} src = ${b.coverageMult.toFixed(2)}${mult!==1?`\n(× ${mult.toFixed(2)} pos-budget correction)`:''}`,
       conTrjTip: `Peak Trajectory × wtAge × coverage\n${b.youthRaw.toFixed(1)} × ${draftWeights.wtAge} × ${b.coverageMult.toFixed(2)} = ${(b.tYouth*mult).toFixed(1)}\nPeak Trajectory @ age ${b.ageRaw} = ${b.youthRaw.toFixed(1)}\ncoverage @ ${b.srcN} src = ${b.coverageMult.toFixed(2)}${mult!==1?`\n(× ${mult.toFixed(2)} pos-budget correction)`:''}`,
       conCrvTip: `((PPTS × coverage) − curve baseline) × wtDeltaCurve\n((${b.pp} × ${b.coverageMult.toFixed(2)}) − ${(b.curveBase!=null?b.pp*(Math.round(b.coverageMult*100)/100)-b.deltaRaw:0).toFixed(1)}) × ${draftWeights.wtDeltaCurve} = ${(b.tDelta*mult).toFixed(1)}\ncoverage @ ${b.srcN} src = ${b.coverageMult.toFixed(2)}${mult!==1?`\n(× ${mult.toFixed(2)} pos-budget correction)`:''}`,
@@ -4453,10 +4454,10 @@ function render(){
         const bNormal = _scoreDraftCandidate(p, {...scoreArgs, mode:'bestAvail'});
         const _ds = b.score;
         const _dsNormal = bNormal.score;
-        // tCapUse/posAllocMult are mode-specific (both always no-op in prospect mode, only ever
-        // real in bestAvail) - so the tooltip needs BOTH breakdowns and picks whichever matches
+        // posAllocMult is mode-specific (always no-op in prospect mode, only ever real in
+        // bestAvail) - so the tooltip needs BOTH breakdowns and picks whichever matches
         // draftSubMode, not just the prospect one every time.
-        const toParts = (x) => ({tPPTS:x.tPPTS,tPPTSM:x.tPPTSM,yrsRaw:x.yrsRaw,youthRaw:x.youthRaw,tYouth:x.tYouth,ageRaw:x.ageRaw,tProspect:x.tProspect,round:focusRound2627,srcN:x.srcN,coverageMult:x.coverageMult,tDelta:x.tDelta,tFanBias:x.tFanBias,posAllocMult:x.posAllocMult,tCapUse:x.tCapUse,tTermValue:x.tTermValue,termGain:x.termGain,termYears:x.termYears,declineDampen:x.declineDampen,pp:x.pp,tPPTSBase:x.tPPTSBase,ppPerM:x.ppPerM,deltaRaw:x.deltaRaw,curveBase:x.curveBase,prospectAgeScore:x.prospectAgeScore,prospectNormPts:x.prospectNormPts,team:viewTeam});
+        const toParts = (x) => ({tPPTS:x.tPPTS,tPPTSM:x.tPPTSM,yrsRaw:x.yrsRaw,youthRaw:x.youthRaw,tYouth:x.tYouth,ageRaw:x.ageRaw,tProspect:x.tProspect,round:focusRound2627,srcN:x.srcN,coverageMult:x.coverageMult,tDelta:x.tDelta,tFanBias:x.tFanBias,posAllocMult:x.posAllocMult,tTermValue:x.tTermValue,termGain:x.termGain,termYears:x.termYears,declineDampen:x.declineDampen,pp:x.pp,tPPTSBase:x.tPPTSBase,ppPerM:x.ppPerM,deltaRaw:x.deltaRaw,curveBase:x.curveBase,prospectAgeScore:x.prospectAgeScore,prospectNormPts:x.prospectNormPts,team:viewTeam});
         return Object.assign({},p,{_ds,_dsNormal,_dsParts:toParts(b),_dsPartsNormal:toParts(bNormal)});
       });
     const dsField = sortCol==='prod'?'prod':sortCol==='con_ppm'?'conPpm':sortCol==='con_trj'?'conTrj':sortCol==='con_crv'?'conCrv':sortCol==='con_term'?'conTerm':sortCol==='prospect'?'prospect':sortCol==='score'?'total':null;
@@ -7308,7 +7309,7 @@ function render2425(){
       const _ds2425=prospectScore.score, _ds2425Normal=normalScore.score;
       // Same field names as 26-27's toParts (not suffixed) so _scoreCols2425 can share its
       // draft-mode branch structure with _scoreCols2627 - see the matching 25-26 fix comment.
-      const toParts2425 = (b) => ({tPPTS:b.tPPTS,tPPTSM:b.tPPTSM,yrsRaw:b.yrsRaw,youthRaw:b.youthRaw,tYouth:b.tYouth,ageRaw:b.ageRaw,tProspect:b.tProspect,round:genericRound,srcN:b.srcN,coverageMult:b.coverageMult,tDelta:b.tDelta,tFanBias:b.tFanBias,posAllocMult:b.posAllocMult,tCapUse:b.tCapUse,tTermValue:b.tTermValue,termGain:b.termGain,termYears:b.termYears,declineDampen:b.declineDampen,pp:b.pp,tPPTSBase:b.tPPTSBase,ppPerM:b.ppPerM,deltaRaw:b.deltaRaw,curveBase:b.curveBase,prospectAgeScore:b.prospectAgeScore,prospectNormPts:b.prospectNormPts,team:viewTeam2425});
+      const toParts2425 = (b) => ({tPPTS:b.tPPTS,tPPTSM:b.tPPTSM,yrsRaw:b.yrsRaw,youthRaw:b.youthRaw,tYouth:b.tYouth,ageRaw:b.ageRaw,tProspect:b.tProspect,round:genericRound,srcN:b.srcN,coverageMult:b.coverageMult,tDelta:b.tDelta,tFanBias:b.tFanBias,posAllocMult:b.posAllocMult,tTermValue:b.tTermValue,termGain:b.termGain,termYears:b.termYears,declineDampen:b.declineDampen,pp:b.pp,tPPTSBase:b.tPPTSBase,ppPerM:b.ppPerM,deltaRaw:b.deltaRaw,curveBase:b.curveBase,prospectAgeScore:b.prospectAgeScore,prospectNormPts:b.prospectNormPts,team:viewTeam2425});
       return Object.assign({},p,{_ds2425,_ds2425Normal,_dsParts2425:toParts2425(prospectScore),_dsPartsNormal2425:toParts2425(normalScore)});
     });
     rows = lastAllScored2425.filter(p=>{
@@ -7818,7 +7819,7 @@ function render2324(){
       const _ds2324=prospectScore.score, _ds2324Normal=normalScore.score;
       // Same field names as 26-27's toParts (not suffixed) so _scoreCols2324 can share its
       // draft-mode branch structure with _scoreCols2627 - see the matching 25-26 fix comment.
-      const toParts2324 = (b) => ({tPPTS:b.tPPTS,tPPTSM:b.tPPTSM,yrsRaw:b.yrsRaw,youthRaw:b.youthRaw,tYouth:b.tYouth,ageRaw:b.ageRaw,tProspect:b.tProspect,round:genericRound2324,srcN:b.srcN,coverageMult:b.coverageMult,tDelta:b.tDelta,tFanBias:b.tFanBias,posAllocMult:b.posAllocMult,tCapUse:b.tCapUse,tTermValue:b.tTermValue,termGain:b.termGain,termYears:b.termYears,declineDampen:b.declineDampen,pp:b.pp,tPPTSBase:b.tPPTSBase,ppPerM:b.ppPerM,deltaRaw:b.deltaRaw,curveBase:b.curveBase,prospectAgeScore:b.prospectAgeScore,prospectNormPts:b.prospectNormPts,team:viewTeam2324});
+      const toParts2324 = (b) => ({tPPTS:b.tPPTS,tPPTSM:b.tPPTSM,yrsRaw:b.yrsRaw,youthRaw:b.youthRaw,tYouth:b.tYouth,ageRaw:b.ageRaw,tProspect:b.tProspect,round:genericRound2324,srcN:b.srcN,coverageMult:b.coverageMult,tDelta:b.tDelta,tFanBias:b.tFanBias,posAllocMult:b.posAllocMult,tTermValue:b.tTermValue,termGain:b.termGain,termYears:b.termYears,declineDampen:b.declineDampen,pp:b.pp,tPPTSBase:b.tPPTSBase,ppPerM:b.ppPerM,deltaRaw:b.deltaRaw,curveBase:b.curveBase,prospectAgeScore:b.prospectAgeScore,prospectNormPts:b.prospectNormPts,team:viewTeam2324});
       return Object.assign({},p,{_ds2324,_ds2324Normal,_dsParts2324:toParts2324(prospectScore),_dsPartsNormal2324:toParts2324(normalScore)});
     });
     rows = lastAllScored2324.filter(p=>{
@@ -8315,14 +8316,12 @@ function _runAlgoDrops({ players, teams, startField, ppts, getCap, capLimit, dra
   const redraftPressure = {F:0.5, D:0.5, G:0.5};
   // Forced Optimize weights, not the raw base draftWeights — this is a "would a rational,
   // cap-optimal GM actually value this player enough to draft them early" test, so it should
-  // match what a real Optimize team's own SCORE would be, not an unlabeled hybrid that happens
-  // to omit wtCapUse's real 0.15 default (raw draftWeights.wtCapUse is 0, not the Optimize
-  // branch's `|| 0.15` fallback, since this bypassed _effectiveDraftWeights entirely). Can't
-  // just call _effectiveDraftWeights(null, draftWeights) — team:null resolves to 'simulate' via
+  // match what a real Optimize team's own SCORE would be. Can't just call
+  // _effectiveDraftWeights(null, draftWeights) — team:null resolves to 'simulate' via
   // _draftModeFor's own fallback, the opposite of what's wanted here. Found live 2026-09-02:
   // user's concern was "I wouldn't want to keep a player that would only get picked by Simulate
   // and not Optimize" — this check needs to be a true Optimize-everywhere test to answer that.
-  const redraftOptimizeWeights = { ...draftWeights, wtCapUse: draftWeights.wtCapUse || 0.15, wtFanBias: 0, wtTermValue: draftWeights.wtTermValue || 2 };
+  const redraftOptimizeWeights = { ...draftWeights, wtFanBias: 0, wtTermValue: draftWeights.wtTermValue || 2 };
   const redraftScoreOf = p => _scoreDraftCandidate(p, {
     pg: posGroup(p.pos), pp: ppts(p), cap0: getCap(p)||0, pressure: redraftPressure, mode: redraftMode, round: redraftRound,
     draftWeights: redraftOptimizeWeights, calcAgeForSim, contractYearAnchor, nextContractField,
@@ -8729,8 +8728,8 @@ function _teamAffordableRoom(teamCapUsed, capLimit, spotsLeft, currentRound, dra
 }
 
 // pressMult for _scoreDraftCandidate — 1 (no-op) unless a real team + league need map +
-// quality-count reading are all supplied, matching how posAlloc/wtCapUse/wtFanBias already
-// no-op for team-agnostic scoring calls (free-agent display lists, redraft-risk checks).
+// quality-count reading are all supplied, matching how posAlloc/wtFanBias already no-op for
+// team-agnostic scoring calls (free-agent display lists, redraft-risk checks).
 function _positionPressureMult(wtPressure, allTeams, need, qualityAvail, team, pg){
   if(!(wtPressure > 0) || !team || !allTeams || !need || !qualityAvail) return 1;
   let picksAtPos = 0;
@@ -8911,11 +8910,11 @@ function _scoreDraftCandidate(p, { pg, pp, cap0, mode, round, draftWeights, calc
   // can't produce a division-by-zero/NaN here.
   const deltaCurveBase = (ppEff>0 && cap0>0) ? _curveBaseline(pg, cap0, elcMax, curveFns[pg], draftWeights) : null;
   const deltaRaw = (deltaCurveBase!=null && ppEff-deltaCurveBase>0) ? ppEff-deltaCurveBase : 0;
-  // Fan bias: Simulate-mode-only (see draftModeByTeam/_runAlgoDraft) — the mirror image of
-  // wtCapUse (Optimize-only). Real GMs show a measurable homer bias toward their own favorite
-  // NHL team even when it costs them value (see GM_FAN_TEAM / project_gm_nhl_affiliation memory
-  // — 7/21 otherwise-unexplained drop-side "GM kept a below-curve player forever" cases matched
-  // the GM's fan team, ~10x the ~3% chance baseline). Simulate mode predicts what a real GM will
+  // Fan bias: Simulate-mode-only (see draftModeByTeam/_runAlgoDraft). Real GMs show a
+  // measurable homer bias toward their own favorite NHL team even when it costs them value
+  // (see GM_FAN_TEAM / project_gm_nhl_affiliation memory — 7/21 otherwise-unexplained drop-side
+  // "GM kept a below-curve player forever" cases matched the GM's fan team, ~10x the ~3% chance
+  // baseline). Simulate mode predicts what a real GM will
   // pick, so a candidate playing for that GM's team gets a flat bump. teamField picks the right
   // season-specific team2324/2425/2526 column (or live `team` for 26-27) so this checks a
   // player's REAL team at that point in history, not wherever they've since been traded to.
@@ -8929,41 +8928,12 @@ function _scoreDraftCandidate(p, { pg, pp, cap0, mode, round, draftWeights, calc
   const prospectAgeScore = (age < 99 && age <= prospectMaxAge) ? prospectMaxAge + 1 - age : 0;
   const prospectNormPts = _curveBaseline(pg, cap0, elcMax, curveFns[pg], draftWeights) ?? _elcExp(pg, draftWeights);
   const pressMult = _positionPressureMult(draftWeights.wtPressure||0, allTeams, need, qualityAvail, team, pg);
-  const tPPTSBase = ppEff * pressMult;
-  // Cap-use bonus: Optimize-mode-only (see draftModeByTeam/_runAlgoDraft), 0 everywhere else.
-  // tPPTSM already rewards points-per-dollar EFFICIENCY, which structurally favors cheap
-  // prospects over expensive stars regardless of total value produced — found live via the
-  // 25-26 top-18 backtest, where Optimize passed on Panarin (84 actual pts) for Perreault (27)
-  // while leaving $14.50M of cap unused. A MULTIPLIER on raw production (not a flat additive
-  // bonus — the first version tried that, see git history) so the boost scales with how much
-  // real production is being bought, not just cost: it amplifies an already-strong producer's
-  // edge (Panarin) but can't manufacture one for a merely-expensive mediocre player. Found via
-  // the wtCapUse sweep/24-25 backtest that the flat version, pushed high enough to fix Panarin,
-  // also pushed a $9.5M/23-actual-pt Charlie McAvoy ahead of a clearly-better $9.0M Dougie
-  // Hamilton — a real regression the multiplicative form should resist, since McAvoy's own
-  // (mediocre) tPPTS doesn't get amplified as much as a genuinely good producer's does.
-  //
-  // Excluded for goalies entirely (found live 2026-08-03): this league's elite goalie cap hits
-  // ($10-11.5M) sit right up against elite skater cap hits, so the SAME formula that correctly
-  // favored Panarin over Perreault also pushed Igor Shesterkin from rank #4 to #1 overall for
-  // Muller Time! — the raw top-18 backtest (which only checks final roster composition via
-  // _solveTeamKnapsack, never live round-by-round pick order) never caught this. Worsens the
-  // already-known, never-fully-fixed goalie front-loading problem (see
-  // project_goalie_early_frontloading memory) rather than being a new failure mode — goalies'
-  // production is far more volatile than skaters' (R^2=0.14 vs 0.43-0.46, see
-  // project_goalie_volatility memory) so "spend more on a productive goalie" isn't the same bet
-  // as it is for skaters. The mechanism was designed and validated around F candidates only;
-  // rather than re-deriving a goalie-specific scale, it's simply off for G.
-  //
-  // Also off in 'prospect' mode (round <= draftProspectRounds): those rounds exist specifically
-  // to let a genuine prospect's uncapped `prospect` term compete against established, better-
-  // scoring vets on cheap-upside grounds — an unrelated cap-spending push on tPPTS works against
-  // that intent by inflating an expensive proven vet right when the round is meant to weigh
-  // prospect upside instead (e.g. Zeev Buium, a real consensus round-1 prospect who "wouldn't
-  // have lasted to round 2" per the user, was outranked by Panarin's wtCapUse boost here).
-  const capUseMult = (pg === 'G' || mode === 'prospect') ? 1 : (1 + (draftWeights.wtCapUse||0) * cap0);
-  const tPPTS = tPPTSBase * capUseMult;
-  const tCapUse = tPPTS - tPPTSBase; // portion of tPPTS attributable to the cap-use multiplier — display/debugging only
+  // wtCapUse (a multiplicative "spend more of your remaining budget" bonus on tPPTS, Optimize-
+  // mode-only) removed 2026-09-21 — a real, repeated-regression mechanism: caused goalie front-
+  // loading and prospect-round distortion (fixed 2026-08-03), and could still rank a cap-
+  // inefficient player above strictly better options (worse PPTS/$M, further below curve) purely
+  // for costing more, with no backtest ever solid enough to justify keeping it once questioned.
+  const tPPTS = ppEff * pressMult;
   let score;
   let posAllocMult = 1; // no-op default - only ever computed/applied in bestAvail mode below
   if(mode === 'prospect'){
@@ -8980,7 +8950,7 @@ function _scoreDraftCandidate(p, { pg, pp, cap0, mode, round, draftWeights, calc
       }
     }
   }
-  return { score, tPPTS, tPPTSM, yrsRaw, youthRaw, tYouth, ageRaw: age, tProspect: prospect, srcN, coverageMult, tDelta, tCapUse, tFanBias, tTermValue, termGain, termYears, declineDampen, posAllocMult, pressMult, pp, tPPTSBase, ppPerM, deltaRaw, curveBase: deltaCurveBase, prospectAgeScore, prospectNormPts };
+  return { score, tPPTS, tPPTSM, yrsRaw, youthRaw, tYouth, ageRaw: age, tProspect: prospect, srcN, coverageMult, tDelta, tFanBias, tTermValue, termGain, termYears, declineDampen, posAllocMult, pressMult, pp, tPPTSBase: tPPTS, ppPerM, deltaRaw, curveBase: deltaCurveBase, prospectAgeScore, prospectNormPts };
 }
 
 // ── Fully-uncontested batch drafting ─────────────────────────────────────────
@@ -9085,8 +9055,8 @@ function _solveTeamKnapsack(neededCounts, candidatesByPos, budget){
 }
 
 // Ranks every eligible free agent for `team` at `round`/`mode`, full-pool, best score first —
-// round-aware cap reserve, live curve state, strict-dominance wtCapUse suppression, and the
-// shared SCORE formula. The single source of truth for "who could this team draft right now
+// round-aware cap reserve, live curve state, and the shared SCORE formula. The single source
+// of truth for "who could this team draft right now
 // and how good is each option" — _pickBestFA (below) is a one-line wrapper taking just [0];
 // _getTeamDraftBoard (used by every season's live "top 5" team-card display) takes the top N
 // plus the splash-deferral check, so the card the user watches during a live/manual draft uses
@@ -9181,39 +9151,12 @@ function _rankFACandidates(team, round, mode, ctx){
   };
   const qualityAvail = _cachedQualityAvail(startField, ppts, getCap, calcAgeForSim, contractYearAnchor, nextContractFld, curveFnsRich, elcMax, srcNFn, maxSrc, capLimit);
 
-  // Suppress wtCapUse's cap-spending bonus for any candidate strictly dominated by a same-
-  // position alternative already in this pool (equal-or-better PPTS at strictly lower cap) —
-  // paying more for identical-or-worse production is never a legitimate use of budget, no
-  // matter how much wtCapUse otherwise rewards spending. Found live 2026-08-05: MUL (Optimize)
-  // took Auston Matthews ($13.25M, 82pts) over Matthew Tkachuk ($9.5M, 82pts, same pool, picked
-  // 3 turns later) almost entirely from the raw-cap0 reward — Tkachuk was strictly dominant
-  // (identical production, $3.75M cheaper), a case the multiplicative-on-production form (see
-  // capUseMult comment above) doesn't guard against since it only looks at the candidate's own
-  // production, never compares against cheaper alternatives actually sitting in the pool.
-  const dominatedIds = new Set();
-  for(const pg of ['F','D','G']){
-    const pool = fas.filter(p => posGroup(p.pos)===pg);
-    const byPpts = new Map();
-    for(const p of pool){ const k = ppts(p); if(!byPpts.has(k)) byPpts.set(k, []); byPpts.get(k).push(p); }
-    let bestCapAbove = Infinity; // min cap among strictly-higher-PPTS groups seen so far
-    for(const pts of [...byPpts.keys()].sort((a,b) => b-a)){
-      const group = byPpts.get(pts).slice().sort((a,b) => getCap(a)-getCap(b));
-      const groupMinCap = getCap(group[0]);
-      group.forEach((p, i) => {
-        const cheapestAlt = i===0 ? bestCapAbove : Math.min(bestCapAbove, groupMinCap);
-        if(cheapestAlt < getCap(p)) dominatedIds.add(p.id);
-      });
-      bestCapAbove = Math.min(bestCapAbove, groupMinCap);
-    }
-  }
-
   return fas.map(p => {
     const pg = posGroup(p.pos);
     const pp = ppts(p);
     const cap0 = getCap(p) || 0;
-    const dwForThis = dominatedIds.has(p.id) ? {...draftWeights, wtCapUse: 0} : draftWeights;
     const { score } = _scoreDraftCandidate(p, {
-      pg, pp, cap0, mode, round, draftWeights: dwForThis,
+      pg, pp, cap0, mode, round, draftWeights,
       calcAgeForSim, contractYearAnchor, nextContractField: nextContractFld, curveFns: curveFnsRich, elcMax, srcNFn, maxSrc,
       team, teamCap, teamCapByPos, teamField, capLimit0: capLimit, allTeams, need, qualityAvail,
     });
@@ -9428,10 +9371,7 @@ function _runAlgoDraft({ season, actualDraft, allTeams, buildSeq, startField, pp
     // no other edits needed. Simulate mode reverts elcExpF/elcExpD to the pre-data-driven-
     // backtest values and (where a season-specific variant is supplied) srcNFn/maxSrc to the
     // pre-CBS/NHL-fix source count — it's trying to predict what a real GM would pick, not
-    // what's objectively most correct (see feedback_datadriven_over_matchrate memory). Optimize
-    // mode gets a cap-spending bonus (wtCapUse, see _scoreDraftCandidate) — found live via the
-    // 25-26 top-18 backtest that Optimize was leaving $14.50M unused by passing on an expensive
-    // elite scorer for a cheap efficient prospect purely on tPPTSM's points-per-dollar bias.
+    // what's objectively most correct (see feedback_datadriven_over_matchrate memory).
     const teamMode = _draftModeFor(team);
     const draftWeights = _effectiveDraftWeights(team, draftWeightsBase);
     const srcNFn = (teamMode === 'simulate' && simulateSrcNFn) ? simulateSrcNFn : srcNFnBase;
@@ -10418,7 +10358,7 @@ function render2526(){
         // tPPTSBase/ppPerM/deltaRaw/prospectAgeScore/prospectNormPts entirely and used
         // inconsistent per-field suffixes (ageRaw2526/tProspect2526/srcN2526d/coverageMult2526/
         // pressMult2526/pressRaw2526) that nothing else in the codebase matched.
-        const toParts2526 = (x) => ({tPPTS:x.tPPTS,tPPTSM:x.tPPTSM,yrsRaw:x.yrsRaw,youthRaw:x.youthRaw,tYouth:x.tYouth,ageRaw:x.ageRaw,tProspect:x.tProspect,round:focusRound2526,srcN:x.srcN,coverageMult:x.coverageMult,tDelta:x.tDelta,tFanBias:x.tFanBias,posAllocMult:x.posAllocMult,tCapUse:x.tCapUse,tTermValue:x.tTermValue,termGain:x.termGain,termYears:x.termYears,declineDampen:x.declineDampen,pp:x.pp,tPPTSBase:x.tPPTSBase,ppPerM:x.ppPerM,deltaRaw:x.deltaRaw,curveBase:x.curveBase,prospectAgeScore:x.prospectAgeScore,prospectNormPts:x.prospectNormPts,team:viewTeam2526});
+        const toParts2526 = (x) => ({tPPTS:x.tPPTS,tPPTSM:x.tPPTSM,yrsRaw:x.yrsRaw,youthRaw:x.youthRaw,tYouth:x.tYouth,ageRaw:x.ageRaw,tProspect:x.tProspect,round:focusRound2526,srcN:x.srcN,coverageMult:x.coverageMult,tDelta:x.tDelta,tFanBias:x.tFanBias,posAllocMult:x.posAllocMult,tTermValue:x.tTermValue,termGain:x.termGain,termYears:x.termYears,declineDampen:x.declineDampen,pp:x.pp,tPPTSBase:x.tPPTSBase,ppPerM:x.ppPerM,deltaRaw:x.deltaRaw,curveBase:x.curveBase,prospectAgeScore:x.prospectAgeScore,prospectNormPts:x.prospectNormPts,team:viewTeam2526});
         return Object.assign({},p,{_ds2526,_ds2526Normal,_dsParts2526:toParts2526(b),_dsPartsNormal2526:toParts2526(bNormal)});
       });
     const dsField2526 = sortCol2526==='prod2526'?'prod':sortCol2526==='con_ppm2526'?'conPpm':sortCol2526==='con_trj2526'?'conTrj':sortCol2526==='con_crv2526'?'conCrv':sortCol2526==='con_term2526'?'conTerm':sortCol2526==='prospect2526'?'prospect':sortCol2526==='score2526'?'total':null;
