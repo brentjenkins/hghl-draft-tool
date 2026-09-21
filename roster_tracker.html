@@ -1787,12 +1787,12 @@ function _dropTermCreditOf(p, { ppts, getCap, calcAgeForSim, contractYearAnchor,
   const { termGain } = _termValueCore(pg, pp, cap0, age, yrsRaw, capLimit, draftWeights, contractYearAnchor, nextCap, nextYr, curveFns?.[pg], elcMax);
   return termGain * wtDropTermCredit;
 }
-let lastPressure = null, lastPressure2526 = null, lastAllScored = null, lastAllScored2526 = null;
+let lastAllScored = null, lastAllScored2526 = null;
 let _summaryIdx = 0, _summaryTimer = null, _summaryPaused = false;
 let draftMode2425 = false, draftSubMode2425 = 'prospect';
-let draftFocusTeam2425 = null, lastAllScored2425 = null, lastPressure2425 = null;
+let draftFocusTeam2425 = null, lastAllScored2425 = null;
 let draftMode2324 = false, draftSubMode2324 = 'prospect';
-let draftFocusTeam2324 = null, lastAllScored2324 = null, lastPressure2324 = null;
+let draftFocusTeam2324 = null, lastAllScored2324 = null;
 let draftFocusTeam = null;   // team whose picks to show in 26-27 draft mode
 let draftFocusTeam2526 = null; // team whose picks to show in 25-26 draft mode
 let minDropsPreseason = 5, maxDropsPreseason = 20;
@@ -4416,17 +4416,13 @@ function render(){
     const slotsLeft=need.F+need.D+need.G;
     const maxAffordable=draftFocusTeam?CAP_LIMIT-viewCapTot-Math.max(0,slotsLeft-1)*ELC_MAX_2627:Infinity;
     const drafted=new Set(draftState2627.picks.map(p=>normName(p.player).toLowerCase()));
-    // Shares _draftPressureState/_scoreDraftCandidate with the actual Algo Draft pick engine —
-    // see _runAlgoDraft / render2425 for the drift history this is meant to end.
-    const { pressure } = _draftPressureState(players, DRAFT_TEAMS_2627, p=>p.start2627||null, p=>p.proj2627.blend||0, p=>p.cap2627||0);
-    lastPressure=pressure;
     const genericRound2627 = draftProspectRounds + 3;
     // Score ALL free agents (full pool) for team-card top-picks — no per-team need filter here
     lastAllScored = players
       .filter(p=>!p.start2627&&!drafted.has(normName(p.name).toLowerCase())&&(p.proj2627.blend||0)>0)
       .map(p=>{
         const pg=posGroup(p.pos), pp=p.proj2627.blend||0, cap0=p.cap2627||0;
-        const scoreArgs = { pg, pp, cap0, pressure, draftWeights, calcAgeForSim: calcAge, contractYearAnchor: NHL_SEASON_YEAR, nextContractField: 'nextTerm2627', curveFns: curveFns2627, elcMax: ELC_MAX_2627, srcNFn: srcNFn2627, maxSrc: MAX_SRC_2627, capLimit0: CAP_LIMIT };
+        const scoreArgs = { pg, pp, cap0, draftWeights, calcAgeForSim: calcAge, contractYearAnchor: NHL_SEASON_YEAR, nextContractField: 'nextTerm2627', curveFns: curveFns2627, elcMax: ELC_MAX_2627, srcNFn: srcNFn2627, maxSrc: MAX_SRC_2627, capLimit0: CAP_LIMIT };
         const _ds = _scoreDraftCandidate(p, {...scoreArgs, mode:'prospect', round: genericRound2627}).score;
         const _dsNormal = _scoreDraftCandidate(p, {...scoreArgs, mode:'bestAvail', round: genericRound2627}).score;
         return {id:p.id,name:p.name,pos:p.pos,pts:pp,cap:cap0,_ds,_dsNormal};
@@ -4446,7 +4442,7 @@ function render(){
       .map(p=>{
         const pg=posGroup(p.pos), pp=p.proj2627.blend||0, cap0=p.cap2627||0;
         const scoreArgs = {
-          pg, pp, cap0, pressure, round: focusRound2627, draftWeights: _effectiveDraftWeights(viewTeam, draftWeights),
+          pg, pp, cap0, round: focusRound2627, draftWeights: _effectiveDraftWeights(viewTeam, draftWeights),
           calcAgeForSim: calcAge, contractYearAnchor: NHL_SEASON_YEAR, nextContractField: 'nextTerm2627', curveFns: curveFns2627, elcMax: ELC_MAX_2627, srcNFn: srcNFn2627, maxSrc: MAX_SRC_2627,
           team: viewTeam, teamCap: teamCap2627, teamCapByPos: teamCapByPos2627, capLimit0: CAP_LIMIT,
         };
@@ -7276,9 +7272,9 @@ function render2425(){
   });
   toggleCurrentTeamCol('th-start2425', 'thg-2425-team', draftMode2425);
 
-  // Draft mode scoring for 24-25 — shares _draftPressureState/_scoreDraftCandidate with the
-  // actual Algo Draft pick engine (_runAlgoDraft) so this SCORE column/bubble can't drift from
-  // what Algo Draft would really pick. See those functions' comments for the drift history.
+  // Draft mode scoring for 24-25 — shares _scoreDraftCandidate with the actual Algo Draft pick
+  // engine (_runAlgoDraft) so this SCORE column/bubble can't drift from what Algo Draft would
+  // really pick. See that function's comments for the drift history.
   if(draftMode2425){
     // draftFocusTeam2425 falls back to whoever's on the clock (matching 26-27's viewTeam
     // pattern) so the score/tooltip has a real team context by default instead of reverting to
@@ -7287,8 +7283,6 @@ function render2425(){
     // override bug this was found alongside (2026-08-06).
     const onClockTeam2425 = buildDraftSeq2425()[draftState2425.picks.length] ?? null;
     const viewTeam2425 = draftFocusTeam2425 || onClockTeam2425;
-    const { pressure: pressure2425 } = _draftPressureState(players, DRAFT_TEAMS_2425, p=>p.start2425||null, ppts2425blend, getCap2425);
-    lastPressure2425=pressure2425;
     const need2425 = viewTeam2425 ? (()=>{
       const r=players.filter(p=>p.start2425===viewTeam2425);
       return {F:Math.max(0,DRAFT_ROSTER_MAX.F-r.filter(p=>posGroup(p.pos)==='F').length),D:Math.max(0,DRAFT_ROSTER_MAX.D-r.filter(p=>posGroup(p.pos)==='D').length),G:Math.max(0,DRAFT_ROSTER_MAX.G-r.filter(p=>posGroup(p.pos)==='G').length)};
@@ -7303,7 +7297,7 @@ function render2425(){
     const genericRound = draftProspectRounds + 3;
     lastAllScored2425 = players.filter(p=>!p.start2425&&ppts2425blend(p)>0).map(p=>{
       const pg=posGroup(p.pos); const pp=ppts2425blend(p); const cap0=getCap2425(p)||0;
-      const scoreArgs = { pg, pp, cap0, pressure: pressure2425, draftWeights: _effectiveDraftWeights(viewTeam2425, draftWeights), calcAgeForSim: calcAge2425, contractYearAnchor: 2024, nextContractField: 'nextTerm2425', curveFns: curveFns2425, elcMax: ELC_MAX_2425, srcNFn: srcNFn2425, maxSrc: MAX_SRC_2425, team: viewTeam2425, teamField: 'team2425', capLimit0: CAP_LIMIT_2425 };
+      const scoreArgs = { pg, pp, cap0, draftWeights: _effectiveDraftWeights(viewTeam2425, draftWeights), calcAgeForSim: calcAge2425, contractYearAnchor: 2024, nextContractField: 'nextTerm2425', curveFns: curveFns2425, elcMax: ELC_MAX_2425, srcNFn: srcNFn2425, maxSrc: MAX_SRC_2425, team: viewTeam2425, teamField: 'team2425', capLimit0: CAP_LIMIT_2425 };
       const prospectScore = _scoreDraftCandidate(p, {...scoreArgs, mode:'prospect', round: genericRound});
       const normalScore = _scoreDraftCandidate(p, {...scoreArgs, mode:'bestAvail', round: genericRound});
       const _ds2425=prospectScore.score, _ds2425Normal=normalScore.score;
@@ -7644,8 +7638,9 @@ function updateStats2425(){
     const avF=qualityAvail2425.F,avD=qualityAvail2425.D,avG=qualityAvail2425.G;
     const rawP={F:lnF/Math.max(1,avF),D:lnD/Math.max(1,avD),G:lnG/Math.max(1,avG)};
     const maxP=Math.max(rawP.F,rawP.D,rawP.G,0.0001);
-    const pr2425={F:rawP.F/maxP,D:rawP.D/maxP,G:rawP.G/maxP};
-    const pr=lastPressure2425||pr2425;
+    // See 26-27 updateStats()'s identical comment — was preferring a stale pre-quality-threshold
+    // global whenever it was set, un-migrated when Avail/Afford moved to qualityAvail2425.
+    const pr={F:rawP.F/maxP,D:rawP.D/maxP,G:rawP.G/maxP};
     let onClockRoom2425 = Infinity;
     if(_oc2425!=null){
       const onClockRoster = players.filter(p=>p.start2425===_oc2425);
@@ -7794,15 +7789,13 @@ function render2324(){
   });
   toggleCurrentTeamCol('th-start2324', 'thg-2324-team', draftMode2324);
 
-  // Draft mode scoring for 23-24 — shares _draftPressureState/_scoreDraftCandidate with the
-  // actual Algo Draft pick engine; see _runAlgoDraft / render2425 for the drift history.
+  // Draft mode scoring for 23-24 — shares _scoreDraftCandidate with the actual Algo Draft pick
+  // engine; see _runAlgoDraft for the drift history.
   if(draftMode2324){
     // draftFocusTeam2324 falls back to whoever's on the clock — see the matching 24-25 comment
     // (render2425) for the full rationale; same fix, found live 2026-08-06.
     const onClockTeam2324 = buildDraftSeq2324()[draftState2324.picks.length] ?? null;
     const viewTeam2324 = draftFocusTeam2324 || onClockTeam2324;
-    const { pressure: pressure2324 } = _draftPressureState(players, DRAFT_TEAMS_2324, p=>p.start2324||null, ppts2324blend, getCap2324);
-    lastPressure2324=pressure2324;
     const need2324 = viewTeam2324 ? (()=>{
       const r=players.filter(p=>p.start2324===viewTeam2324);
       return {F:Math.max(0,DRAFT_ROSTER_MAX.F-r.filter(p=>posGroup(p.pos)==='F').length),D:Math.max(0,DRAFT_ROSTER_MAX.D-r.filter(p=>posGroup(p.pos)==='D').length),G:Math.max(0,DRAFT_ROSTER_MAX.G-r.filter(p=>posGroup(p.pos)==='G').length)};
@@ -7813,7 +7806,7 @@ function render2324(){
     const genericRound2324 = draftProspectRounds + 3;
     lastAllScored2324 = players.filter(p=>!p.start2324&&ppts2324blend(p)>0).map(p=>{
       const pg=posGroup(p.pos); const pp=ppts2324blend(p); const cap0=getCap2324(p)||0;
-      const scoreArgs = { pg, pp, cap0, pressure: pressure2324, draftWeights: _effectiveDraftWeights(viewTeam2324, draftWeights), calcAgeForSim: calcAge2324, contractYearAnchor: 2023, nextContractField: 'nextTerm2324', curveFns: curveFns2324, elcMax: ELC_MAX_2324, srcNFn: srcNFn2324, maxSrc: MAX_SRC_2324, team: viewTeam2324, teamField: 'team2324', capLimit0: CAP_LIMIT_2324 };
+      const scoreArgs = { pg, pp, cap0, draftWeights: _effectiveDraftWeights(viewTeam2324, draftWeights), calcAgeForSim: calcAge2324, contractYearAnchor: 2023, nextContractField: 'nextTerm2324', curveFns: curveFns2324, elcMax: ELC_MAX_2324, srcNFn: srcNFn2324, maxSrc: MAX_SRC_2324, team: viewTeam2324, teamField: 'team2324', capLimit0: CAP_LIMIT_2324 };
       const prospectScore = _scoreDraftCandidate(p, {...scoreArgs, mode:'prospect', round: genericRound2324});
       const normalScore = _scoreDraftCandidate(p, {...scoreArgs, mode:'bestAvail', round: genericRound2324});
       const _ds2324=prospectScore.score, _ds2324Normal=normalScore.score;
@@ -7997,8 +7990,9 @@ function updateStats2324(){
     const avF=qualityAvail2324.F,avD=qualityAvail2324.D,avG=qualityAvail2324.G;
     const rawP={F:lnF/Math.max(1,avF),D:lnD/Math.max(1,avD),G:lnG/Math.max(1,avG)};
     const maxP=Math.max(rawP.F,rawP.D,rawP.G,0.0001);
-    const pr2324={F:rawP.F/maxP,D:rawP.D/maxP,G:rawP.G/maxP};
-    const pr=lastPressure2324||pr2324;
+    // See 26-27 updateStats()'s identical comment — was preferring a stale pre-quality-threshold
+    // global whenever it was set, un-migrated when Avail/Afford moved to qualityAvail2324.
+    const pr={F:rawP.F/maxP,D:rawP.D/maxP,G:rawP.G/maxP};
     let onClockRoom2324 = Infinity;
     if(_oc2324!=null){
       const onClockRoster = players.filter(p=>p.start2324===_oc2324);
@@ -8304,8 +8298,8 @@ function _runAlgoDrops({ players, teams, startField, ppts, getCap, capLimit, dra
   // cell (this check is team-less, so wtPosAlloc/fan-bias terms are still excluded).
   const redraftRound = Math.max(1, draftProspectRounds);
   const redraftMode = redraftRound <= draftProspectRounds ? 'prospect' : 'bestAvail';
-  // Neutral pressure (pressMult=1, no boost/penalty either way), not a live _draftPressureState
-  // read — pressure measures how many teams currently NEED a position, which at drop time is
+  // Neutral pressure (pressMult=1, no boost/penalty either way) — pressure measures how many
+  // teams currently NEED a position, which at drop time is
   // structurally meaningless (nobody's been dropped yet, so every team still looks fully
   // rostered and near-zero real need exists anywhere). Found live 2026-08-07 alongside the
   // round/mode fix above: Aliaksei Protas's score didn't move at all from that fix (F's own
@@ -8606,37 +8600,6 @@ function _expectedRoundCost(round, capLimit, fallbackFlat){
   const base = ROUND_EXPECTED_CAP_REF[round];
   if(base == null) return fallbackFlat;
   return base * (capLimit / ROUND_EXPECTED_CAP_REF_CAPLIMIT);
-}
-
-// Shared draft pressure/need state — league-wide position supply vs demand. Used identically
-// by the actual Algo Draft pick engine (_runAlgoDraft) AND every season's live team-summary
-// bubble/SCORE column, so the two can never again independently drift on what "scarce" means.
-// `isAssignedFn(p)` returns the team a player currently belongs to (or falsy), abstracting over
-// whether the caller means "really on a roster right now" (live bubble) or "assigned within this
-// in-progress simulated draft" (_runAlgoDraft's per-pick loop).
-function _draftPressureState(players, allTeams, isAssignedFn, ppts, getCap){
-  const need = {};
-  for(const t of allTeams){
-    const r = players.filter(p => isAssignedFn(p) === t);
-    need[t] = {
-      F: Math.max(0, DRAFT_ROSTER_MAX.F - r.filter(p=>posGroup(p.pos)==='F').length),
-      D: Math.max(0, DRAFT_ROSTER_MAX.D - r.filter(p=>posGroup(p.pos)==='D').length),
-      G: Math.max(0, DRAFT_ROSTER_MAX.G - r.filter(p=>posGroup(p.pos)==='G').length),
-    };
-  }
-  const leagueNeed = {F:0,D:0,G:0};
-  for(const t of allTeams){ leagueNeed.F+=need[t].F; leagueNeed.D+=need[t].D; leagueNeed.G+=need[t].G; }
-  const avail = {F:0,D:0,G:0};
-  for(const p of players){
-    if(isAssignedFn(p)) continue;
-    if(!(ppts(p)>0) || !(getCap(p)>0)) continue;
-    const g = posGroup(p.pos);
-    if(g in avail) avail[g]++;
-  }
-  const raw = {F:leagueNeed.F/Math.max(1,avail.F), D:leagueNeed.D/Math.max(1,avail.D), G:leagueNeed.G/Math.max(1,avail.G)};
-  const maxP = Math.max(raw.F,raw.D,raw.G,0.0001);
-  const pressure = {F:raw.F/maxP, D:raw.D/maxP, G:raw.G/maxP};
-  return {need, leagueNeed, avail, pressure};
 }
 
 // ── Position pressure (wtPressure) v2 — replaces the removed 2026-09-16 mechanism, which
@@ -10114,7 +10077,9 @@ function updateStats2526(){
     const avF=qualityAvail2526.F, avD=qualityAvail2526.D, avG=qualityAvail2526.G;
     const rawPF2526=lnF/Math.max(1,avF), rawPD2526=lnD/Math.max(1,avD), rawPG2526=lnG/Math.max(1,avG);
     const statsMaxP2526=Math.max(rawPF2526,rawPD2526,rawPG2526,0.0001);
-    const pr=lastPressure2526||{F:0,D:0,G:0};
+    // See 26-27 updateStats()'s identical comment — was reading a stale pre-quality-threshold
+    // global, un-migrated when Avail/Afford moved to qualityAvail2526.
+    const pr={F:rawPF2526/statsMaxP2526, D:rawPD2526/statsMaxP2526, G:rawPG2526/statsMaxP2526};
     let onClockRoom2526 = Infinity;
     if(onClock!=null){
       const onClockRoster = players.filter(p=>p.start2526===onClock);
@@ -10322,16 +10287,12 @@ function render2526(){
     const teamCapUsed2526=teamRoster.reduce((s,p)=>s+getCap2526(p),0);
     const slotsLeft2526=need.F+need.D+need.G;
     const maxAffordable2526=draftFocusTeam2526?CAP_LIMIT_2526-teamCapUsed2526-Math.max(0,slotsLeft2526-1)*ELC_MAX_2526:Infinity;
-    // Shares _draftPressureState/_scoreDraftCandidate with the actual Algo Draft pick engine —
-    // see _runAlgoDraft / render2425 for the drift history this is meant to end.
-    const { pressure: pressure2526 } = _draftPressureState(players, DRAFT_TEAMS_2526, p=>p.start2526||null, ppts2526blend, getCap2526);
-    lastPressure2526=pressure2526;
     const genericRound2526 = draftProspectRounds + 3;
     lastAllScored2526 = players
       .filter(p=>!p.start2526&&ppts2526blend(p)>0)
       .map(p=>{
         const pg=posGroup(p.pos), pp=ppts2526blend(p), cap0=getCap2526(p)||0;
-        const scoreArgs = { pg, pp, cap0, pressure: pressure2526, draftWeights: _effectiveDraftWeights(viewTeam2526, draftWeights), calcAgeForSim: calcAge2526, contractYearAnchor: 2025, nextContractField: 'nextTerm2526', curveFns: curveFns2526, elcMax: ELC_MAX_2526, srcNFn: srcNFn2526, maxSrc: MAX_SRC_2526, team: viewTeam2526, teamField: 'team2526', capLimit0: CAP_LIMIT_2526 };
+        const scoreArgs = { pg, pp, cap0, draftWeights: _effectiveDraftWeights(viewTeam2526, draftWeights), calcAgeForSim: calcAge2526, contractYearAnchor: 2025, nextContractField: 'nextTerm2526', curveFns: curveFns2526, elcMax: ELC_MAX_2526, srcNFn: srcNFn2526, maxSrc: MAX_SRC_2526, team: viewTeam2526, teamField: 'team2526', capLimit0: CAP_LIMIT_2526 };
         const _ds2526 = _scoreDraftCandidate(p, {...scoreArgs, mode:'prospect', round: genericRound2526}).score;
         const _ds2526Normal = _scoreDraftCandidate(p, {...scoreArgs, mode:'bestAvail', round: genericRound2526}).score;
         return {id:p.id,name:p.name,pos:p.pos,pts:pp,cap:cap0,_ds2526,_ds2526Normal};
@@ -10345,7 +10306,7 @@ function render2526(){
       .map(p=>{
         const pg=posGroup(p.pos), pp=ppts2526blend(p), cap0=getCap2526(p)||0;
         const scoreArgs = {
-          pg, pp, cap0, pressure: pressure2526, round: focusRound2526, draftWeights: _effectiveDraftWeights(viewTeam2526, draftWeights),
+          pg, pp, cap0, round: focusRound2526, draftWeights: _effectiveDraftWeights(viewTeam2526, draftWeights),
           calcAgeForSim: calcAge2526, contractYearAnchor: 2025, nextContractField: 'nextTerm2526', curveFns: curveFns2526, elcMax: ELC_MAX_2526, srcNFn: srcNFn2526, maxSrc: MAX_SRC_2526,
           team: viewTeam2526, teamCap: teamCap2526, teamCapByPos: teamCapByPos2526, teamField: 'team2526', capLimit0: CAP_LIMIT_2526,
         };
@@ -11010,7 +10971,13 @@ function updateStats(){
     const avF=qualityAvail2627.F, avD=qualityAvail2627.D, avG=qualityAvail2627.G;
     const rawPF=lnF/Math.max(1,avF), rawPD=lnD/Math.max(1,avD), rawPG=lnG/Math.max(1,avG);
     const statsMaxP=Math.max(rawPF,rawPD,rawPG,0.0001);
-    const pr=lastPressure||{F:0,D:0,G:0};
+    // Was reading the stale lastPressure global (fed by the now-dead _draftPressureState/old
+    // wtPressure mechanism, which used a raw positive-points denominator, not the quality
+    // threshold) — silently un-migrated when the League card's Avail/Afford badges moved to
+    // qualityAvail2627 on 2026-09-20. Inflated G specifically, since G's total draftable pool
+    // is inherently much smaller than F/D regardless of real scarcity. Found live 2026-09-21:
+    // G showed pressure=1.00 (maxed) with 3 needed and 5 quality options still on the board.
+    const pr={F:rawPF/statsMaxP, D:rawPD/statsMaxP, G:rawPG/statsMaxP};
     // Qual: same quality-candidate pool as avF/avD/avG above, but re-filtered to what the team
     // ACTUALLY ON THE CLOCK right now can still afford — display-only, never fed back into the
     // real (deliberately affordability-blind) scoring formula. See _cachedQualityAvail's comment.
