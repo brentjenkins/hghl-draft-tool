@@ -1024,7 +1024,7 @@ tr:hover td{background:#fafaf8}
 
       <div style="border:1px solid #cbd5e1;border-radius:8px;padding:8px 10px;background:#f8fafc">
         <div style="font-size:10px;font-weight:700;color:#475569;letter-spacing:.02em">CANDIDATE SORT ORDER <span style="font-weight:400;color:#6b7280">Passes 3, 5, and 6 all pull from the same worst-value-first candidate list — these three modifiers shift a player up or down within it before any of those passes run. They don't add or remove a pass; they only change WHO looks like the worst value first. Read-only: hardcoded constants, not live settings — edit the named variable in code to change one.</span></div>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px 16px;margin-top:6px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px 16px;margin-top:6px">
           <div style="display:flex;flex-direction:column;gap:4px">
             <span style="font-size:11px;color:#9ca3af" title="Same future-curve-delta projection as the TRM (Contract) score — a player projected to stay at or above curve for enough of their remaining years gets that value subtracted from their effective deficit, making them harder to drop. Years left alone isn't enough: a long contract with a poor or never-recovering trajectory earns zero credit, same as TRM=0. Only matters relative to other drop candidates' own credit. Edit wtDropTermCredit in code to change it.">Term credit weight (<span style="font-family:monospace;color:#b0b0ac">wtDropTermCredit</span>)</span>
             <div style="width:80px;height:32px;border:1px dashed #ddd;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;color:#6b7280;background:#fff">0.2</div>
@@ -1032,10 +1032,6 @@ tr:hover td{background:#fafaf8}
           <div style="display:flex;flex-direction:column;gap:4px">
             <span style="font-size:11px;color:#9ca3af" title="Flat protection credit added to a player's effective deficit if their real-life NHL team matches that fantasy team GM's known favorite team (see NHL section > GM fan affiliations). Edit wtFanBiasDrop in code to change it.">Fan-bias protection (<span style="font-family:monospace;color:#b0b0ac">wtFanBiasDrop</span>)</span>
             <div style="width:80px;height:32px;border:1px dashed #ddd;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;color:#6b7280;background:#fff">20</div>
-          </div>
-          <div style="display:flex;flex-direction:column;gap:4px">
-            <span style="font-size:11px;color:#9ca3af" title="Pushes players at an overrepresented position (cap share above the knapsack-optimal split) toward the front of the cut line, proportional to how far over and their own cap hit. Always fully on — no weight to dial down. Edit rebalBonus in code to change it.">Position-budget bonus (<span style="font-family:monospace;color:#b0b0ac">rebalBonus</span>)</span>
-            <div style="width:80px;height:32px;border:1px dashed #ddd;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;color:#6b7280;background:#fff">always on</div>
           </div>
         </div>
       </div>
@@ -2761,7 +2757,7 @@ function algoDrops(){
     elcMax: ELC_MAX_2627, calcAgeForSim: calcAge,
     elcMandatorySet: _computeElcMandatoryDrops(TRADE_DEADLINE_2526, ELC_MAX_2526, xactions2526), injurySet: INJURY_DROPS_2627, injuryMissStartSet: INJURY_DROPS_2627_MISS_START,
     computeABPFn: computeABP,
-    useRebalBonus: true, useMinEnforcement: true, emptyMarker: '',
+    useMinEnforcement: true, emptyMarker: '',
     srcNFn: srcNFn2627, maxSrc: MAX_SRC_2627, contractYearAnchor: NHL_SEASON_YEAR,
     debugLog: true,
   });
@@ -3996,7 +3992,7 @@ function computeDrops(allPlayers){
     elcMax: ELC_MAX_2627, calcAgeForSim: calcAge,
     elcMandatorySet: _computeElcMandatoryDrops(TRADE_DEADLINE_2526, ELC_MAX_2526, xactions2526), injurySet: INJURY_DROPS_2627, injuryMissStartSet: INJURY_DROPS_2627_MISS_START,
     computeABPFn: computeABP,
-    useRebalBonus: true, useMinEnforcement: true, emptyMarker: '',
+    useMinEnforcement: true, emptyMarker: '',
     srcNFn: srcNFn2627, maxSrc: MAX_SRC_2627, contractYearAnchor: NHL_SEASON_YEAR,
   });
   const dropIds = new Set();
@@ -6431,7 +6427,7 @@ function algoDrops2526(){
     elcMax: ELC_MAX_2526, calcAgeForSim: calcAge2526,
     elcMandatorySet: _computeElcMandatoryDrops(TRADE_DEADLINE_2425, ELC_MAX_2425, xactions2425), injurySet: INJURY_DROPS_2526,
     computeABPFn: computeABP2526, teamField: 'team2526',
-    useRebalBonus: true, useMinEnforcement: false, emptyMarker: null,
+    useMinEnforcement: false, emptyMarker: null,
     srcNFn: p=>(p.proj2526.ath>0?1:0)+(p.proj2526.dfo>0?1:0)+(p.proj2526.dtz>0?1:0)+(p.proj2526.espn>0?1:0)+(p.proj2526.nhl>0?1:0)+(p.proj2526.cbs>0?1:0),
     maxSrc: 6, contractYearAnchor: 2025, nextContractField: 'nextTerm2526',
     debugLog: true,
@@ -6451,7 +6447,7 @@ function algoDrops2526(){
 // each season's compareDrops2X2Y() wrapper just supplies config.
 function _runCompareDrops({ season, guards, predropRoster, postdropRoster, predropStubs, stubExtraFields,
   startField, ppts, getCap, capLimit, draftReserve, elcMax, calcAgeForSim, elcMandatorySet, injurySet, injuryMissStartSet,
-  computeABPFn, useRebalBonus, useMinEnforcement, midseasonDrops, midseasonReadds, resultsKey, teamField = 'team2627',
+  computeABPFn, useMinEnforcement, midseasonDrops, midseasonReadds, resultsKey, teamField = 'team2627',
   srcNFn, maxSrc, contractYearAnchor, nextContractField }){
   for(const g of guards){ if(g.fail()){ toast(g.msg); return; } }
 
@@ -6485,7 +6481,7 @@ function _runCompareDrops({ season, guards, predropRoster, postdropRoster, predr
   _runAlgoDrops({
     players: vp, teams, startField,
     ppts, getCap, capLimit, draftReserve, elcMax, calcAgeForSim,
-    elcMandatorySet, injurySet, injuryMissStartSet, computeABPFn, useRebalBonus, useMinEnforcement, emptyMarker: null, teamField,
+    elcMandatorySet, injurySet, injuryMissStartSet, computeABPFn, useMinEnforcement, emptyMarker: null, teamField,
     srcNFn, maxSrc, contractYearAnchor, nextContractField,
   });
 
@@ -6612,7 +6608,7 @@ function compareDrops2526(){
     startField: 'start2526', ppts: ppts2526blend, getCap: getCap2526,
     capLimit: CAP_LIMIT_2526, draftReserve: DRAFT_RESERVE_2526, elcMax: ELC_MAX_2526, calcAgeForSim: calcAge2526,
     elcMandatorySet: _computeElcMandatoryDrops(TRADE_DEADLINE_2425, ELC_MAX_2425, xactions2425), injurySet: INJURY_DROPS_2526, computeABPFn: computeABP2526,
-    useRebalBonus: true, useMinEnforcement: false, teamField: 'team2526',
+    useMinEnforcement: false, teamField: 'team2526',
     midseasonDrops: MIDSEASON_DROPS_2526, midseasonReadds: MIDSEASON_READDS_2526,
     resultsKey: 'lastCompareResults2526',
     srcNFn: p=>(p.proj2526.ath>0?1:0)+(p.proj2526.dfo>0?1:0)+(p.proj2526.dtz>0?1:0)+(p.proj2526.espn>0?1:0)+(p.proj2526.nhl>0?1:0)+(p.proj2526.cbs>0?1:0),
@@ -6632,7 +6628,7 @@ function compareDrops2627(){
     startField: 'start2627', ppts: p => p.proj2627.blend||0, getCap: p => p.cap2627||0,
     capLimit: CAP_LIMIT, draftReserve: DRAFT_RESERVE_2627, elcMax: ELC_MAX_2627, calcAgeForSim: calcAge,
     elcMandatorySet: _computeElcMandatoryDrops(TRADE_DEADLINE_2526, ELC_MAX_2526, xactions2526), injurySet: INJURY_DROPS_2627, injuryMissStartSet: INJURY_DROPS_2627_MISS_START, computeABPFn: computeABP,
-    useRebalBonus: true, useMinEnforcement: true,
+    useMinEnforcement: true,
     midseasonDrops: MIDSEASON_DROPS_2627, midseasonReadds: MIDSEASON_READDS_2627,
     resultsKey: 'lastCompareResults2627',
     srcNFn: srcNFn2627, maxSrc: MAX_SRC_2627, contractYearAnchor: NHL_SEASON_YEAR,
@@ -6984,7 +6980,10 @@ function algoDrops2425(){
     elcMax: ELC_MAX_2425, calcAgeForSim: calcAge2425,
     elcMandatorySet: ELC_MANDATORY_DROPS_2425, injurySet: INJURY_DROPS_2425,
     computeABPFn: computeABP2425, teamField: 'team2425',
-    useRebalBonus: false, useMinEnforcement: false, emptyMarker: null,
+    // TEMP: flipped back to false 2026-09-21 to get the "off" baseline for an A/B backtest
+    // against the just-recorded "on" result (144/181, 157/181 outcome-adjusted) — restore to
+    // true once that comparison is in.
+    useMinEnforcement: false, emptyMarker: null,
     srcNFn: p=>(p.proj2425.ath>0?1:0)+(p.proj2425.dfo>0?1:0)+(p.proj2425.dtz>0?1:0)+(p.proj2425.nhl>0?1:0),
     maxSrc: 4, contractYearAnchor: 2024, nextContractField: 'nextTerm2425',
     debugLog: true,
@@ -7009,7 +7008,7 @@ function compareDrops2425(){
     startField: 'start2425', ppts: ppts2425blend, getCap: getCap2425,
     capLimit: CAP_LIMIT_2425, draftReserve: DRAFT_RESERVE_2425, elcMax: ELC_MAX_2425, calcAgeForSim: calcAge2425,
     elcMandatorySet: ELC_MANDATORY_DROPS_2425, injurySet: INJURY_DROPS_2425, computeABPFn: computeABP2425,
-    useRebalBonus: false, useMinEnforcement: false, teamField: 'team2425',
+    useMinEnforcement: false, teamField: 'team2425',
     midseasonDrops: MIDSEASON_DROPS_2425, midseasonReadds: MIDSEASON_READDS_2425,
     resultsKey: 'lastCompareResults2425',
     srcNFn: p=>(p.proj2425.ath>0?1:0)+(p.proj2425.dfo>0?1:0)+(p.proj2425.dtz>0?1:0)+(p.proj2425.nhl>0?1:0),
@@ -7173,7 +7172,10 @@ function algoDrops2324(){
     elcMax: ELC_MAX_2324, calcAgeForSim: calcAge2324,
     elcMandatorySet: ELC_MANDATORY_DROPS_2324, injurySet: INJURY_DROPS_2324,
     computeABPFn: computeABP2324, teamField: 'team2324',
-    useRebalBonus: false, useMinEnforcement: false, emptyMarker: null,
+    // TEMP: flipped back to false 2026-09-21 to get the "off" baseline for an A/B backtest
+    // against the just-recorded "on" result (148/180, 158/180 outcome-adjusted) — restore to
+    // true once that comparison is in.
+    useMinEnforcement: false, emptyMarker: null,
     srcNFn: p=>(p.proj2324.ath>0?1:0)+(p.proj2324.dtz>0?1:0)+(p.proj2324.nhl>0?1:0)+(p.proj2324.dob>0?1:0),
     maxSrc: 4, contractYearAnchor: 2023, nextContractField: 'nextTerm2324',
     debugLog: true,
@@ -7198,7 +7200,7 @@ function compareDrops2324(){
     startField: 'start2324', ppts: ppts2324blend, getCap: getCap2324,
     capLimit: CAP_LIMIT_2324, draftReserve: DRAFT_RESERVE_2324, elcMax: ELC_MAX_2324, calcAgeForSim: calcAge2324,
     elcMandatorySet: ELC_MANDATORY_DROPS_2324, injurySet: INJURY_DROPS_2324, computeABPFn: computeABP2324,
-    useRebalBonus: false, useMinEnforcement: false, teamField: 'team2324',
+    useMinEnforcement: false, teamField: 'team2324',
     midseasonDrops: MIDSEASON_DROPS_2324, midseasonReadds: MIDSEASON_READDS_2324,
     resultsKey: 'lastCompareResults2324',
     srcNFn: p=>(p.proj2324.ath>0?1:0)+(p.proj2324.dtz>0?1:0)+(p.proj2324.nhl>0?1:0)+(p.proj2324.dob>0?1:0),
@@ -8234,7 +8236,7 @@ function algoDraft2526(){
 // drops correctly (found 2026-07-22 via Blue Line Bangers/Mason Marchment in 24-25).
 // Mutates only p[startField] on the given `players` array; every other side effect (persistence,
 // rendering, toasts) stays in each season's own wrapper function, called after this returns.
-function _runAlgoDrops({ players, teams, startField, ppts, getCap, capLimit, draftReserve, elcMax, calcAgeForSim, elcMandatorySet, injurySet = new Set(), injuryMissStartSet = new Set(), computeABPFn, useRebalBonus = false, useMinEnforcement = false, emptyMarker = null, teamField = 'team2627', srcNFn, maxSrc, contractYearAnchor, nextContractField = 'nextTerm2627', debugLog = false }){
+function _runAlgoDrops({ players, teams, startField, ppts, getCap, capLimit, draftReserve, elcMax, calcAgeForSim, elcMandatorySet, injurySet = new Set(), injuryMissStartSet = new Set(), computeABPFn, useMinEnforcement = false, emptyMarker = null, teamField = 'team2627', srcNFn, maxSrc, contractYearAnchor, nextContractField = 'nextTerm2627', debugLog = false }){
   // Tags every dropped player with which numbered cut they were (this run's dropList order)
   // and why, so the reasoning is inspectable later (e.g. on the team curve modal) instead of
   // only visible transiently via console.log while the run is happening. Field names are
@@ -8409,37 +8411,19 @@ function _runAlgoDrops({ players, teams, startField, ppts, getCap, capLimit, dra
     const injuryDropIds = new Set(injuryDrops.map(p => p.id));
     const remaining = roster.filter(p => !mandatoryIds.has(p.id) && !injuryDropIds.has(p.id));
 
-    // Positional rebalancing: any position's cap share > its knapsack-optimal fraction
-    // (OPT_POS_FRACS) bumps THAT position's players' effective deficit, so an over-invested
-    // position gets trimmed even when no single player there looks bad enough on its own. Was
-    // D-only (blue line); generalized to F/G too 2026-07-24, prompted by a real drop the user
-    // made for exactly this reason on a goalie (expensive G on a bad team, cap better spent on
-    // F) that the algo's D-only version had no way to reason about directly — the mechanism had
-    // simply never been extended past its original D use case. Backtested via Compare Drops
-    // 2025-26 (the only season with this flag on and real outcome data): 142/180 -> 143/180.
-    //
-    // Scaled by the player's OWN cap hit (2026-08-04), not flat per-position — found live via
-    // Mats Zuccarello ($1.00M, +4.6△, one of the best contracts on the roster) getting cut from
-    // Pernicious Puckers purely because F was 66.2% of team cap vs a 58% target. The flat
-    // version punished every forward equally regardless of cap hit, so a cheap efficient
-    // contract got the identical bump as an expensive inefficient one — backwards: cutting a
-    // $1M player barely dents an F-cap overage, and a cheap productive forward is exactly what
-    // a GM correcting a positional overweight should be looking to ADD, not cut. Now an
-    // expensive, inefficient forward at the same position gets a much larger bump than a cheap,
-    // efficient one — the players who actually cause the imbalance are the ones targeted.
-    let rebalBonus = () => 0;
-    if(useRebalBonus){
-      const rCapTot = remaining.reduce((s,p) => s+(getCap(p)||0), 0);
-      const rCapByPos = {F:0, D:0, G:0};
-      for(const p of remaining) rCapByPos[posGroup(p.pos)] = (rCapByPos[posGroup(p.pos)]||0) + (getCap(p)||0);
-      const excessByPos = {};
-      for(const pg of ['F','D','G']) excessByPos[pg] = rCapTot>0 ? Math.max(0, rCapByPos[pg]/rCapTot - (OPT_POS_FRACS[pg]||0)) : 0;
-      rebalBonus = p => (excessByPos[posGroup(p.pos)]||0) * (getCap(p)||0);
-    }
+    // Positional rebalancing (rebalBonus) removed 2026-09-21 — a real unit-mismatch bug, not
+    // just unvalidated: it added a dollar-scaled bonus (excess cap-share fraction × cap $M,
+    // typically ~0.1-1.5) directly into deficit(), a points-scale curve-delta (routinely 10-30+
+    // points apart between real candidates). Structurally too small to ever change a sort order
+    // except in the rare near-tie case. Enabled for 23-24/24-25 (previously off, an oversight)
+    // and backtested with Compare Drops across all 3 complete seasons: byte-identical results
+    // on vs off for both 23-24 (148/180, 158/180 outcome-adjusted) and 24-25 (144/181, 157/181)
+    // — confirmed with repeated hard reloads, not stale state. The original 25-26-only backtest
+    // (142/180 -> 143/180) was within noise for a mechanism this weak, not real evidence it
+    // worked.
 
     // Fan-bias drop protection (see wtFanBiasDrop/GM_FAN_TEAM) — shifts a fan-team player's
-    // effective deficit DOWN (looks less bad, sorted later/less likely to be dropped), the
-    // mirror image of rebalBonus shifting an over-invested position's players UP.
+    // effective deficit DOWN (looks less bad, sorted later/less likely to be dropped).
     const fanTeam = GM_FAN_TEAM[team];
     const fanBiasProtection = p => {
       if(!fanTeam || wtFanBiasDrop <= 0) return 0;
@@ -8452,8 +8436,8 @@ function _runAlgoDrops({ players, teams, startField, ppts, getCap, capLimit, dra
     // bypasses every other protection once posMinsMet is false, so untouchable must sit past even
     // prospects or a forced drop can still reach an ABP=0 star before a disposable cheap prospect.
     const isUntouchableT = p => isUntouchable(p);
-    const lowVal    = remaining.filter(p => !isUntouchableT(p) && !isProtectedProspect(p) && !isHighVal(p)).sort((a,b) => (deficit(b)+rebalBonus(b)-fanBiasProtection(b)-termCreditOf(b)) - (deficit(a)+rebalBonus(a)-fanBiasProtection(a)-termCreditOf(a)));
-    const highVal   = remaining.filter(p => !isUntouchableT(p) && !isProtectedProspect(p) &&  isHighVal(p)).sort((a,b) => (deficit(b)+rebalBonus(b)-fanBiasProtection(b)-termCreditOf(b)) - (deficit(a)+rebalBonus(a)-fanBiasProtection(a)-termCreditOf(a)));
+    const lowVal    = remaining.filter(p => !isUntouchableT(p) && !isProtectedProspect(p) && !isHighVal(p)).sort((a,b) => (deficit(b)-fanBiasProtection(b)-termCreditOf(b)) - (deficit(a)-fanBiasProtection(a)-termCreditOf(a)));
+    const highVal   = remaining.filter(p => !isUntouchableT(p) && !isProtectedProspect(p) &&  isHighVal(p)).sort((a,b) => (deficit(b)-fanBiasProtection(b)-termCreditOf(b)) - (deficit(a)-fanBiasProtection(a)-termCreditOf(a)));
     const prospects = remaining.filter(p => !isUntouchableT(p) &&  isProtectedProspect(p)).sort((a,b) => deficit(b) - deficit(a));
     const untouchable = remaining.filter(p => isUntouchableT(p)).sort((a,b) => deficit(b) - deficit(a));
     const candidates = [...lowVal, ...highVal, ...prospects, ...untouchable];
