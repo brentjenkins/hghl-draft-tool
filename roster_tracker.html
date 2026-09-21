@@ -4830,6 +4830,7 @@ const POSTDROP_ROSTER_2627 = {
   'karel vejmelka_G': 'Muller Time!',
   'jacob fowler_G': 'Muller Time!',
   'bryan rust_F': 'Muller Time!',
+  'zach hyman_F': 'Muller Time!',
   'tim stutzle_F': 'Pernicious Puckers',
   'nick suzuki_F': 'Pernicious Puckers',
   'alex debrincat_F': 'Pernicious Puckers',
@@ -5336,8 +5337,8 @@ function _renderBBDraftBoard(picks, draftSeq, startField, getCap, capLimit, targ
   // scrolled up to check earlier rounds, leave them there.
   const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 150;
   const total = picks.length;
-  const startN = 0; // full history from round 1 — container scrolls (see .draft-col)
-  const endN = total + 6; // plus ~1 round preview of upcoming picks
+  const startN = Math.max(0, total - 6); // 6 prior (completed) picks
+  const endN = total + 5; // current pick + 5 more upcoming = 6 upcoming, 12 rows total
   const posColors = {F:'#dbeafe',D:'#dcfce7',G:'#fef3c7'};
   const posText   = {F:'#1e40af',D:'#166534',G:'#92400e'};
   let html = '', lastRound = null;
@@ -10549,16 +10550,8 @@ function setView(v){
 }
 
 function renderDraftView(){
-  const picks    = draftState2627.picks;
-  const total    = picks.length;
-  const posColors = {F:'#dbeafe', D:'#dcfce7', G:'#fef3c7'};
-  const posText   = {F:'#1e40af', D:'#166534', G:'#92400e'};
-
-  // Sticky-bottom auto-scroll: if already near the latest picks (or this is
-  // the first render), follow new picks as they happen. If the user has
-  // scrolled up to check earlier rounds, leave them there.
-  const _col = document.getElementById('draftColumn');
-  const nearBottom = _col.scrollHeight - _col.scrollTop - _col.clientHeight < 150;
+  const picks = draftState2627.picks;
+  const total = picks.length;
 
   const draftSeq = buildDraftSeq2627();
   const onClock = draftSeq[total] ?? null;
@@ -10567,86 +10560,14 @@ function renderDraftView(){
     ? `Round ${curRound} — On the clock: ${onClock} — Pick ${total + 1}`
     : 'Draft complete';
 
-  // Full history from round 1 — container scrolls (see .draft-col) — plus
-  // ~1 round preview of upcoming picks past the current one.
-  const startN      = 0;
-  const endN = total + 6;
+  // Shared with the historical-season (23-24/24-25/25-26) Big Board draft replay — see
+  // _renderBBDraftBoard's own definition. Consolidated 2026-09-20 after the two copies of this
+  // pick-list rendering logic (this one and _renderBBDraftBoard's) silently drifted apart on the
+  // prior/upcoming row-window sizing, wasting several rounds of live-draft debugging before the
+  // mismatch was found — same "sibling functions drift" bug class as the name-dedup/team-count
+  // fixes (see feedback_consolidate_by_default memory).
+  _renderBBDraftBoard(picks, draftSeq, 'start2627', p => p.cap2627||0, CAP_LIMIT, 'draftColumn');
 
-  // Precompute each team's current cap/position-need snapshot ONCE (a single pass over all
-  // players) instead of re-scanning the whole ~2874-player pool per pick row below — every row
-  // for the same team was recomputing the IDENTICAL result, since this reads the team's current
-  // live roster, not a point-in-time snapshot at that pick. Found live 2026-09-16: this made
-  // renderDraftView's cost grow with picks×players, visibly slowing down as a live draft
-  // progressed (picks taking longer to register the deeper into the draft you got).
-  const teamStats = new Map();
-  for(const p of players){
-    const t = p.start2627;
-    if(!t) continue;
-    if(!teamStats.has(t)) teamStats.set(t, {cap:0, fN:0, dN:0, gN:0});
-    const s = teamStats.get(t);
-    s.cap += (p.cap2627||0);
-    const pg2 = posGroup(p.pos);
-    if(pg2==='F') s.fN++; else if(pg2==='D') s.dN++; else if(pg2==='G') s.gN++;
-  }
-
-  let html = '';
-  let lastRound = null;
-
-  for(let n = startN; n <= endN; n++){
-    const team    = picks[n]?.team ?? draftSeq[n];
-    if(!team) break; // past end of draft
-    const round   = draftSeq.rounds[n];
-    const pick    = picks[n];              // defined only if already picked
-    const isCurrent  = n === total;
-    const showPlayer  = !!pick;
-    const isLastPick  = n === total - 1 && total > 0;
-
-    if(round !== lastRound){
-      html += `<div class="draft-round-hdr">Round ${round}</div>`;
-      lastRound = round;
-    }
-
-    const logo   = teamLogos[team];
-    const stats  = teamStats.get(team) || {cap:0, fN:0, dN:0, gN:0};
-    const cap    = stats.cap;
-    const rem    = CAP_LIMIT - cap;
-    const remColor = rem < 0 ? '#dc2626' : rem < 5 ? '#dc2626' : rem < 15 ? '#d97706' : '#16a34a';
-    const remLabel = rem < 0 ? `$${(-rem).toFixed(1)}M over` : `$${rem.toFixed(1)}M left`;
-    const fRem = Math.max(0, DRAFT_ROSTER_MAX.F - stats.fN);
-    const dRem = Math.max(0, DRAFT_ROSTER_MAX.D - stats.dN);
-    const gRem = Math.max(0, DRAFT_ROSTER_MAX.G - stats.gN);
-
-    const pickedPG = showPlayer ? posGroup(pick.pos) : null;
-    const posHi = pg => pickedPG === pg
-      ? 'background:#185FA5;color:#fff;border-radius:4px;padding:1px 6px'
-      : 'background:#fff;border-radius:4px;padding:1px 6px;color:#1a1a18';
-
-    html += `<div class="draft-row${isCurrent ? ' draft-row-current' : ''}">
-      <div class="draft-row-pick">${n + 1}</div>
-      <div class="draft-row-team">
-        ${logo ? `<img src="${esc(logo)}" class="draft-row-logo" loading="lazy">` : '<div class="draft-row-logo"></div>'}
-        <span class="draft-row-name">${esc(team)}</span>
-      </div>
-      <div class="draft-row-cap">$${cap.toFixed(1)}M &bull; <span style="color:${remColor}">${remLabel}</span></div>
-      <div class="draft-row-pos">
-        <span style="${posHi('F')}">F&thinsp;${fRem}</span>
-        <span style="${posHi('D')}">D&thinsp;${dRem}</span>
-        <span style="${posHi('G')}">G&thinsp;${gRem}</span>
-      </div>
-      <div class="draft-row-player" style="display:flex;align-items:center;gap:10px">
-        ${showPlayer ? `
-          <span style="flex:1;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(pick.player)}</span>
-          <span style="background:${posColors[pickedPG]||'#f3f4f6'};color:${posText[pickedPG]||'#374151'};border-radius:5px;padding:2px 9px;font-size:13px;font-weight:700;flex-shrink:0">${esc(pickedPG||pick.pos||'?')}</span>
-          <span style="color:#6b7280;font-size:15px;flex-shrink:0;min-width:36px">${esc(pick.nhlTeam||'—')}</span>
-          <span style="color:#6b7280;font-size:15px;flex-shrink:0;min-width:62px;text-align:right">${pick.cap>0?'$'+pick.cap.toFixed(2)+'M':'—'}</span>
-          <button class="btn-undo" onclick="undoLastPick()" style="${isLastPick?'':'visibility:hidden'}">↩ Undo</button>
-        ` : ''}
-      </div>
-    </div>`;
-  }
-
-  _col.innerHTML = html;
-  if(nearBottom) _col.scrollTop = _col.scrollHeight;
   renderStandings();
   renderDraftSearch();
 }
