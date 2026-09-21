@@ -1646,7 +1646,16 @@ function peakTrajectoryScore(age, pg, contractYrsRemaining){
 // immediately post-peak. Reuses peakTrajectoryScore's own [peakAge, peakAge+2] prime window
 // (the same Suzuki/Caufield/Hutson "locked in during prime" concept) as a flat-production grace
 // period before decline actually starts.
-const TRAJ_GROWTH_RATE = 0.02;
+//
+// TRAJ_DECLINE_RATE backtested 2026-09-21: real year-over-year pts/GP change across both
+// completed-season transitions (23-24->24-25, 24-25->25-26; GP>=41 both seasons, n=1025) landed
+// almost exactly on -4%/yr past the prime window (offset+3: -3.9%, offset>=5: -4.3%) — kept as
+// is. TRAJ_GROWTH_RATE raised 0.02->0.10 in the same backtest: real pre-peak players averaged
+// +10.2%/yr (weighted across offset -4..-1: 12.6%/11.5%/2.4%/10.4%, n=410) — 2% was
+// systematically under-crediting expected growth for still-ascending players. The prime window
+// itself (offset 0-2: +1.2%/+4.6%/+1.5%) stayed close enough to flat to leave TRAJ_PRIME_WINDOW_YRS
+// unchanged.
+const TRAJ_GROWTH_RATE = 0.10;
 const TRAJ_DECLINE_RATE = 0.04;
 const TRAJ_PRIME_WINDOW_YRS = 2; // years past peakAge still treated as flat/prime, not declining
 function _trajYearMult(ageAtYear, pg){
