@@ -992,6 +992,13 @@ tr:hover td{background:#fafaf8}
           <label style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:#9ca3af">G<input type="number" id="s-elcExpG" value="35" min="1" max="200" step="1" onchange="updateDraftWeight('elcExpG',+this.value)" style="width:56px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center;color:#1a1a18"></label>
         </div>
       </div>
+      <div style="grid-column:1/-1;display:flex;flex-direction:column;gap:3px">
+        <span style="font-size:11px;color:#9ca3af" title="Simulate-mode teams (predicting real GM behavior) use THESE values instead of the elcExpF/D above — a real matched-picks backtest found the empirically-correct 41/26 actually predicts real draft picks worse than these older guessed values. Optimize-mode teams (and every other display) always use the real elcExpF/D above; G isn't overridden in Simulate mode.">Simulate-mode ELC expected pts (<span style="font-family:monospace;color:#b0b0ac">simElcExpF / simElcExpD</span>)</span>
+        <div style="display:flex;gap:6px">
+          <label style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:#9ca3af">F<input type="number" id="s-simElcExpF" value="35" min="1" max="200" step="1" onchange="updateSetting('simElcExpF',+this.value)" style="width:56px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center;color:#1a1a18"></label>
+          <label style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:#9ca3af">D<input type="number" id="s-simElcExpD" value="25" min="1" max="200" step="1" onchange="updateSetting('simElcExpD',+this.value)" style="width:56px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center;color:#1a1a18"></label>
+        </div>
+      </div>
     </div>
   </div>
   <div class="settings-divider"></div>
@@ -1839,10 +1846,17 @@ function _draftModeFor(team){ return draftModeByTeam[team] || 'simulate'; }
 // 2026-08-03), then found live again ranking a cap-inefficient player (worse PPTS/$M, further
 // below curve) above strictly better options purely for costing more. See
 // session_2026-08-03_fanbias_and_wtcapuse_fixes memory for the earlier history.
+// Simulate-mode's own elcExpF/D, separate from draftWeights.elcExpF/D (41/26) — see
+// session_2026-07-25_elc_baseline_and_dropvaluefloor memory: the empirically-correct 41/26
+// actually predicted real draft picks WORSE than the old guessed 35/25 in a matched-picks
+// backtest, so Simulate mode deliberately keeps the "wrong but predictive" values here.
+// Promoted from hardcoded literals to real Settings inputs 2026-09-22 (Efficiency Curve
+// section, below the real elcExpF/D/G row).
+let simElcExpF = 35, simElcExpD = 25;
 function _effectiveDraftWeights(team, draftWeightsBase){
   const teamMode = _draftModeFor(team);
   return teamMode === 'simulate'
-    ? { ...draftWeightsBase, elcExpF: 35, elcExpD: 25, wtFanBias: draftWeightsBase.wtFanBias || 5, wtTermValue: 0, _flatElcBaseline: true }
+    ? { ...draftWeightsBase, elcExpF: simElcExpF, elcExpD: simElcExpD, wtFanBias: draftWeightsBase.wtFanBias || 5, wtTermValue: 0, _flatElcBaseline: true }
     : { ...draftWeightsBase, wtFanBias: 0, wtTermValue: draftWeightsBase.wtTermValue || 2 };
 }
 let ptsTarget = 1200; // historically the real points needed to win the championship, apart from last year
@@ -5518,6 +5532,7 @@ function syncSettings(){
   set('s-wtPPTSM', W.wtPPTSM); set('s-wtAge', W.wtAge);
   set('s-wtProspect', W.wtProspect);
   set('s-elcExpF', W.elcExpF); set('s-elcExpD', W.elcExpD); set('s-elcExpG', W.elcExpG);
+  set('s-simElcExpF', simElcExpF); set('s-simElcExpD', simElcExpD);
   set('s-wtCoverageDiscount', W.wtCoverageDiscount);
   set('s-minSources', W.minSources??2);
   set('s-wtPressure', W.wtPressure??0.6);
@@ -5602,6 +5617,8 @@ function updateSetting(key, val){
   else if(key === 'dropValueFloor') dropValueFloor = val;
   else if(key === 'untouchableElitePts') untouchableElitePts = val;
   else if(key === 'untouchableDeltaFloor') untouchableDeltaFloor = val;
+  else if(key === 'simElcExpF')   simElcExpF = val;
+  else if(key === 'simElcExpD')   simElcExpD = val;
   else if(key === 'earlyPaceWeight')           { EARLY_PACE_WEIGHT = val; applyBlendedPts(); render(); }
 }
 
