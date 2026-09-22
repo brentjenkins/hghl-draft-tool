@@ -5375,8 +5375,13 @@ function _renderBBDraftBoard(picks, draftSeq, startField, getCap, capLimit, targ
   // scrolled up to check earlier rounds, leave them there.
   const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 150;
   const total = picks.length;
-  const startN = Math.max(0, total - 6); // 6 prior (completed) picks
-  const endN = total + 5; // current pick + 5 more upcoming = 6 upcoming, 12 rows total
+  // Full history from pick 0, not a sliding window — a fixed 6-prior-picks window (shipped
+  // 2026-09-20, see 2cfc3b6) made it impossible to scroll up past 6 picks behind the current
+  // one to review earlier rounds, since those rows were never in the DOM at all. A full draft
+  // is ~180 rows of lightweight divs, cheap to build; sticky-bottom auto-scroll below still
+  // keeps you pinned near the current pick unless you've deliberately scrolled away.
+  const startN = 0;
+  const endN = total + 5; // current pick + 5 more upcoming preview
   const posColors = {F:'#dbeafe',D:'#dcfce7',G:'#fef3c7'};
   const posText   = {F:'#1e40af',D:'#166534',G:'#92400e'};
   let html = '', lastRound = null;
