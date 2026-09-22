@@ -2789,7 +2789,7 @@ function algoDrops(){
     elcMax: ELC_MAX_2627, calcAgeForSim: calcAge,
     elcMandatorySet: _computeElcMandatoryDrops(TRADE_DEADLINE_2526, ELC_MAX_2526, xactions2526), injurySet: INJURY_DROPS_2627, injuryMissStartSet: INJURY_DROPS_2627_MISS_START,
     computeABPFn: computeABP,
-    useMinEnforcement: true, emptyMarker: '',
+    emptyMarker: '',
     srcNFn: srcNFn2627, maxSrc: MAX_SRC_2627, contractYearAnchor: NHL_SEASON_YEAR,
     debugLog: true,
   });
@@ -4024,7 +4024,7 @@ function computeDrops(allPlayers){
     elcMax: ELC_MAX_2627, calcAgeForSim: calcAge,
     elcMandatorySet: _computeElcMandatoryDrops(TRADE_DEADLINE_2526, ELC_MAX_2526, xactions2526), injurySet: INJURY_DROPS_2627, injuryMissStartSet: INJURY_DROPS_2627_MISS_START,
     computeABPFn: computeABP,
-    useMinEnforcement: true, emptyMarker: '',
+    emptyMarker: '',
     srcNFn: srcNFn2627, maxSrc: MAX_SRC_2627, contractYearAnchor: NHL_SEASON_YEAR,
   });
   const dropIds = new Set();
@@ -6470,7 +6470,7 @@ function algoDrops2526(){
     elcMax: ELC_MAX_2526, calcAgeForSim: calcAge2526,
     elcMandatorySet: _computeElcMandatoryDrops(TRADE_DEADLINE_2425, ELC_MAX_2425, xactions2425), injurySet: INJURY_DROPS_2526,
     computeABPFn: computeABP2526, teamField: 'team2526',
-    useMinEnforcement: false, emptyMarker: null,
+    emptyMarker: null,
     srcNFn: p=>(p.proj2526.ath>0?1:0)+(p.proj2526.dfo>0?1:0)+(p.proj2526.dtz>0?1:0)+(p.proj2526.espn>0?1:0)+(p.proj2526.nhl>0?1:0)+(p.proj2526.cbs>0?1:0),
     maxSrc: 6, contractYearAnchor: 2025, nextContractField: 'nextTerm2526',
     debugLog: true,
@@ -6490,7 +6490,7 @@ function algoDrops2526(){
 // each season's compareDrops2X2Y() wrapper just supplies config.
 function _runCompareDrops({ season, guards, predropRoster, postdropRoster, predropStubs, stubExtraFields,
   startField, ppts, getCap, capLimit, draftReserve, elcMax, calcAgeForSim, elcMandatorySet, injurySet, injuryMissStartSet,
-  computeABPFn, useMinEnforcement, midseasonDrops, midseasonReadds, resultsKey, teamField = 'team2627',
+  computeABPFn, midseasonDrops, midseasonReadds, resultsKey, teamField = 'team2627',
   srcNFn, maxSrc, contractYearAnchor, nextContractField }){
   for(const g of guards){ if(g.fail()){ toast(g.msg); return; } }
 
@@ -6524,7 +6524,7 @@ function _runCompareDrops({ season, guards, predropRoster, postdropRoster, predr
   _runAlgoDrops({
     players: vp, teams, startField,
     ppts, getCap, capLimit, draftReserve, elcMax, calcAgeForSim,
-    elcMandatorySet, injurySet, injuryMissStartSet, computeABPFn, useMinEnforcement, emptyMarker: null, teamField,
+    elcMandatorySet, injurySet, injuryMissStartSet, computeABPFn, emptyMarker: null, teamField,
     srcNFn, maxSrc, contractYearAnchor, nextContractField,
   });
 
@@ -6651,7 +6651,7 @@ function compareDrops2526(){
     startField: 'start2526', ppts: ppts2526blend, getCap: getCap2526,
     capLimit: CAP_LIMIT_2526, draftReserve: DRAFT_RESERVE_2526, elcMax: ELC_MAX_2526, calcAgeForSim: calcAge2526,
     elcMandatorySet: _computeElcMandatoryDrops(TRADE_DEADLINE_2425, ELC_MAX_2425, xactions2425), injurySet: INJURY_DROPS_2526, computeABPFn: computeABP2526,
-    useMinEnforcement: false, teamField: 'team2526',
+    teamField: 'team2526',
     midseasonDrops: MIDSEASON_DROPS_2526, midseasonReadds: MIDSEASON_READDS_2526,
     resultsKey: 'lastCompareResults2526',
     srcNFn: p=>(p.proj2526.ath>0?1:0)+(p.proj2526.dfo>0?1:0)+(p.proj2526.dtz>0?1:0)+(p.proj2526.espn>0?1:0)+(p.proj2526.nhl>0?1:0)+(p.proj2526.cbs>0?1:0),
@@ -6671,7 +6671,6 @@ function compareDrops2627(){
     startField: 'start2627', ppts: p => p.proj2627.blend||0, getCap: p => p.cap2627||0,
     capLimit: CAP_LIMIT, draftReserve: DRAFT_RESERVE_2627, elcMax: ELC_MAX_2627, calcAgeForSim: calcAge,
     elcMandatorySet: _computeElcMandatoryDrops(TRADE_DEADLINE_2526, ELC_MAX_2526, xactions2526), injurySet: INJURY_DROPS_2627, injuryMissStartSet: INJURY_DROPS_2627_MISS_START, computeABPFn: computeABP,
-    useMinEnforcement: true,
     midseasonDrops: MIDSEASON_DROPS_2627, midseasonReadds: MIDSEASON_READDS_2627,
     resultsKey: 'lastCompareResults2627',
     srcNFn: srcNFn2627, maxSrc: MAX_SRC_2627, contractYearAnchor: NHL_SEASON_YEAR,
@@ -7023,10 +7022,7 @@ function algoDrops2425(){
     elcMax: ELC_MAX_2425, calcAgeForSim: calcAge2425,
     elcMandatorySet: ELC_MANDATORY_DROPS_2425, injurySet: INJURY_DROPS_2425,
     computeABPFn: computeABP2425, teamField: 'team2425',
-    // TEMP: flipped back to false 2026-09-21 to get the "off" baseline for an A/B backtest
-    // against the just-recorded "on" result (144/181, 157/181 outcome-adjusted) — restore to
-    // true once that comparison is in.
-    useMinEnforcement: false, emptyMarker: null,
+    emptyMarker: null,
     srcNFn: p=>(p.proj2425.ath>0?1:0)+(p.proj2425.dfo>0?1:0)+(p.proj2425.dtz>0?1:0)+(p.proj2425.nhl>0?1:0),
     maxSrc: 4, contractYearAnchor: 2024, nextContractField: 'nextTerm2425',
     debugLog: true,
@@ -7051,7 +7047,7 @@ function compareDrops2425(){
     startField: 'start2425', ppts: ppts2425blend, getCap: getCap2425,
     capLimit: CAP_LIMIT_2425, draftReserve: DRAFT_RESERVE_2425, elcMax: ELC_MAX_2425, calcAgeForSim: calcAge2425,
     elcMandatorySet: ELC_MANDATORY_DROPS_2425, injurySet: INJURY_DROPS_2425, computeABPFn: computeABP2425,
-    useMinEnforcement: false, teamField: 'team2425',
+    teamField: 'team2425',
     midseasonDrops: MIDSEASON_DROPS_2425, midseasonReadds: MIDSEASON_READDS_2425,
     resultsKey: 'lastCompareResults2425',
     srcNFn: p=>(p.proj2425.ath>0?1:0)+(p.proj2425.dfo>0?1:0)+(p.proj2425.dtz>0?1:0)+(p.proj2425.nhl>0?1:0),
@@ -7215,10 +7211,7 @@ function algoDrops2324(){
     elcMax: ELC_MAX_2324, calcAgeForSim: calcAge2324,
     elcMandatorySet: ELC_MANDATORY_DROPS_2324, injurySet: INJURY_DROPS_2324,
     computeABPFn: computeABP2324, teamField: 'team2324',
-    // TEMP: flipped back to false 2026-09-21 to get the "off" baseline for an A/B backtest
-    // against the just-recorded "on" result (148/180, 158/180 outcome-adjusted) — restore to
-    // true once that comparison is in.
-    useMinEnforcement: false, emptyMarker: null,
+    emptyMarker: null,
     srcNFn: p=>(p.proj2324.ath>0?1:0)+(p.proj2324.dtz>0?1:0)+(p.proj2324.nhl>0?1:0)+(p.proj2324.dob>0?1:0),
     maxSrc: 4, contractYearAnchor: 2023, nextContractField: 'nextTerm2324',
     debugLog: true,
@@ -7243,7 +7236,7 @@ function compareDrops2324(){
     startField: 'start2324', ppts: ppts2324blend, getCap: getCap2324,
     capLimit: CAP_LIMIT_2324, draftReserve: DRAFT_RESERVE_2324, elcMax: ELC_MAX_2324, calcAgeForSim: calcAge2324,
     elcMandatorySet: ELC_MANDATORY_DROPS_2324, injurySet: INJURY_DROPS_2324, computeABPFn: computeABP2324,
-    useMinEnforcement: false, teamField: 'team2324',
+    teamField: 'team2324',
     midseasonDrops: MIDSEASON_DROPS_2324, midseasonReadds: MIDSEASON_READDS_2324,
     resultsKey: 'lastCompareResults2324',
     srcNFn: p=>(p.proj2324.ath>0?1:0)+(p.proj2324.dtz>0?1:0)+(p.proj2324.nhl>0?1:0)+(p.proj2324.dob>0?1:0),
@@ -8279,7 +8272,7 @@ function algoDraft2526(){
 // drops correctly (found 2026-07-22 via Blue Line Bangers/Mason Marchment in 24-25).
 // Mutates only p[startField] on the given `players` array; every other side effect (persistence,
 // rendering, toasts) stays in each season's own wrapper function, called after this returns.
-function _runAlgoDrops({ players, teams, startField, ppts, getCap, capLimit, draftReserve, elcMax, calcAgeForSim, elcMandatorySet, injurySet = new Set(), injuryMissStartSet = new Set(), computeABPFn, useMinEnforcement = false, emptyMarker = null, teamField = 'team2627', srcNFn, maxSrc, contractYearAnchor, nextContractField = 'nextTerm2627', debugLog = false }){
+function _runAlgoDrops({ players, teams, startField, ppts, getCap, capLimit, draftReserve, elcMax, calcAgeForSim, elcMandatorySet, injurySet = new Set(), injuryMissStartSet = new Set(), computeABPFn, emptyMarker = null, teamField = 'team2627', srcNFn, maxSrc, contractYearAnchor, nextContractField = 'nextTerm2627', debugLog = false }){
   // Tags every dropped player with which numbered cut they were (this run's dropList order)
   // and why, so the reasoning is inspectable later (e.g. on the team curve modal) instead of
   // only visible transiently via console.log while the run is happening. Field names are
@@ -8629,8 +8622,12 @@ function _runAlgoDrops({ players, teams, startField, ppts, getCap, capLimit, dra
       faCurveFns[pg] = fitQuadratic(teamPoolByPos[pg]);
     }
 
-    // Enforce minimum drops: if candidates ran out before minimum, force-drop lowest-value remaining
-    if(useMinEnforcement && numDropped < minDropsPreseason){
+    // Enforce minimum drops: if candidates ran out before minimum, force-drop lowest-value
+    // remaining. Unconditional — minDropsPreseason is a real, hard fantasy-league rule every
+    // team's roster must satisfy, not a soft target a caller can opt out of. This used to be
+    // gated behind a useMinEnforcement flag that every real caller had already set true;
+    // removed entirely 2026-09-22 rather than leave dead optionality around a hard constraint.
+    if(numDropped < minDropsPreseason){
       const alreadyDropped = new Set(dropList.map(x => x.id));
       for(const p of candidates){
         if(numDropped >= minDropsPreseason) break;
