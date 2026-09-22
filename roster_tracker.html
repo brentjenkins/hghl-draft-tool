@@ -6613,7 +6613,12 @@ function _runCompareDrops({ season, guards, predropRoster, postdropRoster, predr
     const badgeColor = pct2>=80?'#16a34a':pct2>=60?'#d97706':'#dc2626';
     let html = `<div style="margin-bottom:1.25rem;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden">`;
     const algoDropCount = r.correctDrops.length + r.algoDroppedShouldKeep.length + r.algoDroppedVindicated.length + r.elcMandatory.length + r.injuryMandatory.length;
-    const actualDropCount = r.correctDrops.length + r.algoKeptShouldDrop.length + r.algoKeptReacquired.length;
+    // Was missing elcMandatory/injuryMandatory — any real drop that ALSO happens to be a
+    // mandatory-rule drop (sim and actual agree, for a mandatory reason) got bucketed into
+    // those two arrays instead of correctDrops, so it silently fell out of this count. Found
+    // live 2026-09-22 via Bossy Posse 23-24: real roster diff shows 5 drops (incl. Jack Quinn,
+    // who's in INJURY_DROPS_2324), but this formula only counted 4.
+    const actualDropCount = r.correctDrops.length + r.algoKeptShouldDrop.length + r.algoKeptReacquired.length + r.elcMandatory.length + r.injuryMandatory.length;
     html += `<div style="padding:8px 12px;background:#f1f5f9;display:flex;justify-content:space-between;align-items:center">`;
     html += `<div><strong style="font-size:13px">${r.team}</strong><div style="font-size:11px;color:#6b7280;margin-top:2px">Algo Drops (${algoDropCount}) &nbsp;|&nbsp; Actual Drops (${actualDropCount})</div></div>`;
     html += `<span style="font-size:12px;color:${badgeColor};font-weight:600">${r.correct}/${r.total} (${pct2}%)</span>`;
