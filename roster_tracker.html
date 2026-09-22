@@ -1070,12 +1070,12 @@ tr:hover td{background:#fafaf8}
             <input type="number" id="s-dropValueFloor" value="15" min="0" max="150" step="1" onchange="updateSetting('dropValueFloor',+this.value)" style="width:80px;height:32px;border:1px solid #ddd;border-radius:8px;padding:0 8px;font-size:13px;text-align:center">
           </div>
           <div style="display:flex;flex-direction:column;gap:4px">
-            <span style="font-size:11px;color:#9ca3af" title="Raw pts at/above this level push a player to the very back of the drop-candidate line — still droppable if the required minimum, position quotas, or cap crunch force it, but only as an absolute last resort. The curve fit is unreliable at the very top of the cap range, so a big negative delta there is as likely a fitting artifact as a real overpay. Read-only: a hardcoded constant, not a live setting — edit UNTOUCHABLE_ELITE_PTS in code to change it.">Last-resort pts threshold (<span style="font-family:monospace;color:#b0b0ac">UNTOUCHABLE_ELITE_PTS</span>)</span>
-            <div style="width:80px;height:32px;border:1px dashed #ddd;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;color:#6b7280;background:#f9fafb">90</div>
+            <span style="font-size:11px;color:#9ca3af" title="Raw pts at/above this level push a player to the very back of the drop-candidate line — still droppable if the required minimum, position quotas, or cap crunch force it, but only as an absolute last resort. The curve fit is unreliable at the very top of the cap range, so a big negative delta there is as likely a fitting artifact as a real overpay. Lowered 90->85 2026-09-21 after switching drops' curve delta to a relative metric — backtested across all 3 complete seasons, 86 and below correctly protects real cases like William Nylander (23-24) with the aggregate match count holding exactly flat.">Last-resort pts threshold (<span style="font-family:monospace;color:#b0b0ac">untouchableElitePts</span>)</span>
+            <input type="number" id="s-untouchableElitePts" value="85" min="0" max="200" step="1" onchange="updateSetting('untouchableElitePts',+this.value)" style="width:80px;height:32px;border:1px solid #ddd;border-radius:8px;padding:0 8px;font-size:13px;text-align:center">
           </div>
           <div style="display:flex;flex-direction:column;gap:4px">
-            <span style="font-size:11px;color:#9ca3af" title="Below this curve-delta, a player is NOT pushed to the back of the line by the drop value floor or ABP=0 escape hatch above — badly overpaying overrides that last-resort status regardless of raw production. Read-only: a hardcoded constant, not a live setting — edit UNTOUCHABLE_DELTA_FLOOR in code to change it.">Last-resort △ floor (<span style="font-family:monospace;color:#b0b0ac">UNTOUCHABLE_DELTA_FLOOR</span>)</span>
-            <div style="width:80px;height:32px;border:1px dashed #ddd;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;color:#6b7280;background:#f9fafb">-6</div>
+            <span style="font-size:11px;color:#9ca3af" title="Below this curve-delta, a player is NOT pushed to the back of the line by the drop value floor or ABP=0 escape hatch above — badly overpaying overrides that last-resort status regardless of raw production. Curve delta is now a RELATIVE (%-below-curve, rescaled to points-equivalent units via ptsTarget/roster size) metric, not raw points — see the drops curve-delta comment in code.">Last-resort △ floor (<span style="font-family:monospace;color:#b0b0ac">untouchableDeltaFloor</span>)</span>
+            <input type="number" id="s-untouchableDeltaFloor" value="-6" min="-100" max="0" step="1" onchange="updateSetting('untouchableDeltaFloor',+this.value)" style="width:80px;height:32px;border:1px solid #ddd;border-radius:8px;padding:0 8px;font-size:13px;text-align:center">
           </div>
         </div>
       </div>
@@ -1919,12 +1919,20 @@ const NHL_OPENING_NIGHT_2627 = '2026-09-29';
 // (531 players): 25 of 208 ABP=0 cases were real drops anyway, clustering at meaningfully negative
 // curve delta (avg -2.81) vs the 183 correctly-kept cases (avg +8.74) — teams cash out a below-
 // curve contract even with no specific replacement lined up, since the freed cap can chase ANY
-// above-curve player, not just a direct swap. UNTOUCHABLE_DELTA_FLOOR requires delta not be too
-// negative; UNTOUCHABLE_ELITE_PTS is an escape hatch for genuine elite scorers, since the curve
+// above-curve player, not just a direct swap. untouchableDeltaFloor requires delta not be too
+// negative; untouchableElitePts is an escape hatch for genuine elite scorers, since the curve
 // fit is thin/unreliable at the very top of the cap range (few $11M+ data points) and a big
-// negative delta there is as likely a curve-fitting artifact as a real "overpaid" signal.
-const UNTOUCHABLE_DELTA_FLOOR = -6;
-const UNTOUCHABLE_ELITE_PTS = 90;
+// negative delta there is as likely a curve-fitting artifact as a real "overpaid" signal. Both
+// promoted from hardcoded constants to real Settings inputs 2026-09-21.
+let untouchableDeltaFloor = -6;
+// Lowered 90->85 2026-09-21 after switching drops' curve delta to a relative (%-below-curve)
+// metric: real backtest across all 3 complete seasons swept 80-90 at 2pt steps — 86 and below
+// correctly promoted William Nylander (23-24, $10.28M, 86 proj pts, force-cut by the relative-
+// delta sort despite being the best of a bad group) to untouchable, with the aggregate match
+// count holding exactly flat (431/540 at every tested value 86 and below, vs 430/540 at 88 and
+// 431/540 at the old 90) — a real fix, not a tradeoff. 85 leaves a small buffer under the
+// validated 86 flip point.
+let untouchableElitePts = 85;
 // ── 24-25 season constants ────────────────────────────────────────────────────
 let CAP_LIMIT_2324 = 83.5;
 let CAP_LIMIT_2425 = 88;
@@ -4728,7 +4736,7 @@ const INJURY_DROPS_2627 = new Set(['marcus johansson', 'anze kopitar', 'john kli
 // players who won't play again this season at all): these are known short/medium-term absences
 // where the drop decision is a real judgment call, not automatic. Only strips the weaker
 // isHighVal/isUntouchable escape hatches in _runAlgoDrops — a genuinely elite player still keeps
-// UNTOUCHABLE_ELITE_PTS protection and is kept regardless; only an already-marginal player who
+// untouchableElitePts protection and is kept regardless; only an already-marginal player who
 // was surviving purely on the ABP=0/floor/positive-delta escape becomes a for-sure drop. Stays
 // fully draftable by other teams (no _runAlgoDraft exclusion) since they're expected back.
 // Frederik Andersen (EDM, G): set to miss training camp — confirmed 2026-08-31
@@ -5523,6 +5531,7 @@ function syncSettings(){
   set('s-ptsTarget', ptsTarget);
   set('s-minDropF', minDropF); set('s-minDropD', minDropD);
   set('s-dropValueFloor', dropValueFloor);
+  set('s-untouchableElitePts', untouchableElitePts); set('s-untouchableDeltaFloor', untouchableDeltaFloor);
   if(CAP_LIMIT_2728 != null) set('s-capLimit2728', CAP_LIMIT_2728);
   set('s-abpWiggle', abpWiggle);
   set('s-wAthletic', PROJ_SOURCE_WEIGHTS.athletic); set('s-wDFO', PROJ_SOURCE_WEIGHTS.dfo);
@@ -5591,6 +5600,8 @@ function updateSetting(key, val){
   else if(key === 'capLimit2728') CAP_LIMIT_2728 = val;
   else if(key === 'abpWiggle')    abpWiggle = val;
   else if(key === 'dropValueFloor') dropValueFloor = val;
+  else if(key === 'untouchableElitePts') untouchableElitePts = val;
+  else if(key === 'untouchableDeltaFloor') untouchableDeltaFloor = val;
   else if(key === 'earlyPaceWeight')           { EARLY_PACE_WEIGHT = val; applyBlendedPts(); render(); }
 }
 
@@ -8358,7 +8369,40 @@ function _runAlgoDrops({ players, teams, startField, ppts, getCap, capLimit, dra
   // against), so the old "!injurySet.has(...)" term was always true here and dead weight.
   const isProtectedProspect = p => isProspect(p);
   const abpMap = computeABPFn(players);
-  const deltaOf = p => { const fn=curveFns[posGroup(p.pos)],pp=ppts(p),c=getCap(p); return (fn && pp>0 && c>0) ? pp-fn(c) : -Infinity; };
+  // Reference points-per-roster-slot level for rescaling the RELATIVE curve delta below (% above/
+  // below the curve's own expected value at that cap) back into points-equivalent units, so it
+  // stays directly combinable with fanBiasProtection/termCreditOf's existing points-scale
+  // calibration (and the untouchableDeltaFloor/isHighVal/isUntouchable thresholds) without
+  // having to redesign those too. Computed live from ptsTarget/roster size, not hardcoded — a
+  // flat constant here would silently go stale the moment ptsTarget (a real, user-editable
+  // Settings value) changed. User's own catch, 2026-09-21.
+  const dropDeltaReferencePts = ptsTarget / (DRAFT_ROSTER_MAX.F + DRAFT_ROSTER_MAX.D + DRAFT_ROSTER_MAX.G);
+  // Relative curve delta, rescaled via dropDeltaReferencePts above. Replaces a raw-point delta
+  // 2026-09-21: raw delta systematically read expensive, genuinely-productive players as worse
+  // value than cheap complementary ones even when the opposite was true, because the curve's OWN
+  // baseline rises steeply at high cap, so a modest relative shortfall on a $10M+ deal produced a
+  // bigger absolute point-gap than an equally-bad (or worse) relative shortfall on a $3M deal.
+  // Backtested against real kept/dropped outcomes across all 3 complete seasons: raw delta's
+  // "safe to keep" bar averaged +4.0 for $8M+ players but only +0.5 for sub-$3M players — the same
+  // real-world decision quality required a wildly different raw-delta reading depending on cap
+  // tier. Relative delta's kept/dropped averages stayed stable across every cap tier (~0-5% kept,
+  // ~-9% to -13% dropped), letting a single threshold (untouchableDeltaFloor) work fairly
+  // regardless of cap. Found live via William Nylander (23-24, $10.28M, 86 proj pts) getting
+  // force-cut ahead of three much cheaper, less-productive Damage Inc. forwards purely from this
+  // bias. NOTE: fixes the SORT within a tier (confirmed live — cheaper worse-relative-value
+  // forwards now correctly get cut before him) but does NOT by itself move anyone across the
+  // lowVal/highVal tier boundary, since untouchableDeltaFloor/untouchableElitePts are
+  // unchanged — Nylander still eventually gets cut once every worse lowVal forward is gone,
+  // just later. Real Compare Drops backtest across all 3 seasons: 23-24/24-25 regressed 2-4
+  // matches, 25-26 flat — net negative-to-flat on its own; tabled for further tuning
+  // (untouchableDeltaFloor/untouchableElitePts) rather than reverted, per user 2026-09-21.
+  const deltaOf = p => {
+    const fn = curveFns[posGroup(p.pos)], pp = ppts(p), c = getCap(p);
+    if(!(fn && pp > 0 && c > 0)) return -Infinity;
+    const expected = fn(c);
+    if(!(expected > 0)) return -Infinity;
+    return ((pp - expected) / expected) * dropDeltaReferencePts;
+  };
   const deficit = p => -deltaOf(p);
   // Term-value drop protection (see wtDropTermCredit / _dropTermCreditOf above) — mirrors
   // fanBiasProtection's pattern below: shifts a player's effective deficit DOWN within their
@@ -8371,7 +8415,7 @@ function _runAlgoDrops({ players, teams, startField, ppts, getCap, capLimit, dra
   // floor regardless of price. Refined 2026-07-23: neither escape is sufficient alone — a real
   // GM will cash out a below-curve $6-9M "name" (Stamkos/Zibanejad/Tkachuk/Meier/Caufield, all
   // ABP=0 or comfortably above dropValueFloor, all real drops) to fund a better fit elsewhere,
-  // even with no specific cheaper replacement lined up. UNTOUCHABLE_ELITE_PTS is a separate, much
+  // even with no specific cheaper replacement lined up. untouchableElitePts is a separate, much
   // higher escape hatch for genuine elite scorers, since the curve fit is thin/unreliable at the
   // very top of the cap range (few $11M+ data points) and a big negative delta there is as
   // likely a curve-fitting artifact as a real "overpaid" signal.
@@ -8379,30 +8423,30 @@ function _runAlgoDrops({ players, teams, startField, ppts, getCap, capLimit, dra
   // injurySet's unconditional Pass 2 force-drop (players who won't play again this season at
   // all), this is meant as a real GM's judgment call: an already-marginal player who was only
   // surviving on a weaker escape hatch (positive delta, ABP=0, raw-pts floor) loses that shield
-  // and becomes a for-sure drop, but a genuinely elite player (UNTOUCHABLE_ELITE_PTS) is kept
+  // and becomes a for-sure drop, but a genuinely elite player (untouchableElitePts) is kept
   // without question either way — so only the weaker escapes are stripped, not the elite-pts
   // one. User-specified 2026-09-01 (Frederik Andersen/Seth Jarvis, both expected back in-season).
   const isInjuryMissStart = p => injuryMissStartSet.has(normName(p.name).toLowerCase());
   const isHighVal = p => {
     const pp = ppts(p);
-    if(pp >= UNTOUCHABLE_ELITE_PTS) return true;
+    if(pp >= untouchableElitePts) return true;
     if(isInjuryMissStart(p)) return false;
     if(deltaOf(p) >= 0) return true;
     // Both remaining escapes (ABP=0, raw-pts floor) require the same delta floor as
     // isUntouchable — an unconditional ABP=0 branch here was the exact same gap just fixed on
     // isUntouchable, still shielding Zibanejad/Stamkos (both ABP=0) after the first pass.
-    if(deltaOf(p) < UNTOUCHABLE_DELTA_FLOOR) return false;
+    if(deltaOf(p) < untouchableDeltaFloor) return false;
     return (abpMap.get(p.id)??99)===0 || pp>=dropValueFloor;
   };
   const isUntouchable = p => {
-    // isHighVal's UNTOUCHABLE_ELITE_PTS branch above already protects genuine elite production
+    // isHighVal's untouchableElitePts branch above already protects genuine elite production
     // independent of ABP, so disabling this whole (ABP=0-gated) tier for a miss-start injury
     // doesn't lose that protection — only the weaker "no alternative found" escape.
     if(isInjuryMissStart(p)) return false;
     if((abpMap.get(p.id)??99)!==0) return false;
     const pp = ppts(p);
-    if(pp >= UNTOUCHABLE_ELITE_PTS) return true;
-    return deltaOf(p) >= UNTOUCHABLE_DELTA_FLOOR;
+    if(pp >= untouchableElitePts) return true;
+    return deltaOf(p) >= untouchableDeltaFloor;
   };
 
   let dropped = 0;
@@ -8466,7 +8510,7 @@ function _runAlgoDrops({ players, teams, startField, ppts, getCap, capLimit, dra
       }
       for(const p of untouchable){
         const pp = ppts(p);
-        const reason = pp >= UNTOUCHABLE_ELITE_PTS ? `elite pts ${pp.toFixed(1)} >= ${UNTOUCHABLE_ELITE_PTS}` : `ABP=0, delta ${deltaOf(p).toFixed(1)} >= floor ${UNTOUCHABLE_DELTA_FLOOR}`;
+        const reason = pp >= untouchableElitePts ? `elite pts ${pp.toFixed(1)} >= ${untouchableElitePts}` : `ABP=0, delta ${deltaOf(p).toFixed(1)} >= floor ${untouchableDeltaFloor}`;
         console.log(`[untouchable] ${team}: ${p.name} — ${reason} — protected, absolute last resort`);
       }
     }
