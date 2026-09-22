@@ -2101,6 +2101,16 @@ const KNOWN_NAME_OVERRIDE_PAIRS = [
   // real Nicks) — wrong for Nicklaus Perbix specifically, so his pair must override
   // rather than share the claimed "nick" key. Found 2026-07-22.
   ['nick perbix', 'nicklaus perbix'],
+  // Same collision pattern as Nick/Nicklaus Perbix: "thomas" already means "tom" for
+  // FIRST_NAME_ALIASES, so it can't also forward-map to "tommy" in the same flat dict —
+  // "tommy"->"thomas" is a direct key there, but nothing carries "thomas" back to "tommy".
+  // Real player goes by "Tommy Novak"; older data sources (PREDROP_ROSTER_2324/2425,
+  // several proj/cap dicts) spell him "Thomas Novak". PREDROP_STUBS_2425 had a
+  // {name:'Thomas Novak'} stub as a workaround, but _runCompareDrops's one-sided variant
+  // check still failed to match it against the real player, spawning a phantom 181st
+  // player (0 pts/0 cap) in 24-25's Compare Drops instead of linking to his real stats —
+  // found live 2026-09-21 via the total match denominator reading 181, not 180.
+  ['thomas novak', 'tommy novak'],
   // "Alexander" and "Alexandre" are BOTH already claimed by FIRST_NAME_ALIASES'
   // "alex" key (the common nickname for either spelling) — can't also point them at
   // each other in a flat single-value dict.
@@ -8490,9 +8500,9 @@ function _runAlgoDrops({ players, teams, startField, ppts, getCap, capLimit, dra
       const capOk = keptCap <= capLimit - numDropped*draftReserve;
       const isValuable = isHighVal(p) || isProspect(p);
       if(isValuable && numDropped >= minDropsPreseason && posMinsMet && capOk) break;
-      // Past the required minimum, skip (not break — other candidates further down may still
-      // be worth dropping) anyone who'd likely rank in the top earlyRedraftTopN leaguewide
-      // regardless of their curve-delta read — see earlyRedraftScoreThreshold above. Uses
+      // Anyone who'd likely rank in the top earlyRedraftTopN leaguewide — see
+      // earlyRedraftScoreThreshold above — gets skipped (not break: other candidates further
+      // down may still be worth dropping) regardless of their curve-delta read. Uses
       // posOwnMinMet (this candidate's OWN position quota only), not the combined posMinsMet —
       // found live 2026-08-06 via Muller Time!/Aliaksei Protas: posMinsMet requires BOTH an F
       // AND a D drop, so a team that happens to reach several F candidates before its first D
@@ -8501,16 +8511,23 @@ function _runAlgoDrops({ players, teams, startField, ppts, getCap, capLimit, dra
       // has ALSO cleared its D quota is irrelevant to "should THIS forward be protected" — that
       // combined check exists for the unrelated isValuable break below (should we stop dropping
       // ANYONE further), which correctly does need both.
-      // Computed once and reused below for the drop-reason tag too — a player who WAS flagged
-      // but dropped anyway (floor/position quota not yet clear) tags that explicitly instead of
-      // silently looking identical to a genuinely low-demand cut.
+      //
+      // No longer gated behind numDropped >= minDropsPreseason (removed 2026-09-21) — real
+      // GM-vs-algo backtest across all 3 complete seasons found this protection firing (i.e.
+      // earlyRedraftFlag true) but getting overridden anyway to hit the raw count floor was
+      // wrong 12/12 times (100%): Brayden Point, William Nylander, Dylan Larkin, Alex DeBrincat,
+      // Juraj Slafkovský and others all got force-cut this way despite the algo's own signal
+      // already correctly flagging them as too good to lose — real GMs found a genuine bubble
+      // player to cut instead in every one of those cases. minDropsPreseason (a soft "real
+      // rosters typically turn over about this much" heuristic) shouldn't be able to override a
+      // signal this strong; posOwnMinMet/capOk (genuine positional-shape and cap-legality
+      // requirements a real GM can't just ignore) still can.
       let earlyRedraftFlag = false;
       if(earlyRedraftTopN > 0){
         const posOwnMinMet = pg==='D' ? droppedD >= minDropD : pg==='F' ? droppedF >= minDropF : true;
-        const pastFloor = numDropped >= minDropsPreseason && posOwnMinMet && capOk;
         const pScore = redraftScoreOf(p);
         earlyRedraftFlag = pScore >= earlyRedraftScoreThreshold;
-        if(pastFloor && earlyRedraftFlag){
+        if(posOwnMinMet && capOk && earlyRedraftFlag){
           if(debugLog) console.log(`[earlyRedraft] ${team}: ${p.name} Pass 8: PROTECTED (skipped) — score ${pScore.toFixed(1)} vs threshold ${earlyRedraftScoreThreshold.toFixed(1)}`);
           continue;
         }
@@ -8534,7 +8551,7 @@ function _runAlgoDrops({ players, teams, startField, ppts, getCap, capLimit, dra
       let reason = numDropped < minDropsPreseason ? 'Pass 3: required minimum'
                  : !capOk ? 'Pass 5: cap crunch'
                  : 'Pass 6: below curve value';
-      if(earlyRedraftFlag) reason += ' (Pass 8 protection didn’t apply — floor/position quota not yet clear)';
+      if(earlyRedraftFlag) reason += ' (Pass 8 protection didn’t apply — position quota/cap still required this cut)';
       dropReasonById.set(p.id, reason);
       dropList.push(p);
       keptPts -= ppts(p); keptCap -= (getCap(p)||0); numDropped++;
