@@ -8721,7 +8721,15 @@ let _qualityAvailCache = {count:-1, startField:null, threshold:null, val:null};
 // smart punts) — this is purely an on-screen "what can the on-clock team actually still get"
 // readout, never fed back into the formula.
 function _cachedQualityAvail(startField, ppts, getCap, calcAgeForSim, contractYearAnchor, nextContractField, curveFns, elcMax, srcNFn, maxSrc, capLimit){
-  const threshold = draftWeights.pressureQualityThreshold ?? 95;
+  // League-wide/team-agnostic, so it should reflect a TYPICAL (Simulate-mode) team's view, not
+  // Optimize-mode's — _effectiveDraftWeights(null, ...) always resolves to the simulate branch
+  // (no team name matches draftModeByTeam), zeroing wtTermValue among other things. Found live
+  // 2026-09-22 via Moritz Seider: raw draftWeights (Optimize-mode-flavored, wtTermValue=2) gave
+  // him a 191.5 quality-check score — 114.9 of that from TRM summing his 7-year deal's projected
+  // future curve-delta — versus a Players-tab-displayed SCORE of 77 (which excludes TRM by
+  // design), making him the sole "quality D" despite not looking remotely like one on the board.
+  const qw = _effectiveDraftWeights(null, draftWeights);
+  const threshold = qw.pressureQualityThreshold ?? 95;
   const count = players.filter(p=>p[startField]).length;
   if(_qualityAvailCache.count===count && _qualityAvailCache.startField===startField && _qualityAvailCache.threshold===threshold) return _qualityAvailCache.val;
   const avail = {F:0,D:0,G:0};
@@ -8732,7 +8740,7 @@ function _cachedQualityAvail(startField, ppts, getCap, calcAgeForSim, contractYe
     if(!(pp>0) || !(cap0>0)) continue;
     const pg = posGroup(p.pos);
     const { score } = _scoreDraftCandidate(p, {
-      pg, pp, cap0, mode:'bestAvail', round: 99, draftWeights,
+      pg, pp, cap0, mode:'bestAvail', round: 99, draftWeights: qw,
       calcAgeForSim, contractYearAnchor, nextContractField, curveFns, elcMax, srcNFn, maxSrc, capLimit0: capLimit,
     });
     if(score > threshold){ avail[pg]++; candidates.push({pg, cap: cap0}); }
