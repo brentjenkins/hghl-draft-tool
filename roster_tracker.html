@@ -8393,7 +8393,18 @@ function _runAlgoDrops({ players, teams, startField, ppts, getCap, capLimit, dra
   // _draftModeFor's own fallback, the opposite of what's wanted here. Found live 2026-09-02:
   // user's concern was "I wouldn't want to keep a player that would only get picked by Simulate
   // and not Optimize" — this check needs to be a true Optimize-everywhere test to answer that.
-  const redraftOptimizeWeights = { ...draftWeights, wtFanBias: 0, wtTermValue: draftWeights.wtTermValue || 2 };
+  // wtTermValue forced to 0 here specifically (2026-09-23) — NOT the same fix as
+  // _cachedQualityAvail's Simulate-mode reroute, since this check deliberately keeps every
+  // other Optimize-flavored weight (elcExp etc.) as-is. TRM sums PROJECTED FUTURE curve-delta
+  // across a contract's remaining years, which can compound into a huge one-off number for any
+  // long, young-ish, favorably-trending deal regardless of position — found live via Dustin
+  // Wolf (7yr goalie deal): redraft-score 98.4 vs the 79.1 threshold, 25.9 of it from TRM alone
+  // (72.5 without it, correctly below threshold), and Moritz Seider earlier the same day (5yr D
+  // deal, 114.9 of 191.5 from TRM). "Would this get redrafted immediately" is a CURRENT-value/
+  // scarcity question — a multi-year contract-value judgment doesn't belong in it, and every
+  // other early-redraft case checked (elite/high-value real players) clears the threshold easily
+  // on production alone regardless of TRM.
+  const redraftOptimizeWeights = { ...draftWeights, wtFanBias: 0, wtTermValue: 0 };
   const redraftScoreOf = p => _scoreDraftCandidate(p, {
     pg: posGroup(p.pos), pp: ppts(p), cap0: getCap(p)||0, pressure: redraftPressure, mode: redraftMode, round: redraftRound,
     draftWeights: redraftOptimizeWeights, calcAgeForSim, contractYearAnchor, nextContractField,
