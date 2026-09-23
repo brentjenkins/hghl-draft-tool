@@ -7502,10 +7502,10 @@ function _curveDeltaLabel(delta, view, team){
 // the "△ vs curve" label that opened it.
 function _teamCurveConfig(view){
   switch(view){
-    case '2324': return { startField:'start2324', pptsF:ppts2324blend, getCapF:getCap2324, elcMax:ELC_MAX_2324, label:'23-24', predropDict:PREDROP_ROSTER_2324, predropStubs:PREDROP_STUBS_2324, postdropDict:POSTDROP_ROSTER_2324 };
-    case '2425': return { startField:'start2425', pptsF:ppts2425blend, getCapF:getCap2425, elcMax:ELC_MAX_2425, label:'24-25', predropDict:PREDROP_ROSTER_2425, predropStubs:PREDROP_STUBS_2425, postdropDict:POSTDROP_ROSTER_2425 };
-    case '2526': return { startField:'start2526', pptsF:ppts2526blend, getCapF:getCap2526, elcMax:ELC_MAX_2526, label:'25-26', predropDict:PREDROP_ROSTER_2526, predropStubs:PREDROP_STUBS_2526, postdropDict:POSTDROP_ROSTER_2526 };
-    default:     return { startField:'start2627', pptsF:p=>p.proj2627.blend||0,   getCapF:p=>p.cap2627||0, elcMax:ELC_MAX_2627, label:'26-27', predropDict:PREDROP_ROSTER_2627, predropStubs:PREDROP_STUBS_2627, postdropDict:POSTDROP_ROSTER_2627 };
+    case '2324': return { startField:'start2324', pptsF:ppts2324blend, getCapF:getCap2324, elcMax:ELC_MAX_2324, label:'23-24', predropDict:PREDROP_ROSTER_2324, predropStubs:PREDROP_STUBS_2324, postdropDict:POSTDROP_ROSTER_2324, computeABPFn:computeABP2324 };
+    case '2425': return { startField:'start2425', pptsF:ppts2425blend, getCapF:getCap2425, elcMax:ELC_MAX_2425, label:'24-25', predropDict:PREDROP_ROSTER_2425, predropStubs:PREDROP_STUBS_2425, postdropDict:POSTDROP_ROSTER_2425, computeABPFn:computeABP2425 };
+    case '2526': return { startField:'start2526', pptsF:ppts2526blend, getCapF:getCap2526, elcMax:ELC_MAX_2526, label:'25-26', predropDict:PREDROP_ROSTER_2526, predropStubs:PREDROP_STUBS_2526, postdropDict:POSTDROP_ROSTER_2526, computeABPFn:computeABP2526 };
+    default:     return { startField:'start2627', pptsF:p=>p.proj2627.blend||0,   getCapF:p=>p.cap2627||0, elcMax:ELC_MAX_2627, label:'26-27', predropDict:PREDROP_ROSTER_2627, predropStubs:PREDROP_STUBS_2627, postdropDict:POSTDROP_ROSTER_2627, computeABPFn:computeABP };
   }
 }
 
@@ -7530,7 +7530,8 @@ function _wasPreDropKeeper(p, team, predropDict){
 }
 
 function showTeamCurveModal(view, team){
-  const { startField, pptsF, getCapF, elcMax, label, predropDict, predropStubs } = _teamCurveConfig(view);
+  const { startField, pptsF, getCapF, elcMax, label, predropDict, predropStubs, computeABPFn } = _teamCurveConfig(view);
+  const abpMap = computeABPFn(players);
   // Same derivation _runAlgoDrops uses to tag each dropped player with its order/reason.
   const seasonSuffix = startField.replace('start', '');
   const dropOrderField = '_dropOrder' + seasonSuffix;
@@ -7581,7 +7582,7 @@ function showTeamCurveModal(view, team){
     const base = cap>0 ? _curveBaseline(pg, cap, elcMax, curveFns[pg]) : null;
     const delta = (base!=null && pts>0) ? pts-base : null;
     const status = pickIds.has(p.id) ? 'pick' : 'kept';
-    return { p, pg, cap, pts, delta, status };
+    return { p, pg, cap, pts, delta, status, abp: abpMap.get(p.id) ?? null };
   });
   const rowsDropped = droppedPlayers.map(p => {
     const pg = posGroup(p.pos);
@@ -7591,7 +7592,7 @@ function showTeamCurveModal(view, team){
     // Only real Algo-Drops-tagged players carry these — virtual stubs (retired vets etc., see
     // droppedPlayers above) never went through _runAlgoDrops as the same object, so they're
     // absent here rather than wrong.
-    return { p, pg, cap, pts, delta, status:'dropped', dropOrder: p[dropOrderField]??null, dropReason: p[dropReasonField]??null };
+    return { p, pg, cap, pts, delta, status:'dropped', dropOrder: p[dropOrderField]??null, dropReason: p[dropReasonField]??null, abp: abpMap.get(p.id) ?? null };
   });
   const rows = [...rowsKept, ...rowsDropped].sort((a,b) => (b.delta??-Infinity) - (a.delta??-Infinity));
 
@@ -7607,6 +7608,7 @@ function showTeamCurveModal(view, team){
       <th style="text-align:right;padding:4px 6px">Cap</th>
       <th style="text-align:right;padding:4px 6px">Pts</th>
       <th style="text-align:right;padding:4px 6px">△ vs curve</th>
+      <th style="text-align:right;padding:4px 6px">ABP</th>
     </tr>` +
     rows.map(r => {
       const dCol = r.delta==null ? '#9ca3af' : r.delta>=0 ? '#16a34a' : '#dc2626';
@@ -7618,6 +7620,7 @@ function showTeamCurveModal(view, team){
         <td style="padding:4px 6px;text-align:right">$${r.cap.toFixed(2)}M</td>
         <td style="padding:4px 6px;text-align:right">${Math.round(r.pts)}</td>
         <td style="padding:4px 6px;text-align:right;color:${dCol};font-weight:600">${dStr}</td>
+        <td style="padding:4px 6px;text-align:right">${r.abp??'—'}</td>
       </tr>`;
     }).join('') +
   `</table>`;
