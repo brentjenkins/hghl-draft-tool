@@ -10174,10 +10174,13 @@ function updateStats2526(){
     leagueCard=`<div class="team-card league-card" style="background:#eff6ff;border:1px solid #dbeafe">
       <div class="team-card-header"><span class="team-card-name" style="color:#6366f1">League</span></div>
       <div class="team-card-cap" style="color:#6b7280;font-size:10px">picks remaining</div>
-      <div class="team-card-pos" style="gap:6px">
-        <span style="display:flex;flex-direction:column;align-items:center;gap:2px;background:transparent;padding:0"><span>F&thinsp;${lnF}</span>${availBadge2526('F')}${affordBadge2526('F')}${pBadge2526(pr.F,lnF,avF,statsMaxP2526)}</span>
-        <span style="display:flex;flex-direction:column;align-items:center;gap:2px;background:transparent;padding:0"><span>D&thinsp;${lnD}</span>${availBadge2526('D')}${affordBadge2526('D')}${pBadge2526(pr.D,lnD,avD,statsMaxP2526)}</span>
-        <span style="display:flex;flex-direction:column;align-items:center;gap:2px;background:transparent;padding:0"><span>G&thinsp;${lnG}</span>${availBadge2526('G')}${affordBadge2526('G')}${pBadge2526(pr.G,lnG,avG,statsMaxP2526)}</span>
+      <div class="team-card-pos">
+        <span title="${lnF} F spot${lnF!==1?'s':''} open league-wide">F&thinsp;${lnF}</span><span title="${lnD} D spot${lnD!==1?'s':''} open league-wide">D&thinsp;${lnD}</span><span title="${lnG} G spot${lnG!==1?'s':''} open league-wide">G&thinsp;${lnG}</span>
+      </div>
+      <div style="display:flex;gap:6px;margin-top:3px">
+        <span style="display:flex;flex-direction:column;align-items:center;gap:2px">${availBadge2526('F')}${affordBadge2526('F')}${pBadge2526(pr.F,lnF,avF,statsMaxP2526)}</span>
+        <span style="display:flex;flex-direction:column;align-items:center;gap:2px">${availBadge2526('D')}${affordBadge2526('D')}${pBadge2526(pr.D,lnD,avD,statsMaxP2526)}</span>
+        <span style="display:flex;flex-direction:column;align-items:center;gap:2px">${availBadge2526('G')}${affordBadge2526('G')}${pBadge2526(pr.G,lnG,avG,statsMaxP2526)}</span>
       </div>
     </div>`;
   } else {
@@ -11027,8 +11030,20 @@ function updateStats(){
   });
   if(!teams.length){ document.getElementById('statCards').innerHTML=''; return; }
 
-  const pBadge=(r,need,avail,maxP)=>{const bg=r<0.3?'#dcfce7':r<0.6?'#f3f4f6':r<0.85?'#fef3c7':'#fee2e2';const col=r<0.3?'#15803d':r<0.6?'#6b7280':r<0.85?'#92400e':'#991b1b';const raw=(need/Math.max(1,avail)).toFixed(3);const tip=`need ${need} / quality avail ${avail} · raw ratio ${raw} · max ${(maxP||0).toFixed(3)} → norm ${r.toFixed(2)}`;return`<span title="${tip}" style="background:${bg};color:${col};border-radius:3px;padding:0 3px;font-size:9px;font-weight:700;cursor:default">${r.toFixed(2)}</span>`;};
+  // Shared bg/text color pair for a normalized pressure ratio (0=plenty of quality supply for
+  // the need, 1=scarcest) — used by pBadge itself and, since 2026-09-22, to tint the quality/
+  // quality+affordable count badges the same way instead of leaving them neutral white.
+  const pressureColors = r => ({
+    bg:  r<0.3?'#dcfce7':r<0.6?'#f3f4f6':r<0.85?'#fef3c7':'#fee2e2',
+    col: r<0.3?'#15803d':r<0.6?'#6b7280':r<0.85?'#92400e':'#991b1b',
+  });
+  const pBadge=(r,need,avail,maxP)=>{const {bg,col}=pressureColors(r);const raw=(need/Math.max(1,avail)).toFixed(3);const tip=`need ${need} / quality avail ${avail} · raw ratio ${raw} · max ${(maxP||0).toFixed(3)} → norm ${r.toFixed(2)}`;return`<span title="${tip}" style="background:${bg};color:${col};border-radius:3px;padding:0 3px;font-size:9px;font-weight:700;cursor:default">${r.toFixed(2)}</span>`;};
   let leagueCard;
+  // Hoisted so the per-team affordable-quality badge below (outside this if-block, in the
+  // teams.map() card loop) can reuse the same league-wide quality pool and pressure-ratio
+  // (for color-coding, see pressureColors) instead of recomputing it once per team. null/1/0
+  // when draftMode is off — every reader below already guards on that.
+  let qualityAvail2627 = null, currentRound2627 = 1, pr2627 = {F:0,D:0,G:0};
   if(draftMode){
     const lnF=teams.reduce((s,t)=>{const r=players.filter(p=>p.start2627===t);return s+Math.max(0,DRAFT_ROSTER_MAX.F-r.filter(p=>posGroup(p.pos)==='F').length);},0);
     const lnD=teams.reduce((s,t)=>{const r=players.filter(p=>p.start2627===t);return s+Math.max(0,DRAFT_ROSTER_MAX.D-r.filter(p=>posGroup(p.pos)==='D').length);},0);
@@ -11044,7 +11059,8 @@ function updateStats(){
       D: fitQuadratic(rosteredNow2627.filter(p=>posGroup(p.pos)==='D').map(p=>({x:p.cap2627,y:p.proj2627.blend||0}))),
       G: fitQuadratic(rosteredNow2627.filter(p=>posGroup(p.pos)==='G').map(p=>({x:p.cap2627,y:p.proj2627.blend||0}))),
     };
-    const qualityAvail2627 = _cachedQualityAvail('start2627', p=>p.proj2627.blend||0, p=>p.cap2627||0, calcAge, NHL_SEASON_YEAR, 'nextTerm2627', curveFns2627Stats, ELC_MAX_2627, srcNFn2627, MAX_SRC_2627, CAP_LIMIT);
+    qualityAvail2627 = _cachedQualityAvail('start2627', p=>p.proj2627.blend||0, p=>p.cap2627||0, calcAge, NHL_SEASON_YEAR, 'nextTerm2627', curveFns2627Stats, ELC_MAX_2627, srcNFn2627, MAX_SRC_2627, CAP_LIMIT);
+    currentRound2627 = buildDraftSeq2627().rounds[draftState2627.picks.length] || 1;
     const avF=qualityAvail2627.F, avD=qualityAvail2627.D, avG=qualityAvail2627.G;
     const rawPF=lnF/Math.max(1,avF), rawPD=lnD/Math.max(1,avD), rawPG=lnG/Math.max(1,avG);
     const statsMaxP=Math.max(rawPF,rawPD,rawPG,0.0001);
@@ -11055,31 +11071,29 @@ function updateStats(){
     // is inherently much smaller than F/D regardless of real scarcity. Found live 2026-09-21:
     // G showed pressure=1.00 (maxed) with 3 needed and 5 quality options still on the board.
     const pr={F:rawPF/statsMaxP, D:rawPD/statsMaxP, G:rawPG/statsMaxP};
-    // Qual: same quality-candidate pool as avF/avD/avG above, but re-filtered to what the team
-    // ACTUALLY ON THE CLOCK right now can still afford — display-only, never fed back into the
-    // real (deliberately affordability-blind) scoring formula. See _cachedQualityAvail's comment.
-    let onClockRoom = Infinity;
-    if(onClock!=null){
-      const onClockRoster = players.filter(p=>p.start2627===onClock);
-      const onClockCapUsed = onClockRoster.reduce((s,p)=>s+(p.cap2627||0),0);
-      const onClockSpotsLeft = Math.max(0,DRAFT_ROSTER_MAX.F-onClockRoster.filter(p=>posGroup(p.pos)==='F').length)
-        + Math.max(0,DRAFT_ROSTER_MAX.D-onClockRoster.filter(p=>posGroup(p.pos)==='D').length)
-        + Math.max(0,DRAFT_ROSTER_MAX.G-onClockRoster.filter(p=>posGroup(p.pos)==='G').length);
-      const onClockRound = buildDraftSeq2627().rounds[draftState2627.picks.length] || 1;
-      onClockRoom = _teamAffordableRoom(onClockCapUsed, CAP_LIMIT, onClockSpotsLeft, onClockRound, DRAFT_RESERVE_2627, ELC_MAX_2627);
-    }
+    pr2627 = pr;
     const availTip = pg => `${qualityAvail2627[pg]} quality players available league-wide (SCORE > ${draftWeights.pressureQualityThreshold??95}, any team's affordability)`;
-    const availBadge = pg => `<span title="${esc(availTip(pg))}" style="background:#eef2ff;color:#4338ca;border-radius:3px;padding:0 3px;font-size:9px;font-weight:700;cursor:default">${qualityAvail2627[pg]}</span>`;
-    const affordTip = pg => `${_affordableQualityCount(qualityAvail2627,pg,onClockRoom)} quality players available and affordable${onClock!=null?` for ${onClock}`:''} (room $${onClockRoom.toFixed(1)}M, reserving for other open spots)`;
-    const affordBadge = pg => `<span title="${esc(affordTip(pg))}" style="background:#f3f4f6;color:#374151;border-radius:3px;padding:0 3px;font-size:9px;font-weight:700;cursor:default">${_affordableQualityCount(qualityAvail2627,pg,onClockRoom)}</span>`;
+    const availBadge = pg => { const {bg,col}=pressureColors(pr[pg]); return `<span title="${esc(availTip(pg))}" style="background:${bg};color:${col};border-radius:4px;padding:1px 5px;font-size:11px;font-weight:500;cursor:default">${pg}&thinsp;${qualityAvail2627[pg]}</span>`; };
     leagueCard=`<div class="team-card league-card" style="background:#eff6ff;border:1px solid #dbeafe">
       <div class="team-card-header"><span class="team-card-name" style="color:#6366f1">League</span></div>
-      <div class="team-card-cap" style="color:#6b7280;font-size:10px">picks remaining</div>
-      <div class="team-card-pos" style="gap:6px">
-        <span style="display:flex;flex-direction:column;align-items:center;gap:2px;background:transparent;padding:0"><span>F&thinsp;${lnF}</span>${availBadge('F')}${affordBadge('F')}${pBadge(pr.F,lnF,avF,statsMaxP)}</span>
-        <span style="display:flex;flex-direction:column;align-items:center;gap:2px;background:transparent;padding:0"><span>D&thinsp;${lnD}</span>${availBadge('D')}${affordBadge('D')}${pBadge(pr.D,lnD,avD,statsMaxP)}</span>
-        <span style="display:flex;flex-direction:column;align-items:center;gap:2px;background:transparent;padding:0"><span>G&thinsp;${lnG}</span>${availBadge('G')}${affordBadge('G')}${pBadge(pr.G,lnG,avG,statsMaxP)}</span>
+      <div class="team-card-cap" style="color:#6b7280;font-size:9px;line-height:1.1;margin-top:-3px;margin-bottom:-3px">picks remaining</div>
+      <div class="team-card-pos">
+        <span title="${lnF} F spot${lnF!==1?'s':''} open league-wide">F&thinsp;${lnF}</span><span title="${lnD} D spot${lnD!==1?'s':''} open league-wide">D&thinsp;${lnD}</span><span title="${lnG} G spot${lnG!==1?'s':''} open league-wide">G&thinsp;${lnG}</span>
       </div>
+      <div style="display:flex;gap:6px;margin-top:3px">
+        <span style="display:flex;flex-direction:column;align-items:center;gap:2px">${availBadge('F')}${pBadge(pr.F,lnF,avF,statsMaxP)}</span>
+        <span style="display:flex;flex-direction:column;align-items:center;gap:2px">${availBadge('D')}${pBadge(pr.D,lnD,avD,statsMaxP)}</span>
+        <span style="display:flex;flex-direction:column;align-items:center;gap:2px">${availBadge('G')}${pBadge(pr.G,lnG,avG,statsMaxP)}</span>
+      </div>
+      ${onClock?`<div style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin-top:5px;border-top:1px solid #dbeafe;padding-top:5px">
+        <span style="display:flex;align-items:center;gap:4px;font-size:11px;color:#374151;min-width:0">
+          <span style="color:#9ca3af;white-space:nowrap">Now picking:</span>
+          ${teamLogos[onClock]?`<img src="${esc(teamLogos[onClock])}" style="width:16px;height:16px;border-radius:3px;object-fit:cover;flex-shrink:0">`:''}
+          <span style="font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${teamAbbr(onClock)}</span>
+        </span>
+        <span class="draft-on-clock-timer" style="font-variant-numeric:tabular-nums;font-size:10px;font-weight:700;flex-shrink:0"></span>
+      </div>
+      <button class="btn btn-red-outline" onclick="passCurrentPick()" style="font-size:10px;height:22px;padding:0 8px;width:100%;margin-top:4px">Pass</button>`:''}
     </div>`;
   } else {
     leagueCard=`<div class="team-card league-card" style="background:#f9fafb;border:1px dashed #e5e7eb;opacity:0.35;pointer-events:none">
@@ -11139,6 +11153,17 @@ function updateStats(){
     </div>`;
   };
   const teamCurveDelta = _makeTeamCurveDeltaFn('start2627', p=>p.proj2627.blend||0, p=>p.cap2627||0);
+  // Per-team mirror of the League card's avail badge (see qualityAvail2627 above) — same
+  // league-wide quality pool, but re-filtered to what THIS team specifically can still afford,
+  // using its own cap/spots-left rather than only the on-clock team's.
+  const teamAffordBadge = (t, pg) => {
+    if(!draftMode || !qualityAvail2627) return '';
+    const room = _teamAffordableRoom(teamCapAll2627[t]||0, CAP_LIMIT, teamSpotsLeftAll2627[t]||0, currentRound2627, DRAFT_RESERVE_2627, ELC_MAX_2627);
+    const cnt = _affordableQualityCount(qualityAvail2627, pg, room);
+    const tip = `${cnt} quality players available and affordable for ${t} (room $${room.toFixed(1)}M, reserving for other open spots)`;
+    const {bg,col} = pressureColors(pr2627[pg]);
+    return `<span title="${esc(tip)}" style="background:${bg};color:${col};border-radius:4px;padding:1px 5px;font-size:11px;font-weight:500;cursor:default">${pg}&thinsp;${cnt}</span>`;
+  };
 
   document.getElementById('statCards').innerHTML = leagueCard + teams.map(t => {
     const tp = players.filter(p=>p.start2627===t);
@@ -11159,22 +11184,21 @@ function updateStats(){
     const isFocused = draftMode && draftFocusTeam === t;
     const isOnClock = t === onClock && draftMode;
     const isFull27 = draftMode && fRem===0 && dRem===0 && gRem===0;
-    return `<div class="team-card" ${draftMode?`onclick="setDraftFocus('${esc(t)}')" style="cursor:pointer;${isFocused?'outline:2px solid #6366f1;outline-offset:-2px;':''}${isFull27&&!isOnClock?'opacity:.45;':''}"`:''}">
+    return `<div class="team-card" ${draftMode?`onclick="setDraftFocus('${esc(t)}')" style="cursor:pointer;${isOnClock?'background:#eef2ff;border:1px solid #6366f1;':''}${isFocused?'outline:2px solid #6366f1;outline-offset:-2px;':''}${isFull27&&!isOnClock?'opacity:.45;':''}"`:''}">
       <div class="team-card-header">
         ${logo ? `<img src="${esc(logo)}" class="team-card-logo" loading="lazy">` : '<div class="team-card-logo"></div>'}
         <div style="min-width:0;flex:1"><span class="team-card-name" title="${esc(t)}">${esc(t)}</span><div style="font-size:9px;font-weight:700;color:#9ca3af;letter-spacing:.06em;margin-top:1px;line-height:1">${teamAbbr(t)}</div></div>
-        ${isFocused?'<span style="font-size:9px;font-weight:700;background:#6366f1;color:#fff;border-radius:3px;padding:1px 5px;white-space:nowrap;margin-left:2px">Viewing</span>':isOnClock?'<span style="font-size:9px;font-weight:700;background:#6366f1;color:#fff;border-radius:3px;padding:1px 5px;white-space:nowrap;margin-left:2px">On Clock</span><span class="draft-on-clock-timer" style="font-variant-numeric:tabular-nums;font-size:10px;font-weight:700;margin-left:4px"></span>':isFull27?'<span style="font-size:9px;font-weight:600;background:#e5e7eb;color:#9ca3af;border-radius:3px;padding:1px 5px;white-space:nowrap;margin-left:2px">Full</span>':''}
-      </div>
-      <div class="team-card-cap" style="display:flex;align-items:center;justify-content:space-between">
-        <span><span style="color:${remColor}">${remLabel}</span>${cppStr}</span>
-        ${isOnClock?`<button class="btn btn-red-outline" onclick="event.stopPropagation();passCurrentPick()" style="font-size:10px;height:22px;padding:0 8px;margin-left:6px">Pass</button>`:''}
+        ${isFocused?'<span style="font-size:9px;font-weight:700;background:#6366f1;color:#fff;border-radius:3px;padding:1px 5px;white-space:nowrap;margin-left:2px">Viewing</span>':isOnClock?'<span style="font-size:9px;font-weight:700;background:#6366f1;color:#fff;border-radius:3px;padding:1px 5px;white-space:nowrap;margin-left:2px">On Clock</span>':isFull27?'<span style="font-size:9px;font-weight:600;background:#e5e7eb;color:#9ca3af;border-radius:3px;padding:1px 5px;white-space:nowrap;margin-left:2px">Full</span>':''}
       </div>
       <div class="team-card-pos">
         <span title="${fRem} F spot${fRem!==1?'s':''} remaining">F&thinsp;${fRem}</span><span title="${dRem} D spot${dRem!==1?'s':''} remaining">D&thinsp;${dRem}</span><span title="${gRem} G spot${gRem!==1?'s':''} remaining">G&thinsp;${gRem}</span>
       </div>
-      ${_capGapRow(tp, p=>p.cap2627||0, CAP_LIMIT)}
+      ${draftMode?`<div style="display:flex;gap:6px;margin-top:3px">${teamAffordBadge(t,'F')}${teamAffordBadge(t,'D')}${teamAffordBadge(t,'G')}</div>`:''}
       ${_curveDeltaLabel(teamCurveDelta(t), '2627', t)}
       ${top5Html(t,fRem,dRem,gRem,rem)}
+      <div class="team-card-cap">
+        <span style="color:${remColor}">${remLabel}</span>${cppStr}
+      </div>
     </div>`;
   }).join('');
 }
