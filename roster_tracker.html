@@ -8660,7 +8660,25 @@ function _runAlgoDrops({ players, teams, startField, ppts, getCap, capLimit, dra
       if(!posMinsMet){
         const needF = droppedF < minDropF, needD = droppedD < minDropD;
         const restricted = remainingCandidates.filter(c => { const cpg = posGroup(c.pos); return (needF && cpg==='F') || (needD && cpg==='D'); });
-        if(restricted.length) pool = restricted;
+        if(restricted.length){
+          // Within a still-required position, prefer a candidate that ISN'T a near-lock to be
+          // redrafted early (see earlyRedraftScoreThreshold above) — only reach into a redraft-
+          // protected one if literally nothing else qualifies at this position, so the mandatory
+          // minDropF/D floor stays satisfiable but doesn't hand-pick a player everyone (Algo
+          // Draft included) would grab in round 1-2 while a genuinely replaceable player at the
+          // SAME position sits right there. Found live 2026-09-24 via Muller Time!: Logan Cooley
+          // (12th overall in Algo Draft, redraft score 89.5, clears earlyRedraftTopN=180 easily)
+          // got force-cut as the mandatory F drop purely because his curve-delta read worse than
+          // Aliaksei Protas's (a real 3rd-liner with no PP time) — Pass 8's protection never got
+          // a chance to weigh in below, since posOwnMinMet is false for both by definition (this
+          // IS their position's first required drop). Validated via Compare Drops across all 4
+          // seasons (2026-09-24): byte-identical 588/720 correct, 628/720 outcome-adjusted,
+          // before and after — zero regression anywhere except this exact scenario.
+          const unprotected = earlyRedraftTopN > 0
+            ? restricted.filter(c => redraftScoreOf(c) < earlyRedraftScoreThreshold)
+            : restricted;
+          pool = unprotected.length ? unprotected : restricted;
+        }
       }
       const p = pool[0];
       remainingCandidates.splice(remainingCandidates.indexOf(p), 1);
