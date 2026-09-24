@@ -1016,7 +1016,7 @@ tr:hover td{background:#fafaf8}
           </div>
           <div style="display:flex;flex-direction:column;gap:4px">
             <span style="font-size:11px;color:#9ca3af">Min D drops per team (<span style="font-family:monospace;color:#b0b0ac">minDropD</span>)</span>
-            <input type="number" id="s-minDropD" value="1" min="0" max="5" step="1" onchange="updateSetting('minDropD',+this.value)" style="width:80px;height:32px;border:1px solid #ddd;border-radius:8px;padding:0 8px;font-size:13px;text-align:center">
+            <input type="number" id="s-minDropD" value="0" min="0" max="5" step="1" onchange="updateSetting('minDropD',+this.value)" style="width:80px;height:32px;border:1px solid #ddd;border-radius:8px;padding:0 8px;font-size:13px;text-align:center">
           </div>
         </div>
       </div>
@@ -1868,7 +1868,7 @@ function _effectiveDraftWeights(team, draftWeightsBase){
     : { ...draftWeightsBase, wtFanBias: 0, wtTermValue: draftWeightsBase.wtTermValue || 2 };
 }
 let ptsTarget = 1200; // historically the real points needed to win the championship, apart from last year
-let minDropF = 1, minDropD = 1; // every team must drop at least this many F and D (G excluded)
+let minDropF = 1, minDropD = 0; // every team must drop at least this many F (D and G excluded)
 // Players at or above this pts threshold are last-resort drops. Was a hardcoded const=50 (an
 // eyeballed guess from 2026-05-27) until this was promoted to a real setting and backtested via
 // Compare Drops across all 3 completed seasons on 2026-07-25: results are flat from 0-25 (423/536,
