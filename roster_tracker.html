@@ -8639,10 +8639,33 @@ function _runAlgoDrops({ players, teams, startField, ppts, getCap, capLimit, dra
       F: fitQuadratic(teamPoolByPos.F), D: fitQuadratic(teamPoolByPos.D), G: fitQuadratic(teamPoolByPos.G),
     };
 
-    for(const p of candidates){
-      const pg = posGroup(p.pos);
+    // Position-quota-aware candidate selection, not a plain linear walk of the globally
+    // worst-value-first `candidates` list. While a position quota (minDropF/minDropD) is still
+    // unmet, restrict the pool to candidates AT a still-needed position (worst-value-first
+    // within that restriction — candidates is already sorted, so filtering preserves relative
+    // order); once both quotas are met, fall back to the full remaining list. Without this, a
+    // team whose forwards are simply worse value than its defense across the board blows through
+    // every forward before ever being forced to touch a D, satisfying the quota only as an
+    // afterthought — MORE total cuts than necessary, and a real player (e.g. one sitting right at
+    // the curve boundary) gets swept up in cuts that a D-first order would never have required.
+    // Found live 2026-09-23 via Muller Time!: cut 6 forwards in a row before finally force-
+    // cutting a D (Zayne Parekh) as the 7th drop just to satisfy minDropD, when their own
+    // worst-value D (even a fundamentally decent one, reached into the highVal tier if that's
+    // genuinely the worst D on the roster) should have been cut far earlier to clear the quota
+    // with fewer total drops, letting the optional (Pass 4/5/6) mechanism take it from there.
+    const remainingCandidates = candidates.slice();
+    while(remainingCandidates.length){
       const posMinsMet = droppedF >= minDropF && droppedD >= minDropD;
       if(numDropped >= maxDropsPreseason && posMinsMet) break;
+      let pool = remainingCandidates;
+      if(!posMinsMet){
+        const needF = droppedF < minDropF, needD = droppedD < minDropD;
+        const restricted = remainingCandidates.filter(c => { const cpg = posGroup(c.pos); return (needF && cpg==='F') || (needD && cpg==='D'); });
+        if(restricted.length) pool = restricted;
+      }
+      const p = pool[0];
+      remainingCandidates.splice(remainingCandidates.indexOf(p), 1);
+      const pg = posGroup(p.pos);
       const capOk = keptCap <= capLimit - numDropped*draftReserve;
       // Pass 4 — Minimum Budget Cushion (see minCapPerPickMult): same treatment as capOk right
       // above — checked at BOTH stop points (here, for a valuable candidate, and again below for
