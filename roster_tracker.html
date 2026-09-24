@@ -1075,7 +1075,7 @@ tr:hover td{background:#fafaf8}
 
       <div style="border:1px solid #e5e7eb;border-radius:8px;padding:8px 10px">
         <div style="font-size:10px;font-weight:700;color:#6b7280;letter-spacing:.02em">PASS 6 — BELOW CURVE VALUE <span style="font-weight:400;color:#9ca3af">The normal optional cut once the floor's met and cap's fine. A player is protected as a last-resort drop if EITHER their raw pts clears the Drop value floor below OR their ABP is 0 (no better free agent available at their position/cap) — unless their curve-delta falls below the Last-resort delta floor, which overrides both. All three values below work together to decide who's an easy cut vs. protected from one.</span></div>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px 16px;margin-top:6px">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px 16px;margin-top:6px">
           <div style="display:flex;flex-direction:column;gap:4px">
             <span style="font-size:11px;color:#9ca3af" title="Players at/above this pts threshold are last-resort drops, protected until quotas/cap force a cut">Drop value pts floor (<span style="font-family:monospace;color:#b0b0ac">dropValueFloor</span>)</span>
             <input type="number" id="s-dropValueFloor" value="15" min="0" max="150" step="1" onchange="updateSetting('dropValueFloor',+this.value)" style="width:80px;height:32px;border:1px solid #ddd;border-radius:8px;padding:0 8px;font-size:13px;text-align:center">
@@ -1087,6 +1087,10 @@ tr:hover td{background:#fafaf8}
           <div style="display:flex;flex-direction:column;gap:4px">
             <span style="font-size:11px;color:#9ca3af" title="Below this curve-delta, a player is NOT pushed to the back of the line by the drop value floor or ABP=0 escape hatch above — badly overpaying overrides that last-resort status regardless of raw production. Curve delta is now a RELATIVE (%-below-curve, rescaled to points-equivalent units via ptsTarget/roster size) metric, not raw points — see the drops curve-delta comment in code.">Last-resort △ floor (<span style="font-family:monospace;color:#b0b0ac">untouchableDeltaFloor</span>)</span>
             <input type="number" id="s-untouchableDeltaFloor" value="-6" min="-100" max="0" step="1" onchange="updateSetting('untouchableDeltaFloor',+this.value)" style="width:80px;height:32px;border:1px solid #ddd;border-radius:8px;padding:0 8px;font-size:13px;text-align:center">
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px">
+            <span style="font-size:11px;color:#9ca3af" title="Pass 6/7 won't stop cutting until the team's remaining cap ÷ remaining open roster spots is at least this many multiples of that season's own ELC_MAX — separate from the Pass 5 cap-crunch floor below (a much lower bare-feasibility number), which is left alone. Scales with cap-hit inflation automatically instead of a flat dollar figure going stale. Validated 2026-09-23 against every real team-season's actual postdrop $/pick across all 4 seasons: true historical floor is $1.86M (23-24, a 1.96x multiple of that season's ELC_MAX) — but $1.9M bought a lot more player back in 23-24 than it does now, so 2.0x is the safer real-terms default going forward.">Min $/pick to stop, × ELC_MAX (<span style="font-family:monospace;color:#b0b0ac">minCapPerPickMult</span>)</span>
+            <input type="number" id="s-minCapPerPickMult" value="2.0" min="0" max="10" step="0.05" onchange="updateSetting('minCapPerPickMult',+this.value)" style="width:80px;height:32px;border:1px solid #ddd;border-radius:8px;padding:0 8px;font-size:13px;text-align:center">
           </div>
         </div>
       </div>
@@ -1974,6 +1978,20 @@ let untouchableDeltaFloor = -6;
 // 431/540 at the old 90) — a real fix, not a tradeoff. 85 leaves a small buffer under the
 // validated 86 flip point.
 let untouchableElitePts = 85;
+// Minimum realistic $/remaining-pick a team must leave itself before Pass 6/7 are allowed to
+// stop cutting — separate from capOk's draftReserve (~$1.275M, a bare ELC-feasibility floor also
+// used by Pass 5/Pass 8, deliberately left untouched here). Validated 2026-09-23 against every
+// real team-season's actual postdrop $/pick across all 4 seasons: true historical floor is
+// $1.86M (23-24 Damage Inc., that season's ELC_MAX=0.950 — a 1.96x multiple), every other real
+// team-season sits at $2.11M+ (a clean gap). No real GM has ever left themselves this tight; the
+// algo was allowing it (found live via Bossy Posse 26-27 reaching 6 picks at $1.3M each — right
+// at draftReserve's own floor). Expressed as a multiple of that SEASON's own ELC_MAX (each
+// season passes its own elcMax into _runAlgoDrops already) rather than a flat dollar figure, so
+// it automatically scales with cap-hit inflation instead of going stale as ELC_MAX rises. 1.96x
+// exactly reproduces the 23-24 historical floor, but $1.9M bought a lot more real player back in
+// 23-24 than it does now — 2.0x (≈$2.05M for 26-27, ELC_MAX=1.025) is the safer real-terms
+// default going forward, per user 2026-09-23.
+let minCapPerPickMult = 2.0;
 // ── 24-25 season constants ────────────────────────────────────────────────────
 let CAP_LIMIT_2324 = 83.5;
 let CAP_LIMIT_2425 = 88;
@@ -5579,6 +5597,7 @@ function syncSettings(){
   set('s-minDropF', minDropF); set('s-minDropD', minDropD);
   set('s-dropValueFloor', dropValueFloor);
   set('s-untouchableElitePts', untouchableElitePts); set('s-untouchableDeltaFloor', untouchableDeltaFloor);
+  set('s-minCapPerPickMult', minCapPerPickMult);
   if(CAP_LIMIT_2728 != null) set('s-capLimit2728', CAP_LIMIT_2728);
   set('s-abpWiggle', abpWiggle);
   set('s-wAthletic', PROJ_SOURCE_WEIGHTS.athletic); set('s-wDFO', PROJ_SOURCE_WEIGHTS.dfo);
@@ -5649,6 +5668,7 @@ function updateSetting(key, val){
   else if(key === 'dropValueFloor') dropValueFloor = val;
   else if(key === 'untouchableElitePts') untouchableElitePts = val;
   else if(key === 'untouchableDeltaFloor') untouchableDeltaFloor = val;
+  else if(key === 'minCapPerPickMult') minCapPerPickMult = val;
   else if(key === 'simElcExpF')   simElcExpF = val;
   else if(key === 'simElcExpD')   simElcExpD = val;
   else if(key === 'earlyPaceWeight')           { EARLY_PACE_WEIGHT = val; applyBlendedPts(); render(); }
@@ -8438,6 +8458,10 @@ function _runAlgoDrops({ players, teams, startField, ppts, getCap, capLimit, dra
   // flat constant here would silently go stale the moment ptsTarget (a real, user-editable
   // Settings value) changed. User's own catch, 2026-09-21.
   const dropDeltaReferencePts = ptsTarget / (DRAFT_ROSTER_MAX.F + DRAFT_ROSTER_MAX.D + DRAFT_ROSTER_MAX.G);
+  // Minimum realistic $/remaining-pick (see minCapPerPickMult) — a multiple of THIS season's own
+  // elcMax (passed in per-caller) so it scales with cap-hit inflation instead of a flat dollar
+  // figure going stale as ELC_MAX rises year over year.
+  const minCapPerPickTarget = elcMax * minCapPerPickMult;
   // Relative curve delta, rescaled via dropDeltaReferencePts above. Replaces a raw-point delta
   // 2026-09-21: raw delta systematically read expensive, genuinely-productive players as worse
   // value than cheap complementary ones even when the opposite was true, because the curve's OWN
@@ -8668,9 +8692,10 @@ function _runAlgoDrops({ players, teams, startField, ppts, getCap, capLimit, dra
       const assumedReplacementPts = droppedF*Math.max(0, faCurveFns.F(perSlotBudget))
                                    + droppedD*Math.max(0, faCurveFns.D(perSlotBudget))
                                    + droppedG*Math.max(0, faCurveFns.G(perSlotBudget));
-      if(!isValuable && numDropped >= minDropsPreseason && keptPts+assumedReplacementPts >= ptsTarget && capOk && posMinsMet) break;
+      if(!isValuable && numDropped >= minDropsPreseason && keptPts+assumedReplacementPts >= ptsTarget && capOk && perSlotBudget >= minCapPerPickTarget && posMinsMet) break;
       let reason = numDropped < minDropsPreseason ? 'Pass 3: required minimum'
                  : !capOk ? 'Pass 5: cap crunch'
+                 : perSlotBudget < minCapPerPickTarget ? 'Pass 6: below curve value (min $/pick not yet met)'
                  : 'Pass 6: below curve value';
       if(earlyRedraftFlag) reason += ' (Pass 8 protection didn’t apply — position quota/cap still required this cut)';
       dropReasonById.set(p.id, reason);
@@ -8684,21 +8709,31 @@ function _runAlgoDrops({ players, teams, startField, ppts, getCap, capLimit, dra
       faCurveFns[pg] = fitQuadratic(teamPoolByPos[pg]);
     }
 
-    // Enforce minimum drops: if candidates ran out before minimum, force-drop lowest-value
-    // remaining. Unconditional — minDropsPreseason is a real, hard fantasy-league rule every
-    // team's roster must satisfy, not a soft target a caller can opt out of. This used to be
-    // gated behind a useMinEnforcement flag that every real caller had already set true;
-    // removed entirely 2026-09-22 rather than leave dead optionality around a hard constraint.
-    if(numDropped < minDropsPreseason){
+    // Enforce minimum drops AND the minimum $/pick budget: if candidates ran out before either
+    // is satisfied, force-drop lowest-value remaining. Unconditional — minDropsPreseason is a
+    // real, hard fantasy-league rule every team's roster must satisfy, not a soft target a
+    // caller can opt out of (this used to be gated behind a useMinEnforcement flag that every
+    // real caller had already set true; removed entirely 2026-09-22). minCapPerPickTarget joined
+    // this same forced fallback 2026-09-23 — the main loop's own stop check already required it
+    // (see Pass 6), but that check only fires while there are still "natural" candidates left to
+    // iterate; a team that runs OUT of natural candidates before hitting minCapPerPickTarget
+    // (Bossy Posse 26-27: stopped at $1.32M/pick, well under the real historical floor) fell
+    // through with no further pressure to keep cutting. Also fixes a pre-existing bug: this loop
+    // never incremented droppedG for a forced goalie cut, throwing off the budget math below.
+    {
       const alreadyDropped = new Set(dropList.map(x => x.id));
       for(const p of candidates){
-        if(numDropped >= minDropsPreseason) break;
+        const openSlotsNow = droppedF+droppedD+droppedG;
+        const budgetNow = openSlotsNow>0 ? (capLimit-keptCap)/openSlotsNow : Infinity;
+        if(numDropped >= minDropsPreseason && budgetNow >= minCapPerPickTarget) break;
         if(alreadyDropped.has(p.id)) continue;
-        dropReasonById.set(p.id, 'Pass 7: forced (ran out of natural candidates)');
+        dropReasonById.set(p.id, numDropped < minDropsPreseason
+          ? 'Pass 7: forced (ran out of natural candidates)'
+          : 'Pass 7: forced (min $/pick not yet met)');
         dropList.push(p);
         keptPts -= ppts(p); keptCap -= (getCap(p)||0);
         const pg2 = posGroup(p.pos);
-        if(pg2==='F') droppedF++; else if(pg2==='D') droppedD++;
+        if(pg2==='F') droppedF++; else if(pg2==='D') droppedD++; else if(pg2==='G') droppedG++;
         numDropped++;
       }
     }
