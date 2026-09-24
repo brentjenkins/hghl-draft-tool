@@ -21,7 +21,7 @@ const FINAL_STANDINGS_2526 = {
 // $0 (Zach Bolduc → Dumb and Goalie To). Same format as MANUAL_CAPS_2425/2526/2324 (yrStr is
 // display-only, not read by assignCapFromSignings — left blank since none have signed yet).
 const MANUAL_CAPS_2627 = {
-  'adam fantilli_F':      { cap: 13, yrStr: '' },
+  'adam fantilli_F':      { cap: 13.75, yrStr: '' }, // real signed value (2026-09-24), not a guess
   'alexander nikishin_D': { cap: 6,  yrStr: '' },
   'simon edvinsson_D':    { cap: 7,  yrStr: '' },
 };
