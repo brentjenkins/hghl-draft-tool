@@ -8496,15 +8496,31 @@ function _runAlgoDrops({ players, teams, startField, ppts, getCap, capLimit, dra
   const termCreditOf = p => _dropTermCreditOf(p, { ppts, getCap, calcAgeForSim, contractYearAnchor, nextContractField, capLimit, curveFns, elcMax });
   // Position depth penalty (see wtPositionDepthDrop) — the inverse of fanBiasProtection/
   // termCreditOf: shifts a player's effective deficit UP (more droppable, not less) the deeper
-  // their position's true pre-drop free-agent pool already is. Quality bar reuses isHighVal's
-  // own "at or above curve" read (deltaOf(fa) >= 0) rather than inventing a separate threshold —
-  // counted ONCE here, over the same true pre-drop snapshot basePoolByPos is built from, so it
-  // can't see any other team's cuts either (real GMs submit their drop lists independently).
+  // their position's true pre-drop free-agent pool already is. Quality bar now matches the
+  // League bubble's own "quality available" badge (_cachedQualityAvail: full SCORE formula,
+  // bestAvail mode, Simulate-mode weights, SCORE > pressureQualityThreshold) rather than the
+  // much looser "at or above curve at all" (deltaOf(fa) >= 0) read this originally used — found
+  // live 2026-09-24 via Motor City Wings' D: the old bar counted 12 "quality" FA D leaguewide
+  // (any FA at or above curve) while the League bubble's own real quality-available badge
+  // (already backtested/fixed for this exact team-agnostic use — see _cachedQualityAvail's own
+  // comment) counted only 3, actively penalizing every MOT D as if D were a deep position when
+  // it's actually scarce. Can't just call _cachedQualityAvail directly — it always reads the
+  // real global `players`/live roster state, not whatever virtual pool this run is using (e.g.
+  // Compare Drops' throwaway copy) — so the same SCORE check is inlined here instead, counted
+  // ONCE here, over the same true pre-drop snapshot basePoolByPos is built from, so it can't see
+  // any other team's cuts either (real GMs submit their drop lists independently).
+  const qualityFAWeights = _effectiveDraftWeights(null, draftWeights);
+  const qualityFAThreshold = qualityFAWeights.pressureQualityThreshold ?? 95;
   const qualityFACount = { F: 0, D: 0, G: 0 };
   for(const p of players){
     if(p[startField] || ppts(p) <= 0 || (getCap(p)||0) <= 0) continue;
     const pg = posGroup(p.pos);
-    if(pg in qualityFACount && deltaOf(p) >= 0) qualityFACount[pg]++;
+    if(!(pg in qualityFACount)) continue;
+    const { score } = _scoreDraftCandidate(p, {
+      pg, pp: ppts(p), cap0: getCap(p)||0, mode:'bestAvail', round: 99, draftWeights: qualityFAWeights,
+      calcAgeForSim, contractYearAnchor, nextContractField, curveFns, elcMax, srcNFn, maxSrc, capLimit0: capLimit,
+    });
+    if(score > qualityFAThreshold) qualityFACount[pg]++;
   }
   const positionDepthCredit = p => {
     if(wtPositionDepthDrop <= 0) return 0;
