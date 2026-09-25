@@ -1041,7 +1041,7 @@ tr:hover td{background:#fafaf8}
             <div style="width:80px;height:32px;border:1px dashed #ddd;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;color:#6b7280;background:#fff">20</div>
           </div>
           <div style="display:flex;flex-direction:column;gap:4px">
-            <span style="font-size:11px;color:#9ca3af" title="Per quality free agent at this position (true pre-drop pool, before any team's own drops), added to a player's effective deficit — makes a player at a deep position look MORE droppable, since a comparable replacement is more likely to be redraftable later. Only matters relative to other drop candidates' own credit, and mirrors the draft side's qualityAvail/pressure concept in reverse (deep = safer to cut, not just safer to skip drafting). Edit wtPositionDepthDrop in code to change it.">Position depth penalty (<span style="font-family:monospace;color:#b0b0ac">wtPositionDepthDrop</span>)</span>
+            <span style="font-size:11px;color:#9ca3af" title="Quality free agents at this position (true pre-drop pool), relative to how many that position typically needs per season (AVG_SEASON_DROPS_BY_POS, from real historical churn), added to a player's effective deficit — a position with more quality options per opening looks MORE droppable, one with fewer looks safer to cut. Only matters relative to other drop candidates' own credit, and mirrors the draft side's qualityAvail/pressure concept in reverse (deep relative to demand = safer to cut). Edit wtPositionDepthDrop in code to change it.">Position depth penalty (<span style="font-family:monospace;color:#b0b0ac">wtPositionDepthDrop</span>)</span>
             <div style="width:80px;height:32px;border:1px dashed #ddd;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;color:#6b7280;background:#fff">1.0</div>
           </div>
         </div>
@@ -1927,7 +1927,7 @@ let wtDropTermCredit = 0.2;
 // tested value. Set to 1.0 (a depth of 10 quality FAs adds 10 effective deficit) rather than
 // chasing the last couple of historical matches at 3+, which would make this a much bigger
 // factor in the ordinary case than the "backup plan" framing it was built for.
-let wtPositionDepthDrop = 1.0;
+let wtPositionDepthDrop = 30;
 // Draft dates — used to calculate the drop/add window (date + 2 days) for Yahoo transaction fetches.
 // All const: historical seasons are fixed facts; 26-27/27-28 are const too but may need a code edit once known.
 const draftDatePreseason2223    = '2022-10-08'; // no 22-23 Players view exists — kept for completeness/reference only
@@ -4609,6 +4609,14 @@ function render(){
 
 const NHL_SEASON_YEAR = 2026;
 const DRAFT_ROSTER_MAX = {F: 12, D: 6, G: 2};  // target spots per position per team
+// Real average drops per position per season — computed 2026-09-25 from all 3 completed
+// seasons' (23-24/24-25/25-26) real PREDROP-vs-POSTDROP roster diffs: F 32/25/28, D 21/26/20,
+// G 4/8/8 → averages below. NOT proportional to DRAFT_ROSTER_MAX's 60/30/10 roster-slot share
+// (49.4%/39.0%/11.6% actual) — D gets churned disproportionately more than its roster share,
+// G less. Used by positionDepthCredit (see wtPositionDepthDrop) to normalize how many "quality"
+// free agents exist at a position against how many will actually be needed, rather than
+// comparing raw counts across positions with very different real demand.
+const AVG_SEASON_DROPS_BY_POS = { F: 28.33, D: 22.33, G: 6.67 };
 
 // Players excluded from all draft simulations (normName_posGroup keys).
 // Used for players GMs never realistically draft regardless of projected pts.
@@ -8522,9 +8530,16 @@ function _runAlgoDrops({ players, teams, startField, ppts, getCap, capLimit, dra
     });
     if(score > qualityFAThreshold) qualityFACount[pg]++;
   }
+  // Normalized against real demand (AVG_SEASON_DROPS_BY_POS), not a raw count — found live
+  // 2026-09-25 via Motor City Wings' D-vs-G comparison: raw qualityFACount alone (D=7, G=5)
+  // reads D as MORE available than G, when D actually needs ~3x as many replacements per
+  // season (22.3 vs 6.7) — normalizing gives D a ratio of ~0.31 vs G's ~0.75, correctly showing
+  // D as the scarcer position once real demand is accounted for.
   const positionDepthCredit = p => {
     if(wtPositionDepthDrop <= 0) return 0;
-    return -(qualityFACount[posGroup(p.pos)]||0) * wtPositionDepthDrop;
+    const pg = posGroup(p.pos);
+    const demand = AVG_SEASON_DROPS_BY_POS[pg] || 1;
+    return -((qualityFACount[pg]||0) / demand) * wtPositionDepthDrop;
   };
   // ABP=0 / dropValueFloor overrides — backtested rationale: most "algo dropped, should have
   // kept" misses in the 23-24/24-25/25-26 historical data with zero better/cheaper alternatives
