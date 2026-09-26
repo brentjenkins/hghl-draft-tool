@@ -880,7 +880,7 @@ tr:hover td{background:#fafaf8}
 
   <div>
     <div class="section-label">NHL <span class="section-line"></span><span class="section-desc">League salary cap rules and important dates. Cap ceilings are used in drop cap-constraint checks. ELC max = league minimum + $175,000 (read-only). Editable caps are used by the drop algorithm. Trade deadline drives the ELC mandatory-drop rule (Drops > Pass 1).</span></div>
-    <div style="display:grid;grid-template-columns:72px repeat(6,1fr);gap:6px;align-items:center;font-size:12px">
+    <div style="display:grid;grid-template-columns:72px repeat(7,1fr);gap:6px;align-items:center;font-size:12px">
       <div></div>
       <div style="text-align:center;color:#9ca3af;font-size:10px;font-weight:600">22–23</div>
       <div style="text-align:center;color:#9ca3af;font-size:10px;font-weight:600">23–24</div>
@@ -888,6 +888,7 @@ tr:hover td{background:#fafaf8}
       <div style="text-align:center;color:#9ca3af;font-size:10px;font-weight:600">25–26</div>
       <div style="text-align:center;color:#185FA5;font-size:10px;font-weight:600">26–27</div>
       <div style="text-align:center;color:#9ca3af;font-size:10px;font-weight:600">27–28</div>
+      <div style="text-align:center;color:#9ca3af;font-size:10px;font-weight:600">28–29</div>
 
       <div style="font-size:11px;color:#9ca3af;white-space:nowrap">Cap ceiling</div>
       <div style="height:32px;border:1px solid #e5e7eb;border-radius:8px;padding:0 4px;font-size:12px;display:flex;align-items:center;justify-content:center;color:#9ca3af;background:#fafafa">$82.5M</div>
@@ -895,7 +896,8 @@ tr:hover td{background:#fafaf8}
       <div style="height:32px;border:1px solid #e5e7eb;border-radius:8px;padding:0 4px;font-size:12px;display:flex;align-items:center;justify-content:center;color:#9ca3af;background:#fafafa">$88M</div>
       <div style="height:32px;border:1px solid #e5e7eb;border-radius:8px;padding:0 4px;font-size:12px;display:flex;align-items:center;justify-content:center;color:#9ca3af;background:#fafafa">$95.5M</div>
       <div style="height:32px;border:1px solid #e5e7eb;border-radius:8px;padding:0 4px;font-size:12px;display:flex;align-items:center;justify-content:center;color:#9ca3af;background:#fafafa">$104M</div>
-      <input type="number" id="s-capLimit2728" placeholder="TBD" min="0" max="300" step="0.1" onchange="updateSetting('capLimit2728',+this.value)" style="width:100%;box-sizing:border-box;height:32px;border:1px solid #185FA5;border-radius:8px;padding:0 4px;font-size:12px;text-align:center;color:#1a1a18">
+      <div style="height:32px;border:1px solid #e5e7eb;border-radius:8px;padding:0 4px;font-size:12px;display:flex;align-items:center;justify-content:center;color:#9ca3af;background:#fafafa">$113.5M</div>
+      <input type="number" id="s-capLimit2829" placeholder="TBD" min="0" max="300" step="0.1" onchange="updateSetting('capLimit2829',+this.value)" style="width:100%;box-sizing:border-box;height:32px;border:1px solid #185FA5;border-radius:8px;padding:0 4px;font-size:12px;text-align:center;color:#1a1a18">
 
       <div style="font-size:11px;color:#9ca3af;white-space:nowrap">ELC max</div>
       <div style="height:32px;border:1px solid #e5e7eb;border-radius:8px;padding:0 4px;font-size:12px;display:flex;align-items:center;justify-content:center;color:#9ca3af;background:#fafafa">$0.950M</div>
@@ -904,6 +906,7 @@ tr:hover td{background:#fafaf8}
       <div style="height:32px;border:1px solid #e5e7eb;border-radius:8px;padding:0 4px;font-size:12px;display:flex;align-items:center;justify-content:center;color:#9ca3af;background:#fafafa">$0.975M</div>
       <div style="height:32px;border:1px solid #e5e7eb;border-radius:8px;padding:0 4px;font-size:12px;display:flex;align-items:center;justify-content:center;color:#9ca3af;background:#fafafa">$1.025M</div>
       <div style="height:32px;border:1px solid #e5e7eb;border-radius:8px;padding:0 4px;font-size:12px;display:flex;align-items:center;justify-content:center;color:#9ca3af;background:#fafafa">$1.075M</div>
+      <div style="height:32px;border:1px solid #e5e7eb;border-radius:8px;padding:0 4px;font-size:12px;display:flex;align-items:center;justify-content:center;color:#9ca3af;background:#fafafa">TBD</div>
 
       <div style="font-size:11px;color:#9ca3af;white-space:nowrap" title="Real NHL regular-season opening night — used to judge whether a real GM could have known a prospect's Opening Night roster/AHL-assignment status by that season's actual draft day">Opening night</div>
       <div style="height:32px;border:1px solid #e5e7eb;border-radius:8px;padding:0 4px;font-size:12px;display:flex;align-items:center;justify-content:center;color:#9ca3af;background:#fafafa">10/11/2022</div>
@@ -911,6 +914,7 @@ tr:hover td{background:#fafaf8}
       <div style="height:32px;border:1px solid #e5e7eb;border-radius:8px;padding:0 4px;font-size:12px;display:flex;align-items:center;justify-content:center;color:#9ca3af;background:#fafafa">10/8/2024</div>
       <div style="height:32px;border:1px solid #e5e7eb;border-radius:8px;padding:0 4px;font-size:12px;display:flex;align-items:center;justify-content:center;color:#9ca3af;background:#fafafa">10/7/2025</div>
       <div style="height:32px;border:1px solid #e5e7eb;border-radius:8px;padding:0 4px;font-size:12px;display:flex;align-items:center;justify-content:center;color:#9ca3af;background:#fafafa">9/29/2026</div>
+      <div style="height:32px;border:1px solid #e5e7eb;border-radius:8px;padding:0 4px;font-size:12px;display:flex;align-items:center;justify-content:center;color:#9ca3af;background:#fafafa">TBD</div>
       <div style="height:32px;border:1px solid #e5e7eb;border-radius:8px;padding:0 4px;font-size:12px;display:flex;align-items:center;justify-content:center;color:#9ca3af;background:#fafafa">TBD</div>
 
       <div style="font-size:11px;color:#9ca3af;white-space:nowrap" title="Real trade deadline — the cutoff behind the ELC mandatory-drop rule (Settings > Drops > Pass 1): a player signed to an ELC-level contract after a season's own trade deadline can still be added to a fantasy roster as a mid-season stash, but must be dropped at the NEXT season's preseason draft. Each column shows that season's OWN deadline — e.g. the 25-26 column's date is what feeds Pass 1 for the live 26-27 draft (TRADE_DEADLINE_2526).">Trade deadline</div>
@@ -920,14 +924,15 @@ tr:hover td{background:#fafaf8}
       <div style="height:32px;border:1px solid #e5e7eb;border-radius:8px;padding:0 4px;font-size:12px;display:flex;align-items:center;justify-content:center;color:#9ca3af;background:#fafafa">3/6/2026</div>
       <div style="height:32px;border:1px solid #e5e7eb;border-radius:8px;padding:0 4px;font-size:12px;display:flex;align-items:center;justify-content:center;color:#9ca3af;background:#fafafa">3/1/2027</div>
       <div style="height:32px;border:1px solid #e5e7eb;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#e5e7eb;background:#fafafa">—</div>
+      <div style="height:32px;border:1px solid #e5e7eb;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#e5e7eb;background:#fafafa">—</div>
 
     </div>
   </div>
   <div class="settings-divider"></div>
 
   <div>
-    <div class="section-label">Yahoo <span class="section-line"></span><span class="section-desc">Yahoo Fantasy league keys and draft dates. Draft dates determine the drop/add window for Yahoo transaction fetches (date + 2 days). Draft dates are historical facts (const in code) — only 26–27/27–28 may still need updating. Preseason Draft cells outlined in orange fall AFTER that season's NHL opening night (see NHL_OPENING_NIGHT_2X2Y) — a retroactive-scoring situation, not necessarily an error.</span></div>
-    <div style="display:grid;grid-template-columns:72px repeat(6,1fr);gap:6px;align-items:center;font-size:12px">
+    <div class="section-label">Yahoo <span class="section-line"></span><span class="section-desc">Yahoo Fantasy league keys and draft dates. Draft dates determine the drop/add window for Yahoo transaction fetches (date + 2 days). Draft dates are historical facts (const in code) — only 26–27/27–28/28–29 may still need updating. Preseason Draft cells outlined in orange fall AFTER that season's NHL opening night (see NHL_OPENING_NIGHT_2X2Y) — a retroactive-scoring situation, not necessarily an error.</span></div>
+    <div style="display:grid;grid-template-columns:72px repeat(7,1fr);gap:6px;align-items:center;font-size:12px">
       <div></div>
       <div style="text-align:center;color:#9ca3af;font-size:10px;font-weight:600">22–23</div>
       <div style="text-align:center;color:#9ca3af;font-size:10px;font-weight:600">23–24</div>
@@ -935,6 +940,7 @@ tr:hover td{background:#fafaf8}
       <div style="text-align:center;color:#9ca3af;font-size:10px;font-weight:600">25–26</div>
       <div style="text-align:center;color:#185FA5;font-size:10px;font-weight:600">26–27</div>
       <div style="text-align:center;color:#9ca3af;font-size:10px;font-weight:600">27–28</div>
+      <div style="text-align:center;color:#9ca3af;font-size:10px;font-weight:600">28–29</div>
 
       <div style="font-size:11px;color:#9ca3af;white-space:nowrap">League Key</div>
       <div style="height:32px;border:1px solid #e5e7eb;border-radius:8px;padding:0 4px;font-size:10px;display:flex;align-items:center;justify-content:center;color:#d1d5db;background:#fafafa;letter-spacing:-.3px">419.l.52810</div>
@@ -942,6 +948,7 @@ tr:hover td{background:#fafaf8}
       <div style="height:32px;border:1px solid #e5e7eb;border-radius:8px;padding:0 4px;font-size:10px;display:flex;align-items:center;justify-content:center;color:#d1d5db;background:#fafafa;letter-spacing:-.3px">453.l.52799</div>
       <div style="height:32px;border:1px solid #e5e7eb;border-radius:8px;padding:0 4px;font-size:10px;display:flex;align-items:center;justify-content:center;color:#d1d5db;background:#fafafa;letter-spacing:-.3px">465.l.97882</div>
       <div style="height:32px;border:1px solid #e5e7eb;border-radius:8px;padding:0 4px;font-size:10px;display:flex;align-items:center;justify-content:center;color:#d1d5db;background:#fafafa;letter-spacing:-.3px">477.l.62019</div>
+      <div style="height:32px;border:1px solid #e5e7eb;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#e5e7eb;background:#fafafa">—</div>
       <div style="height:32px;border:1px solid #e5e7eb;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#e5e7eb;background:#fafafa">—</div>
 
       <div style="font-size:11px;color:#9ca3af;white-space:nowrap">Preseason Draft</div>
@@ -951,6 +958,7 @@ tr:hover td{background:#fafaf8}
       <div style="height:32px;border:1px solid #e5e7eb;border-radius:8px;padding:0 4px;font-size:12px;display:flex;align-items:center;justify-content:center;color:#9ca3af;background:#fafafa">9/27/2025</div>
       <div style="height:32px;border:1px solid #f59e0b;border-radius:8px;padding:0 4px;font-size:12px;display:flex;align-items:center;justify-content:center;color:#b45309;background:#fffbeb" title="Draft is 3 days AFTER NHL 26-27 opening night (9/29/2026) — retroactive-scoring situation">10/2/2026</div>
       <div style="height:32px;border:1px solid #e5e7eb;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#e5e7eb;background:#fafafa">—</div>
+      <div style="height:32px;border:1px solid #e5e7eb;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#e5e7eb;background:#fafafa">—</div>
 
       <div style="font-size:11px;color:#9ca3af;white-space:nowrap">Supplemental Draft</div>
       <div style="height:32px;border:1px solid #e5e7eb;border-radius:8px;padding:0 4px;font-size:12px;display:flex;align-items:center;justify-content:center;color:#9ca3af;background:#fafafa" title="No 22-23 Players view exists — kept for reference only">1/6/2023</div>
@@ -958,6 +966,7 @@ tr:hover td{background:#fafaf8}
       <div style="height:32px;border:1px solid #e5e7eb;border-radius:8px;padding:0 4px;font-size:12px;display:flex;align-items:center;justify-content:center;color:#9ca3af;background:#fafafa">1/4/2025</div>
       <div style="height:32px;border:1px solid #e5e7eb;border-radius:8px;padding:0 4px;font-size:12px;display:flex;align-items:center;justify-content:center;color:#9ca3af;background:#fafafa">1/10/2026</div>
       <div style="height:32px;border:1px solid #185FA5;border-radius:8px;padding:0 4px;font-size:12px;display:flex;align-items:center;justify-content:center;color:#1a1a18;background:#fff">1/10/2027</div>
+      <div style="height:32px;border:1px solid #e5e7eb;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#e5e7eb;background:#fafafa">—</div>
       <div style="height:32px;border:1px solid #e5e7eb;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#e5e7eb;background:#fafafa">—</div>
     </div>
   </div>
@@ -1999,6 +2008,7 @@ let CAP_LIMIT_2425 = 88;
 let CAP_LIMIT_2526 = 95.5;
 let CAP_LIMIT = 104;
 let CAP_LIMIT_2728 = 113.5; // CBA-committed (2023 NHL-NHLPA MOU) — set 2026-09-25
+let CAP_LIMIT_2829 = null; // not yet announced — editable in Settings once known
 // Forward cap-ceiling schedule for the term-adjusted cap-efficiency term (tTermValue, see
 // _scoreDraftCandidate) — separate from CAP_LIMIT_2728 above, which drives the actual 27-28
 // season simulation once real and stays null until then. This schedule only feeds the SCORING
@@ -5603,7 +5613,7 @@ function syncSettings(){
   set('s-dropValueFloor', dropValueFloor);
   set('s-untouchableElitePts', untouchableElitePts); set('s-untouchableDeltaFloor', untouchableDeltaFloor);
   set('s-minCapPerPickMult', minCapPerPickMult);
-  if(CAP_LIMIT_2728 != null) set('s-capLimit2728', CAP_LIMIT_2728);
+  if(CAP_LIMIT_2829 != null) set('s-capLimit2829', CAP_LIMIT_2829);
   set('s-abpWiggle', abpWiggle);
   set('s-wAthletic', PROJ_SOURCE_WEIGHTS.athletic); set('s-wDFO', PROJ_SOURCE_WEIGHTS.dfo);
   set('s-wDTZ', PROJ_SOURCE_WEIGHTS.dtz);
@@ -5668,7 +5678,7 @@ function updateSetting(key, val){
   else if(key === 'ptsTarget')    ptsTarget = val;
   else if(key === 'capLimit')     CAP_LIMIT = val;
   else if(key === 'capLimit2526') CAP_LIMIT_2526 = val;
-  else if(key === 'capLimit2728') CAP_LIMIT_2728 = val;
+  else if(key === 'capLimit2829') CAP_LIMIT_2829 = val;
   else if(key === 'abpWiggle')    abpWiggle = val;
   else if(key === 'dropValueFloor') dropValueFloor = val;
   else if(key === 'untouchableElitePts') untouchableElitePts = val;
