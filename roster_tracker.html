@@ -2010,31 +2010,40 @@ let CAP_LIMIT = 104;
 let CAP_LIMIT_2728 = 113.5; // CBA-committed (2023 NHL-NHLPA MOU) — set 2026-09-25
 let CAP_LIMIT_2829 = null; // not yet announced — editable in Settings once known
 // Forward cap-ceiling schedule for the term-adjusted cap-efficiency term (tTermValue, see
-// _scoreDraftCandidate) — separate from CAP_LIMIT_2728 above, which drives the actual 27-28
-// season simulation once real and stays null until then. This schedule only feeds the SCORING
-// heuristic that rewards locking a flat AAV in for multiple years, so it uses a working estimate
-// even before 27-28 is official: $113.5M is CBA-committed (per the 2023 NHL-NHLPA MOU), the
-// $106-$113.5M range covers the actual 23-24→26-27 run (5.4%-8.9%/yr), 6% beyond that is a
-// deliberately conservative floor for the unconfirmed out-years, not a real projection (see
-// project_cap_growth_vs_star_contracts memory, 2026-08-25).
-// Full real NHL cap ceiling sequence, 23-24 through 27-28 — CAP_LIMIT_2324/2425/2526/CAP_LIMIT/
-// 113.5 in order. Applies to EVERY season's Term scoring identically: whichever season a caller
-// anchors from (via capLimit0/fromCapLimit, already threaded through every _scoreDraftCandidate
-// call site), future years look up the REAL cap that actually happened wherever the sequence
-// covers it — e.g. a 23-24 candidate's "1 year from now" correctly resolves to 24-25's real $88M,
-// not a 6%-guess extrapolation — falling back to CAP_GROWTH_RATE_ASSUMED compounding only past
-// the last known season (27-28, unannounced). Matched by index/value, not a season label, so it
-// stays correct if CAP_LIMIT_2X2Y is ever live-edited in Settings.
-const CAP_SCHEDULE_SEQUENCE = [83.5, 88, 95.5, 104, 113.5];
+// _scoreDraftCandidate) — feeds the SCORING heuristic that rewards locking a flat AAV in for
+// multiple years. 27-28's $113.5M is CBA-committed (per the 2023 NHL-NHLPA MOU) and now real
+// (CAP_LIMIT_2728, above); the $106-$113.5M range covers the actual 23-24→26-27 run
+// (5.4%-8.9%/yr). 6%/yr beyond the last known season is a deliberately conservative floor for
+// the unconfirmed out-years, not a real projection (see project_cap_growth_vs_star_contracts
+// memory, 2026-08-25) — update CAP_LIMIT_2829 once 28-29's real number is known (there's real
+// talk of $127.5M, well above what 6%/yr alone would assume) rather than waiting on this
+// fallback to catch up.
+// Full real NHL cap ceiling sequence — CAP_LIMIT_2324/2425/2526/CAP_LIMIT/CAP_LIMIT_2728/
+// CAP_LIMIT_2829, dropping any not-yet-announced trailing null (currently just CAP_LIMIT_2829,
+// until it's set). A FUNCTION, not a fixed array — found live 2026-09-25 that this used to be a
+// hardcoded literal ([83.5, 88, 95.5, 104, 113.5]) that merely HAPPENED to match these constants
+// rather than actually reading them, despite this same comment already (incorrectly) claiming it
+// "stays correct if CAP_LIMIT_2X2Y is ever live-edited in Settings" — a fixed array evaluated
+// once at load can't reflect a later Settings edit (e.g. CAP_LIMIT_2829, live-editable), only a
+// fresh computation can. Applies to EVERY season's Term scoring identically: whichever season a
+// caller anchors from (via capLimit0/fromCapLimit, already threaded through every
+// _scoreDraftCandidate call site), future years look up the REAL cap that actually happened
+// wherever the sequence covers it — e.g. a 23-24 candidate's "1 year from now" correctly
+// resolves to 24-25's real $88M, not a 6%-guess extrapolation — falling back to
+// CAP_GROWTH_RATE_ASSUMED compounding only past the last known season.
+function _capScheduleSequence(){
+  return [CAP_LIMIT_2324, CAP_LIMIT_2425, CAP_LIMIT_2526, CAP_LIMIT, CAP_LIMIT_2728, CAP_LIMIT_2829].filter(v => v != null);
+}
 const CAP_GROWTH_RATE_ASSUMED = 1.06;
 const CAP_GROWTH_TERM_CAP = 5; // cap how many future years count, so a very long known term (e.g. a signed 8-9yr extension) doesn't dominate purely on compounding-growth guesswork
 function _projectedCapLimit(yearsFromNow, fromCapLimit = CAP_LIMIT){
-  const anchorIdx = CAP_SCHEDULE_SEQUENCE.findIndex(v => Math.abs(v - fromCapLimit) < 0.01);
+  const schedule = _capScheduleSequence();
+  const anchorIdx = schedule.findIndex(v => Math.abs(v - fromCapLimit) < 0.01);
   if(anchorIdx !== -1){
     const targetIdx = anchorIdx + yearsFromNow;
-    if(targetIdx < CAP_SCHEDULE_SEQUENCE.length) return CAP_SCHEDULE_SEQUENCE[targetIdx];
-    const yearsBeyond = targetIdx - (CAP_SCHEDULE_SEQUENCE.length - 1);
-    return CAP_SCHEDULE_SEQUENCE[CAP_SCHEDULE_SEQUENCE.length - 1] * Math.pow(CAP_GROWTH_RATE_ASSUMED, yearsBeyond);
+    if(targetIdx < schedule.length) return schedule[targetIdx];
+    const yearsBeyond = targetIdx - (schedule.length - 1);
+    return schedule[schedule.length - 1] * Math.pow(CAP_GROWTH_RATE_ASSUMED, yearsBeyond);
   }
   // Anchor doesn't match any known season's real cap (e.g. a live-edited override) - fall back
   // to pure compounding from that figure directly.
