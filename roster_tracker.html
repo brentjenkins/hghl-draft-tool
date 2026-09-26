@@ -2012,12 +2012,13 @@ let CAP_LIMIT_2829 = null; // not yet announced — editable in Settings once kn
 // Forward cap-ceiling schedule for the term-adjusted cap-efficiency term (tTermValue, see
 // _scoreDraftCandidate) — feeds the SCORING heuristic that rewards locking a flat AAV in for
 // multiple years. 27-28's $113.5M is CBA-committed (per the 2023 NHL-NHLPA MOU) and now real
-// (CAP_LIMIT_2728, above); the $106-$113.5M range covers the actual 23-24→26-27 run
-// (5.4%-8.9%/yr). 6%/yr beyond the last known season is a deliberately conservative floor for
-// the unconfirmed out-years, not a real projection (see project_cap_growth_vs_star_contracts
-// memory, 2026-08-25) — update CAP_LIMIT_2829 once 28-29's real number is known (there's real
-// talk of $127.5M, well above what 6%/yr alone would assume) rather than waiting on this
-// fallback to catch up.
+// (CAP_LIMIT_2728, above). Growth beyond the last known season used to assume a deliberately
+// conservative flat 6%/yr floor (see project_cap_growth_vs_star_contracts memory, 2026-08-25);
+// re-derived 2026-09-25 from the actual 23-24→27-28 sequence, which shows accelerating growth,
+// not flat (5.39%/8.52%/8.90%/9.13% year over year) — the last 3 transitions alone compound to
+// 8.85%/yr, so CAP_GROWTH_RATE_ASSUMED moved to a realistic-estimate 8.5%, not a conservative
+// floor. Update CAP_LIMIT_2829 once 28-29's real number is known (there's real talk of $127.5M)
+// rather than waiting on this fallback to catch up.
 // Full real NHL cap ceiling sequence — CAP_LIMIT_2324/2425/2526/CAP_LIMIT/CAP_LIMIT_2728/
 // CAP_LIMIT_2829, dropping any not-yet-announced trailing null (currently just CAP_LIMIT_2829,
 // until it's set). A FUNCTION, not a fixed array — found live 2026-09-25 that this used to be a
@@ -2034,7 +2035,7 @@ let CAP_LIMIT_2829 = null; // not yet announced — editable in Settings once kn
 function _capScheduleSequence(){
   return [CAP_LIMIT_2324, CAP_LIMIT_2425, CAP_LIMIT_2526, CAP_LIMIT, CAP_LIMIT_2728, CAP_LIMIT_2829].filter(v => v != null);
 }
-const CAP_GROWTH_RATE_ASSUMED = 1.06;
+const CAP_GROWTH_RATE_ASSUMED = 1.085;
 const CAP_GROWTH_TERM_CAP = 5; // cap how many future years count, so a very long known term (e.g. a signed 8-9yr extension) doesn't dominate purely on compounding-growth guesswork
 function _projectedCapLimit(yearsFromNow, fromCapLimit = CAP_LIMIT){
   const schedule = _capScheduleSequence();
