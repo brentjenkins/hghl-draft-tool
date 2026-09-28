@@ -2036,7 +2036,7 @@ function _capScheduleSequence(){
   return [CAP_LIMIT_2324, CAP_LIMIT_2425, CAP_LIMIT_2526, CAP_LIMIT, CAP_LIMIT_2728, CAP_LIMIT_2829].filter(v => v != null);
 }
 const CAP_GROWTH_RATE_ASSUMED = 1.085;
-const CAP_GROWTH_TERM_CAP = 5; // cap how many future years count, so a very long known term (e.g. a signed 8-9yr extension) doesn't dominate purely on compounding-growth guesswork
+const CAP_GROWTH_TERM_CAP = 5; // cap how many future years count, so a very long known term (e.g. a signed 7-8yr extension — the current CBA's actual max, no 9yr deals exist) doesn't dominate purely on compounding-growth guesswork
 function _projectedCapLimit(yearsFromNow, fromCapLimit = CAP_LIMIT){
   const schedule = _capScheduleSequence();
   const anchorIdx = schedule.findIndex(v => Math.abs(v - fromCapLimit) < 0.01);
