@@ -259,16 +259,27 @@ def _fetch_rosters(league_key, token):
     data = yahoo_get(f"/league/{league_key}/teams/roster/players", token)
     teams_raw = data["fantasy_content"]["league"][1]["teams"]
     result = []
-    for idx in (k for k in teams_raw.keys() if k != "count"):
-        team = teams_raw[idx]["team"]
+    # Yahoo returns teams_raw as a dict keyed by index normally, but as an empty list when the
+    # league has no rostered players yet (e.g. predraft, before any keeper/drop submission is
+    # reflected) — same list-vs-dict ambiguity already handled below for roster_data.
+    if isinstance(teams_raw, list):
+        team_entries = [(str(i), t["team"]) for i, t in enumerate(teams_raw) if isinstance(t, dict) and "team" in t]
+    else:
+        team_entries = [(idx, teams_raw[idx]["team"]) for idx in teams_raw.keys() if idx != "count"]
+    for idx, team in team_entries:
         team_name = next((m["name"] for m in team[0] if isinstance(m, dict) and "name" in m), f"Team {idx}")
         roster_data = team[1]["roster"]
         if isinstance(roster_data, list):
             players_raw = next(r["players"] for r in roster_data if isinstance(r, dict) and "players" in r)
         else:
             players_raw = next(v["players"] for k, v in roster_data.items() if isinstance(v, dict) and "players" in v)
-        for pidx in (k for k in players_raw.keys() if k != "count"):
-            p    = players_raw[pidx]["player"]
+        # Same list-vs-dict ambiguity as teams_raw/roster_data above — an empty roster (e.g.
+        # predraft, before any picks) comes back as an empty list, not a dict with count=0.
+        if isinstance(players_raw, list):
+            player_entries = [pl["player"] for pl in players_raw if isinstance(pl, dict) and "player" in pl]
+        else:
+            player_entries = [players_raw[pidx]["player"] for pidx in players_raw.keys() if pidx != "count"]
+        for p in player_entries:
             meta = p[0]
             full_name = next((m.get("full_name") or m.get("name", {}).get("full", "")
                               for m in meta if isinstance(m, dict) and ("full_name" in m or "name" in m)), "")
