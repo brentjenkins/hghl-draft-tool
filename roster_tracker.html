@@ -92,6 +92,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#1
 .btn-blue-outline:hover{background:#eff6ff}
 .btn-draft{font-size:11px;padding:3px 10px;border:1px solid #6366f1;border-radius:6px;background:#6366f1;color:#fff;cursor:pointer;white-space:nowrap}
 .btn-draft:hover{background:#4f46e5;border-color:#4f46e5}
+.btn-draft:disabled{background:#e5e7eb;border-color:#e5e7eb;color:#9ca3af;cursor:not-allowed}
+.btn-draft:disabled:hover{background:#e5e7eb;border-color:#e5e7eb}
 .btn-undo{flex-shrink:0;height:26px;font-size:12px;padding:0 10px;background:none;border:1px solid #d1d5db;border-radius:6px;color:#555;cursor:pointer;white-space:nowrap}
 .btn-undo:hover{background:#f7f7f5;border-color:#9ca3af;color:#1a1a18}
 #draftSubProspectBtn:hover,#draftSubBestBtn:hover,
@@ -4512,6 +4514,23 @@ function render(){
 
   toggleCurrentTeamCol('th-start2627', 'thg-2627-team', draftMode);
   const onClockTeam = buildDraftSeq2627()[draftState2627.picks.length] ?? null;
+  // Real per-position need and max-affordable-single-pick price for the team that will
+  // ACTUALLY receive a Draft-button click — deliberately independent of draftFocusTeam/viewTeam
+  // below, which only changes what's DISPLAYED (another team's board can be browsed while a
+  // different team is on the clock; a click always drafts for onClockTeam, per makeDraftPick).
+  // Used to disable the Draft button on an ineligible pick (wrong position, exceeds cap) rather
+  // than silently letting it through with zero validation.
+  let onClockNeed = null, onClockMaxAffordable = Infinity;
+  if(draftMode && onClockTeam){
+    const onClockRoster = players.filter(p=>p.start2627===onClockTeam);
+    const ocF = onClockRoster.filter(p=>posGroup(p.pos)==='F').length;
+    const ocD = onClockRoster.filter(p=>posGroup(p.pos)==='D').length;
+    const ocG = onClockRoster.filter(p=>posGroup(p.pos)==='G').length;
+    onClockNeed = {F:Math.max(0,DRAFT_ROSTER_MAX.F-ocF), D:Math.max(0,DRAFT_ROSTER_MAX.D-ocD), G:Math.max(0,DRAFT_ROSTER_MAX.G-ocG)};
+    const onClockCapUsed = onClockRoster.reduce((s,p)=>s+(p.cap2627||0),0);
+    const onClockSlotsLeft = onClockNeed.F+onClockNeed.D+onClockNeed.G;
+    onClockMaxAffordable = CAP_LIMIT - onClockCapUsed - Math.max(0, onClockSlotsLeft-1)*ELC_MAX_2627;
+  }
   let pressureHdr = '';
   if(draftMode){
     const viewTeam = draftFocusTeam || onClockTeam;
@@ -4623,7 +4642,16 @@ function render(){
         ${p.start2627
           ? `<button class="drop-btn" onclick="dropPlayer(${p.id})" title="Drop from roster">Drop</button>`
           : draftMode
-            ? `<button class="btn-draft" onclick="quickDraft(${p.id})" title="Draft for ${esc(onClockTeam)}">Draft</button>`
+            ? (()=>{
+                const pg = posGroup(p.pos);
+                const noSlot = onClockNeed && !(onClockNeed[pg] > 0);
+                const overCap = (p.cap2627||0) > onClockMaxAffordable;
+                if(noSlot || overCap){
+                  const reason = noSlot ? `${esc(onClockTeam)} has no open ${pg} roster spot` : `exceeds ${esc(onClockTeam)}'s affordable cap room ($${onClockMaxAffordable.toFixed(2)}M)`;
+                  return `<button class="btn-draft" disabled title="Ineligible pick — ${reason}">Draft</button>`;
+                }
+                return `<button class="btn-draft" onclick="quickDraft(${p.id})" title="Draft for ${esc(onClockTeam)}">Draft</button>`;
+              })()
             : `<button class="add-btn" onclick="openAssignTeam(${p.id})" title="Add to 26-27 roster">Add</button>`}
       </td>
     </tr>`;
