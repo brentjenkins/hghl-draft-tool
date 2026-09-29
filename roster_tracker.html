@@ -624,7 +624,7 @@ tr:hover td{background:#fafaf8}
       <span style="font-size:10px;font-weight:600;color:#bbb;text-transform:uppercase;letter-spacing:.06em;line-height:1.3">Sync</span>
       <button class="btn btn-nhl" id="nhlBtn" onclick="syncAllNHL()" title="Update NHL roster status (active vs non-roster) and birth dates from the NHL API">🏒 NHL Rosters</button>
       <button class="btn btn-amber" id="injuriesBtn" onclick="syncInjuries()" title="Sync current NHL injury report from covers.com">🩹 Injuries</button>
-      <button class="btn btn-nhl" id="statsBtn2627" onclick="syncStats2627()" title="Pull 2026-27 actual season stats — available once the season starts (Oct 2026)" style="opacity:.4" disabled>📊 NHL 26-27</button>
+      <button class="btn btn-nhl" id="statsBtn2627" onclick="syncStats2627()" title="Pull 2026-27 actual season stats — available once NHL.com publishes them (9/30/2026)">📊 NHL 26-27</button>
     </div>
     <div style="display:flex;align-items:center;gap:6px">
       <span style="font-size:10px;font-weight:600;color:#bbb;text-transform:uppercase;letter-spacing:.06em;line-height:1.3">26-27<br>Projections</span>
@@ -1949,6 +1949,12 @@ const draftDatePreseason2526    = '2025-09-27';
 const draftDateSupplemental2526 = '2026-01-10';
 const draftDatePreseason2627    = '2026-10-02';
 const draftDateSupplemental2627 = '2027-01-10';
+// NHL.com starts publishing real 2026-27 season stats — confirmed 2026-09-28, one day after
+// opening night (NHL_OPENING_NIGHT_2627). Games banked before the preseason draft (10/2) count
+// retroactively for whoever ends up rostering that player after the draft — see the
+// project_early_season_nowcast memory — so this gate is intentionally earlier than the draft
+// date itself, not tied to it.
+const NHL_STATS_AVAILABLE_2627 = '2026-09-30';
 // NHL trade deadline per season — the real cutoff behind the ELC mandatory-drop rule (see Pass 1
 // in Settings > Drops): a player signed to an ELC-level contract after that season's trade
 // deadline can still be added to a fantasy roster (a mid-season stash), but must be dropped at
@@ -6386,8 +6392,8 @@ function resetDraft2526(){
 }
 
 async function syncStats2627(){
-  if(new Date() < new Date(draftDatePreseason2627 + 'T00:00:00')){
-    toast(`NHL 26-27 season hasn't started yet — available ${draftDatePreseason2627}.`); return;
+  if(new Date() < new Date(NHL_STATS_AVAILABLE_2627 + 'T00:00:00')){
+    toast(`NHL 26-27 stats aren't published yet — available ${NHL_STATS_AVAILABLE_2627}.`); return;
   }
   const btn = document.getElementById('statsBtn2627');
   btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>Syncing…';
