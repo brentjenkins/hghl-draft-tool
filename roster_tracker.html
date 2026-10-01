@@ -1215,7 +1215,7 @@ tr:hover td{background:#fafaf8}
               <div style="font-size:11px;color:#6b7280;font-family:monospace;margin-bottom:8px">Σ future curve-delta (floored at 0) × wtTermValue</div>
               <div style="display:flex;flex-direction:column;gap:3px">
                 <span style="font-size:11px;color:#9ca3af" title="Sums the projected production-vs-AAV curve delta across a contract's remaining years (current deal, then next deal's AAV once it takes effect if one's signed) — rewards a deal that keeps providing value going forward. A player who's above curve now but projects to decline below it: only the leading run of above-curve years is summed, stopping at the point he'd actually be dropped. A player who's below curve now but projects to grow above it: every year counts, negative and positive together, since you'd hold through the dip for the later payoff. Floored at 0 overall, never penalizes a worsening deal. 0 for a 1-year-left deal with no next contract on file. Simulate-mode teams always show 0/grayed out.">Term value weight (<span style="font-family:monospace;color:#b0b0ac">wtTermValue</span>)</span>
-                <input type="number" id="s-wtTermValue" value="2" min="0" max="20" step="0.5" onchange="updateDraftWeight('wtTermValue',+this.value)" style="width:64px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center">
+                <input type="number" id="s-wtTermValue" value="1" min="0" max="20" step="0.5" onchange="updateDraftWeight('wtTermValue',+this.value)" style="width:64px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center">
               </div>
             </div>
 
@@ -1492,7 +1492,7 @@ let sortColSignings = 'sign_date', sortDirSignings = -1;
 // below-curve player forever" cases matched the GM's fan team, ~10x the ~3% chance baseline)
 // and explicitly flagged then to revisit for draft accuracy too. See GM_FAN_TEAM /
 // project_gm_nhl_affiliation memory.
-let draftWeights = { wtPPTSM: 0.75, wtAge: 1, wtProspect: 12, wtCoverageDiscount: 0.25, wtPressure: 0.6, pressureQualityThreshold: 95, wtDeltaCurve: 8, elcExpF: 41, elcExpD: 26, elcExpG: 35, wtPosAlloc: 1.0, minSources: 2, wtFanBias: 0, wtTermValue: 2 };
+let draftWeights = { wtPPTSM: 0.75, wtAge: 1, wtProspect: 12, wtCoverageDiscount: 0.25, wtPressure: 0.6, pressureQualityThreshold: 95, wtDeltaCurve: 8, elcExpF: 41, elcExpD: 26, elcExpG: 35, wtPosAlloc: 1.0, minSources: 2, wtFanBias: 0, wtTermValue: 1 };
 // Knapsack-optimal cap fractions: F=58%, D=35%, G=7% (derived from 26-27 player pool, $104M cap)
 const OPT_POS_FRACS = {F: 0.58, D: 0.35, G: 0.07};
 
@@ -5679,7 +5679,7 @@ function syncSettings(){
   set('s-wtPressure', W.wtPressure??0.6);
   set('s-pressureQualityThreshold', W.pressureQualityThreshold??95);
   set('s-wtDeltaCurve', W.wtDeltaCurve);
-  set('s-wtTermValue', W.wtTermValue??2);
+  set('s-wtTermValue', W.wtTermValue??1);
   set('s-wtPosAlloc', W.wtPosAlloc??1.0);
   set('s-draftProspectRounds', draftProspectRounds);
   set('s-minDropsPreseason', minDropsPreseason); set('s-maxDropsPreseason', maxDropsPreseason);
@@ -5708,7 +5708,7 @@ function updateDraftWeight(key, val){
   if(draftWeights.wtPressure === undefined) draftWeights.wtPressure = 0.6;
   if(draftWeights.pressureQualityThreshold === undefined) draftWeights.pressureQualityThreshold = 95;
   if(draftWeights.wtDeltaCurve === undefined) draftWeights.wtDeltaCurve = 8;
-  if(draftWeights.wtTermValue === undefined) draftWeights.wtTermValue = 2;
+  if(draftWeights.wtTermValue === undefined) draftWeights.wtTermValue = 1;
   if(draftWeights.elcExpF === undefined) draftWeights.elcExpF = 35;
   if(draftWeights.elcExpD === undefined) draftWeights.elcExpD = 25;
   if(draftWeights.elcExpG === undefined) draftWeights.elcExpG = 35;
