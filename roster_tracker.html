@@ -170,12 +170,13 @@ tr:hover td{background:#fafaf8}
 .summary-col h3.departed-hdr{color:#dc2626}
 .summary-col h3.arrived-hdr{color:#16a34a}
 .summary-col h3.returning-hdr{color:#185FA5}
-.summary-col-colhdrs{display:grid;grid-template-columns:1fr 28px 58px 36px;gap:4px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#9ca3af;padding:0 0 3px;border-bottom:1px solid #f0f0ee;margin-bottom:2px}
-.summary-col-colhdrs span:nth-child(4){text-align:right}
-.summary-player{display:grid;grid-template-columns:1fr 28px 58px 36px;align-items:center;gap:4px;padding:3px 0;font-size:13px}
+.summary-col-colhdrs{display:grid;grid-template-columns:1fr 28px 58px 50px 36px;gap:4px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#9ca3af;padding:0 0 3px;border-bottom:1px solid #f0f0ee;margin-bottom:2px}
+.summary-col-colhdrs span:nth-child(4),.summary-col-colhdrs span:nth-child(5){text-align:right}
+.summary-player{display:grid;grid-template-columns:1fr 28px 58px 50px 36px;align-items:center;gap:4px;padding:3px 0;font-size:13px}
 .summary-player-pos{font-size:11px;font-weight:600;color:#9ca3af}
 .summary-player-name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .summary-player-team{display:flex;align-items:center;gap:3px;font-size:11px;color:#555;white-space:nowrap}
+.summary-player-cap{font-size:11px;color:#555;text-align:right;font-variant-numeric:tabular-nums}
 .summary-player-pts{font-size:12px;font-weight:600;text-align:right}
 .summary-player.departed .summary-player-name{color:#9ca3af;text-decoration:line-through}
 .summary-player.departed .summary-player-pts{color:#dc2626}
@@ -11714,9 +11715,10 @@ function renderSummaryCard(teamIdx){
     <span class="summary-player-name">${esc(p.name)}${repickIdsY.has(p.id)?` <span style="color:#0891b2;font-weight:600" title="Dropped and re-added by ${esc(team)} this cycle, not kept without interruption">▲</span>`:''}</span>
     <span class="summary-player-pos">${posGroup(p.pos)}</span>
     <span class="summary-player-team">${NHL_LOGOS[p.team2627]?`<img src="${NHL_LOGOS[p.team2627]}" style="width:14px;height:14px;object-fit:contain" loading="lazy">`:''}${esc(p.team2627||'—')}</span>
+    <span class="summary-player-cap">${getCapY(p)>0?'$'+getCapY(p).toFixed(2):'—'}</span>
     <span class="summary-player-pts">${Math.round(pptsF(p))||'—'}</span>
   </div>`;
-  const colHdrs=`<div class="summary-col-colhdrs"><span>Player</span><span>Pos</span><span>NHL Team</span><span>PPTS</span></div>`;
+  const colHdrs=`<div class="summary-col-colhdrs"><span>Player</span><span>Pos</span><span>NHL Team</span><span>Cap $M</span><span>PPTS</span></div>`;
   const colTotal=(pts,cls)=>{const color=cls==='departed'?'#dc2626':cls==='arrived'?'#16a34a':'#185FA5';return pts>0?`<div class="summary-col-total" style="color:${color}">${pts}</div>`:''};
 
   const pairBubble=(label,prevVal,currVal,prevColor,currColor,delta,dColor)=>`<div class="ssb">
