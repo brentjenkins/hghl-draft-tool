@@ -287,72 +287,81 @@ const PREDROP_STUBS_2627 = [
   {name:'Scott Wedgewood', pos:'G'},
 ];
 
-// Mock/practice 26-27 draft the user ran and exported via Export Draft (2026-08-25),
-// used as a stand-in "actual" draft for Compare Drafts until the real 26-27 draft
-// happens (Oct 2, 2026). Replace wholesale with the real picks once the actual draft
-// occurs - same mechanism either way (compareDrafts2627 does not know or care whether
-// this is a practice run or real, matching POSTDROP_ROSTER_2627's existing convention.
+// Real 26-27 preseason draft — recorded 2026-10-03 from the live draft's Export Draft CSV
+// (hghl_draft_2627_2026-10-03.csv), after the live UI froze mid-draft (see
+// project_live_draft_recovery memory for the Anton Johansson/savePlayer-mid-draft root cause
+// and recovery steps). KIL's roster situation post-draft put them over the cap — see that same
+// memory for the real resolution (burning a midseason replacement).
 const POSTDRAFT_ROSTER_2627 = {
   // Killer Whales (8 picks)
-  'porter martone':'Killer Whales',  // R1
-  'carter hart':'Killer Whales',  // R2
-  'sam reinhart':'Killer Whales',  // R3
-  'jeremy swayman':'Killer Whales',  // R4
-  'justin sourdif':'Killer Whales',  // R5
-  'andrei svechnikov':'Killer Whales',  // R6
-  'brandt clarke':'Killer Whales',  // R6
-  'oliver bonk':'Killer Whales',  // R6
-  // Dumb and Goalie To (7 picks)
-  'cole hutson':'Dumb and Goalie To',  // R1
-  'konsta helenius':'Dumb and Goalie To',  // R2
-  'brady tkachuk':'Dumb and Goalie To',  // R3
-  'alex bump':'Dumb and Goalie To',  // R4
-  'moritz seider':'Dumb and Goalie To',  // R5
-  'noah ostlund':'Dumb and Goalie To',  // R6
-  'aleksander barkov':'Dumb and Goalie To',  // R6
-  // Muller Time! (6 picks)
-  'gavin mckenna':'Muller Time!',  // R1
-  'william nylander':'Muller Time!',  // R2
-  'miro heiskanen':'Muller Time!',  // R3
-  'nikolaj ehlers':'Muller Time!',  // R4
-  'bryan rust':'Muller Time!',  // R5
-  'dan vladar':'Muller Time!',  // R6
-  // Blue Line Bangers (5 picks)
+  'gavin mckenna':'Killer Whales',  // R1
+  'mackenzie blackwood':'Killer Whales',  // R2
+  'miro heiskanen':'Killer Whales',  // R3
+  'olen zellweger':'Killer Whales',  // R4
+  'anton johansson':'Killer Whales',  // R5 — real NHL player (DET, D, $0.97M), added to the
+                                       // database live (see project_live_draft_recovery memory)
+  'kent johnson':'Killer Whales',  // R6
+  'cutter gauthier':'Killer Whales',  // R7
+  'mikhail sergachev':'Killer Whales',  // R8 — put KIL over the cap, recorded as-is per the
+                                         // real draft; cap fix is a real-world midseason move
+  // Dumb and Goalie To (9 picks)
+  'porter martone':'Dumb and Goalie To',  // R1
+  'james hagens':'Dumb and Goalie To',  // R2
+  'juuse saros':'Dumb and Goalie To',  // R3
+  'konsta helenius':'Dumb and Goalie To',  // R4
+  'charlie mcavoy':'Dumb and Goalie To',  // R5
+  'sam malinski':'Dumb and Goalie To',  // R6
+  'vincent trocheck':'Dumb and Goalie To',  // R7
+  'mason marchment':'Dumb and Goalie To',  // R8
+  'vince dunn':'Dumb and Goalie To',  // R9
+  // Muller Time! (5 picks)
+  'cole hutson':'Muller Time!',  // R1
+  'jeremy swayman':'Muller Time!',  // R2
+  'matthew knies':'Muller Time!',  // R3
+  'marco rossi':'Muller Time!',  // R4
+  'victor eklund':'Muller Time!',  // R5
+  // Blue Line Bangers (10 picks)
   'anton frondell':'Blue Line Bangers',  // R1
   'adam fox':'Blue Line Bangers',  // R2
-  'alex ovechkin':'Blue Line Bangers',  // R3
+  'rasmus dahlin':'Blue Line Bangers',  // R3
   'shea theodore':'Blue Line Bangers',  // R4
   'shane wright':'Blue Line Bangers',  // R5
-  // Damage Inc. (5 picks)
-  'ivar stenberg':'Damage Inc.',  // R1
-  'frederik andersen':'Damage Inc.',  // R2
-  'mikhail sergachev':'Damage Inc.',  // R3
-  'bowen byram':'Damage Inc.',  // R4
-  'ryan shea':'Damage Inc.',  // R5
-  // Silence of the Lamb (7 picks)
-  'ryan ufko':'Silence of the Lamb',  // R1
-  'matthew tkachuk':'Silence of the Lamb',  // R2
-  'filip forsberg':'Silence of the Lamb',  // R3
-  'trevor connelly':'Silence of the Lamb',  // R4
-  'fraser minten':'Silence of the Lamb',  // R5
-  'jackson blake':'Silence of the Lamb',  // R6
-  'noah hanifin':'Silence of the Lamb',  // R6
+  'theo lindstein':'Blue Line Bangers',  // R6
+  'ryan hartman':'Blue Line Bangers',  // R7
+  'simon holmstrom':'Blue Line Bangers',  // R8
+  'jamie benn':'Blue Line Bangers',  // R9
+  'sean walker':'Blue Line Bangers',  // R10
+  // Damage Inc. (6 picks)
+  'luca cagnoni':'Damage Inc.',  // R1
+  'axel sandin pellikka':'Damage Inc.',  // R2
+  'ryan ufko':'Damage Inc.',  // R3
+  'william nylander':'Damage Inc.',  // R4
+  'matthew tkachuk':'Damage Inc.',  // R5
+  'drew helleson':'Damage Inc.',  // R6
+  // Silence of the Lamb (6 picks)
+  'ivar stenberg':'Silence of the Lamb',  // R1
+  'roman kantserov':'Silence of the Lamb',  // R2
+  'oliver ekmanlarsson':'Silence of the Lamb',  // R3
+  'mattias ekholm':'Silence of the Lamb',  // R4
+  'john marino':'Silence of the Lamb',  // R5
+  'alex ovechkin':'Silence of the Lamb',  // R6
   // Motor City Wings (5 picks)
-  'ilya protas':'Motor City Wings',  // R1
-  'axel sandin pellikka':'Motor City Wings',  // R2
-  'jamie benn':'Motor City Wings',  // R3
-  'braeden bowman':'Motor City Wings',  // R4
-  'vince dunn':'Motor City Wings',  // R5
-  // Pernicious Puckers (5 picks)
-  'roman kantserov':'Pernicious Puckers',  // R1
-  'joel hofer':'Pernicious Puckers',  // R2
-  'easton cowan':'Pernicious Puckers',  // R3
-  'tristan luneau':'Pernicious Puckers',  // R4
-  'brock faber':'Pernicious Puckers',  // R5
+  'carter hart':'Motor City Wings',  // R1
+  'evgeni malkin':'Motor City Wings',  // R2
+  'jared mccann':'Motor City Wings',  // R3
+  'roman josi':'Motor City Wings',  // R4
+  'tj hughes':'Motor City Wings',  // R5
+  // Pernicious Puckers (6 picks)
+  'moritz seider':'Pernicious Puckers',  // R1
+  'bowen byram':'Pernicious Puckers',  // R2
+  'ilya protas':'Pernicious Puckers',  // R3
+  'viggo bjorck':'Pernicious Puckers',  // R4
+  'tristan luneau':'Pernicious Puckers',  // R5
+  'arturs silovs':'Pernicious Puckers',  // R6
   // Bossy Posse (5 picks)
-  'victor eklund':'Bossy Posse',  // R1
-  'calum ritchie':'Bossy Posse',  // R2
-  'james hagens':'Bossy Posse',  // R3
-  'louis crevier':'Bossy Posse',  // R4
-  'matthew robertson':'Bossy Posse',  // R5
+  'adam jiricek':'Bossy Posse',  // R1
+  'easton cowan':'Bossy Posse',  // R2
+  'joel hofer':'Bossy Posse',  // R3
+  'dmitri simashev':'Bossy Posse',  // R4
+  'calum ritchie':'Bossy Posse',  // R5
 };

@@ -653,8 +653,9 @@ tr:hover td{background:#fafaf8}
       <button class="btn btn-indigo-outline" onclick="rankPlayers()">★ Rank Players</button>
       <button class="btn btn-indigo-outline" id="draftModeBtn" onclick="toggleDraftMode()">⚡ Draft Mode</button>
       <button class="btn btn-blue-outline" id="algoDraftBtn2627" onclick="algoDraft2627()" title="Run Algo Draft from current rosters and apply picks">⬆ Algo Draft</button>
+      <button class="btn btn-green-outline" onclick="loadActualDraft2627()" title="Load the real 26-27 draft results (POSTDRAFT_ROSTER_2627) once the actual draft has happened">⬆ Actual Draft</button>
       <button class="btn btn-green-outline" onclick="exportDraft2627()" title="Save the 26-27 draft picks (player, pos, fantasy team, round#, pick#) to a CSV file">💾 Export Draft</button>
-      <button class="btn btn-indigo-light" id="compareDraftsBtn2627" onclick="compareDrafts2627()" title="Available once the real 26-27 draft happens (Oct 2, 2026) and POSTDRAFT_ROSTER_2627 is populated" style="opacity:.4;cursor:not-allowed">📋 Compare Drafts</button>
+      <button class="btn btn-indigo-light" id="compareDraftsBtn2627" onclick="compareDrafts2627()" title="Compare Algo Draft picks against the real 26-27 draft">📋 Compare Drafts</button>
       <span id="draftSubModeCtrl" style="display:none;border:1px solid #c7d2fe;border-radius:6px;overflow:hidden;font-size:11px;font-weight:600">
         <button id="draftSubProspectBtn" onclick="setDraftSubMode('prospect')" style="border:none;padding:5px 9px;background:#6366f1;color:#fff;cursor:pointer">Prospect</button>
         <button id="draftSubBestBtn" onclick="setDraftSubMode('bestAvail')" style="border:none;padding:5px 9px;background:#e0e7ff;color:#6366f1;cursor:pointer">Best Available</button>
@@ -6555,6 +6556,43 @@ function loadActualDraft2526(){
   render2526();
   if(unmatched.length) toast(`25-26 actual draft loaded — ${unmatched.length} unmatched: ${unmatched.slice(0,3).join(', ')}`);
   else toast(`25-26 actual draft loaded — ${picks.length} picks. See Big Board tab.`);
+}
+
+// 26-27 version — same shape as loadActualDraft2526, but no draftFocusTeam/draftMode suffix
+// (26-27 is the live/current season, using the bare draftMode/draftFocusTeam/draftModeBtn/
+// draftSubModeCtrl names directly rather than a season-suffixed set like 23-24/24-25/25-26).
+function loadActualDraft2627(){
+  if(!Object.keys(POSTDRAFT_ROSTER_2627).length){ toast('POSTDRAFT_ROSTER_2627 is empty.'); return; }
+  if(!confirm('Load actual 26-27 post-draft rosters? Overwrites start2627 and populates the Big Board with actual picks.')) return;
+  for(const p of players){
+    const base = normName(p.name).toLowerCase();
+    const pg   = posGroup(p.pos);
+    const t = POSTDROP_ROSTER_2627[`${base}_${pg}`] ?? _dictLookup(p.name, POSTDROP_ROSTER_2627) ?? null;
+    p.start2627 = t;
+  }
+  const picks = [], unmatched = [];
+  const _byTeam2627 = {};
+  for(const entry of Object.entries(POSTDRAFT_ROSTER_2627)){ const t=entry[1]; if(!_byTeam2627[t])_byTeam2627[t]=[]; _byTeam2627[t].push(entry); }
+  const _maxR2627 = Math.max(0,...Object.values(_byTeam2627).map(a=>a.length));
+  const _ord2627 = [];
+  for(let r=0;r<_maxR2627;r++) for(const t of DRAFT_TEAMS_2627) if(_byTeam2627[t]?.[r]) _ord2627.push(_byTeam2627[t][r]);
+  for(const [rawKey, team] of _ord2627){
+    const pgTag=rawKey.match(/_([FDG])$/); const bk=pgTag?rawKey.slice(0,-2):rawKey; const wantPG=pgTag?pgTag[1]:null;
+    const p = findPlayerByNamePos(bk, wantPG);
+    if(p){ p.start2627 = team; picks.push({team, player:p.name, pos:p.pos, nhlTeam:p.team2627||'', cap:p.cap2627||0, projPts:p.proj2627.blend||0}); }
+    else { unmatched.push(bk); picks.push({team, player:bk, pos:wantPG||'', nhlTeam:'', cap:0, projPts:0}); }
+  }
+  draftState2627 = {picks};
+  lsSet(LS_PLAYERS, players); lsSet(LS_DRAFT_2627, draftState2627);
+  _deactivateDraftMode2425(); _deactivateDraftMode2526(); _deactivateDraftMode2324();
+  draftMode=true; draftFocusTeam=null;
+  updateBigBoardTab();
+  const btn=document.getElementById('draftModeBtn');
+  if(btn){ btn.style.background='#6366f1'; btn.style.color='#fff'; btn.style.borderColor='#6366f1'; }
+  const ctrl=document.getElementById('draftSubModeCtrl'); if(ctrl) ctrl.style.display='';
+  render();
+  if(unmatched.length) toast(`26-27 actual draft loaded — ${unmatched.length} unmatched: ${unmatched.slice(0,3).join(', ')}`);
+  else toast(`26-27 actual draft loaded — ${picks.length} picks. See Big Board tab.`);
 }
 
 async function _applyYahooDraft(leagueKey, startField, renderFn){
