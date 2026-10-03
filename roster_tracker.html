@@ -11525,6 +11525,27 @@ function savePlayer(){
     }
   } else {
     const newId=players.length>0?Math.max(...players.map(p=>p.id))+1:1;
+    // Assigning a brand-new player straight to the team actually ON THE CLOCK right now, while
+    // a live 26-27 draft is in progress, must go through makeDraftPick, not a direct start2627
+    // assignment — otherwise draftState2627.picks never gets a new entry, desyncing "how many
+    // picks have been made" from "how many players are actually rostered," which the live
+    // board's round/need calculations assume stay in sync. Found live 2026-10-02: using this
+    // form mid-draft to add an unrostered real player (Anton Johansson, missing from every
+    // projection source) directly to a team froze the tab — a real GM situation (an
+    // undrafted/unsynced NHL player gets picked) that needs this same path to work safely.
+    // Scoped to exactly the on-clock team, not "any team selected" — this form can also be used
+    // mid-draft to fix an unrelated roster, which is a plain correction, not a live pick, and
+    // must NOT be forced through the pick sequence onto whoever's turn it actually is.
+    const onClockNow = draftMode ? (buildDraftSeq2627()[draftState2627.picks.length] ?? null) : null;
+    if(draftMode && ft2627 && ft2627 === onClockNow){
+      players.push({id:newId,name,team2627:team,pos,cap2627:cap,proj2627:{blend:pts},projGp2627:{},status,source:'m',start2627:'',end2526:''});
+      const p = players[players.length-1];
+      lsSet(LS_PLAYERS,players); populateTeamFilter(); populateFantasyFilter();
+      makeDraftPick(p.name, p.pos, p.team2627||'—', p.cap2627||0, p.proj2627.blend||0);
+      closeModal();
+      toast(`${p.name} added and drafted by ${ft2627}.`);
+      return;
+    }
     players.push({id:newId,name,team2627:team,pos,cap2627:cap,proj2627:{blend:pts},projGp2627:{},status,source:'m',start2627:ft2627,end2526:''});
   }
   lsSet(LS_PLAYERS,players); populateTeamFilter(); populateFantasyFilter(); render(); closeModal();
