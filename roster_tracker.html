@@ -5711,6 +5711,17 @@ function setSeasonPhase2627(mode){
     btn.style.background = m===mode ? '#6366f1' : '#e0e7ff';
     btn.style.color = m===mode ? '#fff' : '#6366f1';
   });
+  // 1st/2nd Half must show the REAL roster — Actual Draft's result, not whatever start2627
+  // happens to currently hold (could be stuck on a predraft/Algo-Drops state from testing, or
+  // from a Reset click). Reseed from POSTDRAFT_ROSTER_2627 every time, unconditionally — this
+  // is meant to be a deterministic view of reality, not accumulated/mutable state. The real
+  // 1st/2nd Half replacement swaps get layered on top right after, via
+  // syncXactionsAndApplyPhase2627. Found live 2026-10-06: switching to 1st Half was showing a
+  // predraft (PREDROP_ROSTER_2627) composition because nothing was forcing this baseline.
+  if((mode === 'firsthalf' || mode === 'secondhalf') && Object.keys(POSTDRAFT_ROSTER_2627).length){
+    _seedStart2627FromActualDraft();
+    lsSet(LS_PLAYERS, players);
+  }
   updateDraftTab();
   updateStats();
   // 1st/2nd Half: sync real Yahoo add/drop transactions and apply the completed ones to the
@@ -5718,6 +5729,18 @@ function setSeasonPhase2627(mode){
   // above already rendered the F/D/G-less "picks left" bar with whatever's cached, this just
   // refines it once the live fetch lands.
   if(mode === 'firsthalf' || mode === 'secondhalf') syncXactionsAndApplyPhase2627(mode);
+}
+
+// 2nd Half doesn't exist yet until the midseason supplemental draft actually happens — disable
+// the button (real `disabled`, not just styling, so the onclick can't fire) until that date.
+function _applySeasonPhaseGating2627(){
+  const btn = document.getElementById('phaseBtn2627_secondhalf');
+  if(!btn) return;
+  const midseasonDone = new Date() >= new Date(draftDateSupplemental2627 + 'T00:00:00');
+  btn.disabled = !midseasonDone;
+  btn.style.opacity = midseasonDone ? '' : '.45';
+  btn.style.cursor = midseasonDone ? 'pointer' : 'not-allowed';
+  btn.title = midseasonDone ? '2nd Half' : `2nd Half — not available until after the midseason supplemental draft (${draftDateSupplemental2627})`;
 }
 
 // Deliberately NOT xactionPeriod() — that classifier gives a 4-day grace window after the
@@ -6683,9 +6706,13 @@ function loadActualDraft2526(){
 // 26-27 version — same shape as loadActualDraft2526, but no draftFocusTeam/draftMode suffix
 // (26-27 is the live/current season, using the bare draftMode/draftFocusTeam/draftModeBtn/
 // draftSubModeCtrl names directly rather than a season-suffixed set like 23-24/24-25/25-26).
-function loadActualDraft2627(){
-  if(!Object.keys(POSTDRAFT_ROSTER_2627).length){ toast('POSTDRAFT_ROSTER_2627 is empty.'); return; }
-  if(!confirm('Load actual 26-27 post-draft rosters? Overwrites start2627 and populates the Big Board with actual picks.')) return;
+// Seeds every player's start2627 from the REAL 26-27 result — POSTDROP_ROSTER_2627 baseline,
+// then POSTDRAFT_ROSTER_2627's actual picks layered on top in real draft order — without any
+// of loadActualDraft2627()'s UI side effects (confirm, draftState2627, flipping Draft Mode on).
+// Shared by that function and by entering 1st/2nd Half (setSeasonPhase2627), which just needs
+// the roster to be right, not the live-draft UI. Returns {picks, unmatched} in real draft
+// order for callers that want draftState2627 too.
+function _seedStart2627FromActualDraft(){
   for(const p of players){
     const base = normName(p.name).toLowerCase();
     const pg   = posGroup(p.pos);
@@ -6704,6 +6731,13 @@ function loadActualDraft2627(){
     if(p){ p.start2627 = team; picks.push({team, player:p.name, pos:p.pos, nhlTeam:p.team2627||'', cap:p.cap2627||0, projPts:p.proj2627.blend||0}); }
     else { unmatched.push(bk); picks.push({team, player:bk, pos:wantPG||'', nhlTeam:'', cap:0, projPts:0}); }
   }
+  return {picks, unmatched};
+}
+
+function loadActualDraft2627(){
+  if(!Object.keys(POSTDRAFT_ROSTER_2627).length){ toast('POSTDRAFT_ROSTER_2627 is empty.'); return; }
+  if(!confirm('Load actual 26-27 post-draft rosters? Overwrites start2627 and populates the Big Board with actual picks.')) return;
+  const {picks, unmatched} = _seedStart2627FromActualDraft();
   draftState2627 = {picks};
   lsSet(LS_PLAYERS, players); lsSet(LS_DRAFT_2627, draftState2627);
   _deactivateDraftMode2425(); _deactivateDraftMode2526(); _deactivateDraftMode2324();
@@ -7832,11 +7866,19 @@ function showTeamCurveModal(view, team){
   const pickIds = new Set(
     hasPredrop ? teamPlayers.filter(p => !_wasPreDropKeeper(p, team, predropDict)).map(p=>p.id) : []
   );
+  // 1st/Mid/2nd Half: the "dropped" overlay below means the ANNUAL preseason cut (vs. last
+  // year's PREDROP_ROSTER_2627 snapshot) — ancient history once the season's underway, and a
+  // completely different thing from an in-season replacement-pick drop (which already isn't
+  // on teamPlayers at all, since start2627 is kept live — see setSeasonPhase2627). Showing it
+  // here would be confusing noise, not useful context, so it's suppressed: just the current
+  // roster's position on the curve. Only applies to the live 26-27 view/phase — 23-24/24-25/
+  // 25-26 keep their full kept vs. dropped history regardless.
+  const suppressDropped = view === '2627' && (seasonPhase2627==='firsthalf' || seasonPhase2627==='midseason' || seasonPhase2627==='secondhalf');
   // Real dropped players (still in the live pool, just rostered elsewhere or nowhere now) plus
   // virtual stubs for anyone who left the pool entirely (e.g. retired veterans who'll never show
   // up in another NHL/Yahoo sync) — otherwise they silently never appear as a dropped player at
   // all, even though they were correctly predicted as a drop.
-  const droppedPlayers = hasPredrop
+  const droppedPlayers = (hasPredrop && !suppressDropped)
     ? (() => {
         const real = players.filter(p => p[startField] !== team && _wasPreDropKeeper(p, team, predropDict));
         const realMatched = new Set(players.map(p => normName(p.name).toLowerCase()));
@@ -7875,7 +7917,9 @@ function showTeamCurveModal(view, team){
   const statusBadge = (r) => r.status==='pick' ? ` <span style="color:#7c3aed;font-weight:600">■ pick</span>`
                             : r.status==='dropped' ? ` <span style="color:${posColor[r.pg]||'#dc2626'};font-weight:600;cursor:${r.dropReason?'help':'default'}"${r.dropReason?` title="Drop #${r.dropOrder}: ${esc(r.dropReason)}"`:''}>✕ dropped${r.dropOrder?` #${r.dropOrder}`:''}</span>`
                             : '';
-  const legend = hasPredrop ? `<div style="font-size:10.5px;color:#9ca3af;margin-bottom:6px">● kept &nbsp; ■ <span style="color:#7c3aed">picked up</span> &nbsp; ✕ dropped (<span style="color:${posColor.F}">F</span>/<span style="color:${posColor.D}">D</span>/<span style="color:${posColor.G}">G</span> colored)</div>` : '';
+  const legend = !hasPredrop ? '' : suppressDropped
+    ? `<div style="font-size:10.5px;color:#9ca3af;margin-bottom:6px">● kept &nbsp; ■ <span style="color:#7c3aed">picked up</span></div>`
+    : `<div style="font-size:10.5px;color:#9ca3af;margin-bottom:6px">● kept &nbsp; ■ <span style="color:#7c3aed">picked up</span> &nbsp; ✕ dropped (<span style="color:${posColor.F}">F</span>/<span style="color:${posColor.D}">D</span>/<span style="color:${posColor.G}">G</span> colored)</div>`;
 
   const html = legend + `<table style="width:100%;border-collapse:collapse;font-size:12px">
     <tr style="border-bottom:1px solid #e5e7eb;color:#9ca3af">
@@ -11856,6 +11900,7 @@ updateYahooDropBtnTooltips();
 toggleSyncProjRow(syncProjCollapsed);
 updateProj2627HwmDisplay();
 updateDraftTab();
+_applySeasonPhaseGating2627();
 
 // Cross-tab live sync: when another tab (e.g. the one actually making draft
 // picks) writes players/draft state, pick that up here and re-render whatever
