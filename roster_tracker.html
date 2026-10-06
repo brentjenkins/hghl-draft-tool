@@ -651,24 +651,29 @@ tr:hover td{background:#fafaf8}
     <div id="dropsDraftRow2627" style="display:flex;align-items:center;gap:6px">
       <span style="font-size:10px;font-weight:600;color:#bbb;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap">Drops</span>
       <button class="btn btn-red-outline" onclick="resetDraft()" title="Reset 26-27 rosters to 25-26 year-end (start2627 = end2526, from PREDROP_ROSTER_2627)">Reset</button>
-      <button class="btn btn-blue-outline" onclick="algoDrops()">⬇ Algo Drops</button>
-      <button class="btn btn-green-outline" onclick="loadActualRoster2627()" title="Load actual 26-27 pre-draft rosters once managers have submitted their drops">⬇ Actual Drops</button>
-      <button class="btn btn-indigo-light" id="compareDropsBtn2627" onclick="compareDrops2627()" title="Available once managers submit real 26-27 drops (POSTDROP_ROSTER_2627)" style="opacity:.4;cursor:not-allowed">📋 Compare Drops</button>
+      <button class="btn btn-blue-outline" id="algoDropsBtn2627" onclick="algoDrops()">⬇ Algo Drops</button>
+      <button class="btn btn-green-outline" id="actualDropsBtn2627" onclick="loadActualRoster2627()" title="Load actual 26-27 pre-draft rosters once managers have submitted their drops">⬇ Actual Drops</button>
+      <button class="btn btn-indigo-light" id="compareDropsBtn2627" onclick="compareDrops2627()" title="Available once managers submit real 26-27 drops (POSTDROP_ROSTER_2627)">📋 Compare Drops</button>
       <span style="font-size:10px;font-weight:600;color:#bbb;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap;margin-left:4px">Draft</span>
       <button class="btn btn-indigo-outline" onclick="rankPlayers()">★ Rank Players</button>
       <button class="btn btn-indigo-outline" id="draftModeBtn" onclick="toggleDraftMode()">⚡ Draft Mode</button>
       <button class="btn btn-blue-outline" id="algoDraftBtn2627" onclick="algoDraft2627()" title="Run Algo Draft from current rosters and apply picks">⬆ Algo Draft</button>
-      <button class="btn btn-green-outline" onclick="loadActualDraft2627()" title="Load the real 26-27 draft results (POSTDRAFT_ROSTER_2627) once the actual draft has happened">⬆ Actual Draft</button>
-      <button class="btn btn-green-outline" onclick="exportDraft2627()" title="Save the 26-27 draft picks (player, pos, fantasy team, round#, pick#) to a CSV file">💾 Export Draft</button>
+      <button class="btn btn-green-outline" id="actualDraftBtn2627" onclick="loadActualDraft2627()" title="Load the real 26-27 draft results (POSTDRAFT_ROSTER_2627) once the actual draft has happened">⬆ Actual Draft</button>
+      <button class="btn btn-green-outline" id="exportDraftBtn2627" onclick="exportDraft2627()" title="Save the 26-27 draft picks (player, pos, fantasy team, round#, pick#) to a CSV file">💾 Export Draft</button>
       <button class="btn btn-indigo-light" id="compareDraftsBtn2627" onclick="compareDrafts2627()" title="Compare Algo Draft picks against the real 26-27 draft">📋 Compare Drafts</button>
       <span id="draftSubModeCtrl" style="display:none;border:1px solid #c7d2fe;border-radius:6px;overflow:hidden;font-size:11px;font-weight:600">
         <button id="draftSubProspectBtn" onclick="setDraftSubMode('prospect')" style="border:none;padding:5px 9px;background:#6366f1;color:#fff;cursor:pointer">Prospect</button>
         <button id="draftSubBestBtn" onclick="setDraftSubMode('bestAvail')" style="border:none;padding:5px 9px;background:#e0e7ff;color:#6366f1;cursor:pointer">Best Available</button>
       </span>
+      <span id="seasonPhaseCtrl2627" style="margin-left:4px;border:1px solid #c7d2fe;border-radius:6px;overflow:hidden;font-size:11px;font-weight:600">
+        <button id="phaseBtn2627_preseason" onclick="setSeasonPhase2627('preseason')" style="border:none;padding:5px 7px;cursor:pointer;background:#e0e7ff;color:#6366f1" title="Preseason Draft">Pre</button>
+        <button id="phaseBtn2627_firsthalf" onclick="setSeasonPhase2627('firsthalf')" style="border:none;padding:5px 7px;cursor:pointer;background:#6366f1;color:#fff" title="1st Half">1st</button>
+        <button id="phaseBtn2627_midseason" onclick="setSeasonPhase2627('midseason')" style="border:none;padding:5px 7px;cursor:pointer;background:#e0e7ff;color:#6366f1" title="Midseason Draft — not built yet">Mid</button>
+        <button id="phaseBtn2627_secondhalf" onclick="setSeasonPhase2627('secondhalf')" style="border:none;padding:5px 7px;cursor:pointer;background:#e0e7ff;color:#6366f1" title="2nd Half — not built yet">2nd</button>
+      </span>
     </div>
   </div>
 </div>
-
 
 <div class="stats-grid" id="statCards"></div>
 
@@ -1484,6 +1489,14 @@ const LS_XACTIONS_2526 = 'hghl_xactions_2526';
 const LS_XACTIONS_2627 = 'hghl_xactions_2627';
 
 let players = [], transactions = [], teamLogos = {}, editId = null, sortCol = 'pts', sortDir = -1, proxyOk = false, algoDropsApplied = false, draftMode = false, draftSubMode = 'prospect';
+// 26-27's season-long phase, independent of draftMode (which only drives the live preseason-
+// draft UI itself): 'preseason' (pre/during the preseason draft), 'firsthalf' (now — in-season,
+// 2 drop-one-add-one midseason replacement picks available until early January), 'midseason'
+// (the actual midseason supplemental draft, see tabled project_midseason_supplemental_draft),
+// 'secondhalf' (post-midseason-draft rest of season). Only 'firsthalf' has real behavior wired
+// up so far (the Dud/Stud-by-position block on each team bubble) — the other three are
+// selectable placeholders for now, built out when each phase is actually reached.
+let seasonPhase2627 = 'firsthalf';
 let xactions2425 = [], xactions2526 = [], xactions2627 = [];
 let sortColSignings = 'sign_date', sortDirSignings = -1;
 // elcExpF/elcExpD set to their empirically backtested values (2026-07-28): weighted median
@@ -5666,6 +5679,18 @@ function setDraftSubMode(mode){
   document.getElementById('draftSubBestBtn').style.background = mode==='bestAvail' ? '#6366f1' : '#e0e7ff';
   document.getElementById('draftSubBestBtn').style.color = mode==='bestAvail' ? '#fff' : '#6366f1';
   if(draftMode) render();
+}
+
+function setSeasonPhase2627(mode){
+  seasonPhase2627 = mode;
+  ['preseason','firsthalf','midseason','secondhalf'].forEach(m=>{
+    const btn = document.getElementById('phaseBtn2627_'+m);
+    if(!btn) return;
+    btn.style.background = m===mode ? '#6366f1' : '#e0e7ff';
+    btn.style.color = m===mode ? '#fff' : '#6366f1';
+  });
+  updateDraftTab();
+  updateStats();
 }
 
 function setCapMix(val){
@@ -10811,19 +10836,38 @@ function updateDraftTab(){
               : allFull         ? 'All rosters are full'
               : '';
   }
+  // Season-phase gating (see seasonPhase2627/setSeasonPhase2627): Reset and Rank Players are
+  // always usable (rosters/rankings can change any time), but every preseason-draft-specific
+  // tool only makes sense during Pre or Mid — there's no drops/draft event happening mid-1st-
+  // or-2nd-half. Uses the real `disabled` attribute (not just a style hack) so the onclick
+  // genuinely can't fire while blocked.
+  const draftToolsBlockedByPhase = (seasonPhase2627 === 'firsthalf' || seasonPhase2627 === 'secondhalf');
+  const phaseLabel = seasonPhase2627 === 'firsthalf' ? '1st Half' : '2nd Half';
+  const phaseBlockedTitle = `Not available during the ${phaseLabel} — preseason/midseason draft tool only`;
+  for(const id of ['algoDropsBtn2627','actualDropsBtn2627','draftModeBtn','algoDraftBtn2627','actualDraftBtn2627','exportDraftBtn2627']){
+    const b = document.getElementById(id);
+    if(!b) continue;
+    b.disabled = draftToolsBlockedByPhase;
+    if(draftToolsBlockedByPhase) b.title = phaseBlockedTitle;
+  }
   // 26-27 Compare Drops/Drafts — greyed out until real outcome data exists (populated once
-  // managers submit real drops / the real draft happens), then auto-enable with no code change.
+  // managers submit real drops / the real draft happens) AND gated by season phase like the
+  // rest of the draft tools above.
   const dropsBtn = document.getElementById('compareDropsBtn2627');
   if(dropsBtn){
     const ready = Object.keys(POSTDROP_ROSTER_2627).length > 0;
-    dropsBtn.style.opacity = ready ? '' : '.4';
-    dropsBtn.style.cursor  = ready ? '' : 'not-allowed';
+    dropsBtn.disabled = draftToolsBlockedByPhase || !ready;
+    dropsBtn.title = draftToolsBlockedByPhase ? phaseBlockedTitle
+      : ready ? 'Compare Algo Drops picks against the real 26-27 drops'
+      : 'Available once managers submit real 26-27 drops (POSTDROP_ROSTER_2627)';
   }
   const draftsBtn = document.getElementById('compareDraftsBtn2627');
   if(draftsBtn){
     const ready = Object.keys(POSTDRAFT_ROSTER_2627).length > 0;
-    draftsBtn.style.opacity = ready ? '' : '.4';
-    draftsBtn.style.cursor  = ready ? '' : 'not-allowed';
+    draftsBtn.disabled = draftToolsBlockedByPhase || !ready;
+    draftsBtn.title = draftToolsBlockedByPhase ? phaseBlockedTitle
+      : ready ? 'Compare Algo Draft picks against the real 26-27 draft'
+      : 'Available once the real 26-27 draft happens';
   }
 }
 
@@ -11465,6 +11509,62 @@ function updateStats(){
       ${top.length?`<div style="font-size:9px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px${locked.length?';margin-top:4px':''}">${mode==='prospect'?'prospect':'Best Avail'}</div>${top.map(({p})=>row(p,false)).join('')}`:''}
     </div>`;
   };
+  // "1st Half" season phase (one of 4 — see seasonPhase2627 — post-draft, in-season until early
+  // January): each team gets 2 drop-one-add-one midseason replacement picks, position- and
+  // cap-constrained. Surfaces, per team card and per position, the team's own worst-value
+  // rostered player (dud, by curve-delta — same basis the △ vs curve label and the table's
+  // delta column use) and the best-value free agent at that position that's cap-legal to add
+  // if that dud were dropped (stud). Only rendered when seasonPhase2627==='firsthalf' AND
+  // draftMode is off — draftMode already has its own "Best Avail"/Locked list above (top5Html)
+  // serving the equivalent live-draft purpose.
+  const curveDelta2627 = p => {
+    if(!(p.proj2627.blend > 0 && p.cap2627 > 0)) return null;
+    const pg = posGroup(p.pos);
+    const base = _curveBaseline(pg, p.cap2627, ELC_MAX_2627, curveFns2627[pg]);
+    return base != null ? p.proj2627.blend - base : null;
+  };
+  // Long-term-unavailable players (INJURY_DROPS_2627) already blend to 0 via reblendPts, so
+  // they're excluded from faPool2627 by the >0 check alone — INJURY_DROPS_2627_MISS_START
+  // (e.g. sent to AHL to start the season) still needs an explicit exclusion since those
+  // players keep a real nowcasted blend despite not actually being pickup-able right now.
+  const faPool2627 = players.filter(p => !p.start2627 && p.cap2627 > 0 && (p.proj2627.blend||0) > 0
+    && !INJURY_DROPS_2627_MISS_START.has(normName(p.name).toLowerCase()));
+  const faByPos2627 = {F:[], D:[], G:[]};
+  for(const p of faPool2627){
+    const pg = posGroup(p.pos), d = curveDelta2627(p);
+    if(d != null && faByPos2627[pg]) faByPos2627[pg].push({p, d});
+  }
+  for(const pg of ['F','D','G']) faByPos2627[pg].sort((a,b) => b.d - a.d);
+  const firstHalfHtml = (t) => {
+    const tp = players.filter(p=>p.start2627===t);
+    const teamCap = teamCapAll2627[t]||0;
+    const fmtDelta = d => (d>=0?'+':'')+Math.round(d);
+    const rows = ['F','D','G'].map(pg => {
+      const own = tp.filter(p=>posGroup(p.pos)===pg)
+        .map(p=>({p, d:curveDelta2627(p)})).filter(x=>x.d!=null).sort((a,b)=>a.d-b.d);
+      const dud = own[0];
+      if(!dud) return '';
+      // Best free agent at this position that stays cap-legal if dud were dropped to make room.
+      const stud = faByPos2627[pg].find(x => (teamCap - (dud.p.cap2627||0) + (x.p.cap2627||0)) <= CAP_LIMIT);
+      const dudCol = dud.d<0?'#dc2626':'#9ca3af';
+      const studCol = (stud && stud.d>0) ? '#16a34a' : '#9ca3af';
+      const posTag = `<span style="background:${posBg[pg]};color:${posCol[pg]};border-radius:3px;padding:0 3px;font-size:9px;font-weight:600;flex-shrink:0">${pg}</span>`;
+      const posTagGhost = `<span style="visibility:hidden;border-radius:3px;padding:0 3px;font-size:9px;font-weight:600;flex-shrink:0">${pg}</span>`;
+      return `<div style="margin-bottom:3px">
+        <div title="Dud: ${esc(dud.p.name)}, △ ${fmtDelta(dud.d)} vs curve — worst-value ${pg} on this roster" style="display:flex;align-items:center;gap:4px;font-size:10px;line-height:1.5;overflow:hidden;color:${dudCol}">
+          ${posTag}<span style="flex-shrink:0">▼</span><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(dud.p.name)}</span><span style="color:#9ca3af;flex-shrink:0">${fmtDelta(dud.d)}</span>
+        </div>
+        ${stud?`<div title="Stud: ${esc(stud.p.name)}, △ ${fmtDelta(stud.d)} vs curve — best cap-legal ${pg} pickup if ${esc(dud.p.name)} were dropped" style="display:flex;align-items:center;gap:4px;font-size:10px;line-height:1.5;overflow:hidden;color:${studCol}">
+          ${posTagGhost}<span style="flex-shrink:0">▲</span><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(stud.p.name)}</span><span style="color:#9ca3af;flex-shrink:0">${fmtDelta(stud.d)}</span>
+        </div>`:`<div style="display:flex;align-items:center;gap:4px;font-size:9px;color:#d1d5db">${posTagGhost}<span>no legal pickup</span></div>`}
+      </div>`;
+    }).join('');
+    if(!rows) return '';
+    return `<div class="draft-top5" style="border-top:1px solid #e5e7eb;margin-top:5px;padding-top:4px">
+      <div style="font-size:9px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px" title="Dud = your worst-value rostered player at that position vs the scoring curve. Stud = the best-value free agent at that position you could legally add under the cap if you dropped that dud. For evaluating your 2 midseason replacement picks.">Dud / Stud</div>
+      ${rows}
+    </div>`;
+  };
   const teamCurveDelta = _makeTeamCurveDeltaFn('start2627', p=>p.proj2627.blend||0, p=>p.cap2627||0);
   // Per-team mirror of the League card's avail badge (see qualityAvail2627 above) — same
   // league-wide quality pool, but re-filtered to what THIS team specifically can still afford,
@@ -11512,6 +11612,7 @@ function updateStats(){
       ${draftMode?`<div style="display:flex;gap:6px;margin-top:3px">${teamAffordBadge(t,'F')}${teamAffordBadge(t,'D')}${teamAffordBadge(t,'G')}</div>`:''}
       ${_curveDeltaLabel(teamCurveDelta(t), '2627', t)}
       ${top5Html(t,fRem,dRem,gRem,rem)}
+      ${(!draftMode && seasonPhase2627==='firsthalf')?firstHalfHtml(t):''}
       <div class="team-card-cap">
         <span style="color:${remColor}">${remLabel}</span>${cppStr}
       </div>
