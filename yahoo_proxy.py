@@ -570,7 +570,8 @@ def yahoo_xactions():
     """Return all add/drop transactions for a league, paginated.
 
     ?league_key=  defaults to current LEAGUE_KEY.
-    Returns [{timestamp, date, team, player, pos, type: 'add'|'drop'}] sorted by date.
+    Returns [{timestamp, date, team, player, pos, type: 'add'|'drop', txType}] sorted by date
+    (txType is the outer transaction type, e.g. 'add/drop' or 'trade').
 
     Structure (confirmed via API + Apps Script reference):
     - Call with no type filter — type=add,drop returns []
@@ -644,6 +645,9 @@ def yahoo_xactions():
                         continue
 
                     if pname and team:
+                        # txType is the OUTER transaction type ("add/drop" for a waiver swap,
+                        # "trade" for a trade) — lets the frontend exclude trades when counting
+                        # a team's 2 drop-one-add-one midseason replacement picks.
                         all_tx.append({
                             "timestamp": ts,
                             "date":      date_str,
@@ -651,6 +655,7 @@ def yahoo_xactions():
                             "player":    pname,
                             "pos":       pos,
                             "type":      ptype,
+                            "txType":    tx_type,
                         })
 
             if returned < batch:

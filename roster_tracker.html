@@ -1421,6 +1421,13 @@ const YAHOO_LEAGUE_KEY_2324 = '427.l.1827';
 const YAHOO_LEAGUE_KEY_2425 = '453.l.52799';
 const YAHOO_LEAGUE_KEY_2526 = '465.l.97882';
 let   YAHOO_LEAGUE_KEY_2627 = '477.l.62019';
+// Yahoo team display names can change mid-season (a GM renaming their team) — Yahoo's own
+// team_key stays stable, but every team reference in this app's data (start2627, DRAFT_TEAMS_2627,
+// teamLogos, PREDROP/POSTDROP/POSTDRAFT rosters) uses the display name, so a rename breaks
+// name-based matching against fresh Yahoo syncs. Rather than rename everywhere, alias the new
+// Yahoo name back to our canonical one wherever live Yahoo data is ingested. Confirmed
+// 2026-10-06: Killer Whales renamed to "Whale Tank" in Yahoo sometime after the draft.
+const YAHOO_TEAM_NAME_ALIASES_2627 = { 'Whale Tank': 'Killer Whales' };
 const LS_TX      = 'nhl_transactions_v2';
 const LS_LOGOS   = 'hghl_team_logos';
 const LS_DROPS        = 'hghl_drops_simulated';
@@ -5706,6 +5713,76 @@ function setSeasonPhase2627(mode){
   });
   updateDraftTab();
   updateStats();
+  // 1st/2nd Half: sync real Yahoo add/drop transactions and apply the completed ones to the
+  // actual roster (start2627) — see syncXactionsAndApplyPhase2627. Fires async; updateStats()
+  // above already rendered the F/D/G-less "picks left" bar with whatever's cached, this just
+  // refines it once the live fetch lands.
+  if(mode === 'firsthalf' || mode === 'secondhalf') syncXactionsAndApplyPhase2627(mode);
+}
+
+// Deliberately NOT xactionPeriod() — that classifier gives a 4-day grace window after the
+// draft date for preseason roster-cleanup moves to still read as "Preseason", which is right
+// for the Xactions tab's human-readable summary but wrong here: a real first-half replacement
+// pick made the very next day after the draft must count against the 2-pick limit immediately
+// (found live 2026-10-06 — KIL's Oct 3 Forsberg/Gauthier swap was invisible to the count
+// because Oct 3 fell inside that grace window). "First Half"/"Second Half" here mean strictly
+// after the draft / strictly after the supplemental window, with no grace. Returns null for
+// anything in the preseason or supplemental-draft windows (not one of the 2 half-picks).
+function _midseasonHalf2627(dateStr){
+  const d = new Date(dateStr);
+  if(d <= new Date(draftDatePreseason2627)) return null;
+  const suppStart = new Date(addDays(draftDateSupplemental2627, -7));
+  if(d < suppStart) return 'First Half';
+  const suppEnd = new Date(addDays(draftDateSupplemental2627, 7));
+  if(d <= suppEnd) return null;
+  return 'Second Half';
+}
+
+// Each real midseason replacement swap is one Yahoo "add/drop" transaction containing one
+// drop row + one add row sharing the same timestamp (see /yahoo-xactions in yahoo_proxy.py).
+// A team's picks used for a half = the count of DISTINCT timestamps it appears in within that
+// half's date window, excluding trades (not one of the 2 allowed picks).
+function _replacementPicksUsed2627(periodLabel){
+  const seen = {};
+  for(const tx of xactions2627){
+    if(tx.txType === 'trade') continue;
+    if(_midseasonHalf2627(tx.date) !== periodLabel) continue;
+    const team = YAHOO_TEAM_NAME_ALIASES_2627[tx.team] || tx.team;
+    (seen[team] || (seen[team] = new Set())).add(tx.timestamp);
+  }
+  const used = {};
+  for(const team in seen) used[team] = seen[team].size;
+  return used;
+}
+
+// Pulls real Yahoo transactions and applies the completed First/Second Half add/drop swaps
+// straight to start2627, so cap totals, Team Summaries, and the Dud/Stud block all reflect
+// what GMs actually did — same "faithfully record reality" approach as Actual Drops/Actual
+// Draft. Entering 2nd Half re-applies First Half too (robust to skipping straight to 2nd
+// Half without ever switching into 1st) — Preseason's pure drops are a different Yahoo
+// structure (see yahoo_proxy.py) and are already recorded via the real draft/drops data, so
+// they're deliberately not touched here.
+async function syncXactionsAndApplyPhase2627(mode){
+  const data = await _fetchYahooXactions(YAHOO_LEAGUE_KEY_2627, 'xactionsStatus2627');
+  if(!data) return;
+  xactions2627 = data;
+  lsSet(LS_XACTIONS_2627, xactions2627);
+  const periods = mode === 'secondhalf' ? ['First Half','Second Half'] : ['First Half'];
+  const rows = xactions2627
+    .filter(tx => tx.txType !== 'trade' && periods.includes(_midseasonHalf2627(tx.date)))
+    .sort((a,b) => a.timestamp - b.timestamp);
+  const missed = [];
+  for(const tx of rows){
+    const p = findPlayerByNamePos(tx.player, tx.pos);
+    if(!p){ missed.push(tx.player); continue; }
+    const team = YAHOO_TEAM_NAME_ALIASES_2627[tx.team] || tx.team;
+    if(tx.type === 'drop') p.start2627 = '';
+    else if(tx.type === 'add') p.start2627 = team;
+  }
+  if(missed.length) console.log(`[1st/2nd Half sync] ${missed.length} transaction player(s) not matched in the live pool:`, missed);
+  lsSet(LS_PLAYERS, players);
+  updateStats();
+  if(currentView === 'xactions2627') renderXactions2627();
 }
 
 function setCapMix(val){
@@ -11483,6 +11560,10 @@ function updateStats(){
     G: fitQuadratic(rosteredPool2627.filter(p => posGroup(p.pos)==='G').map(p => ({x: p.cap2627, y: p.proj2627.blend}))),
   };
   const posBg={F:'#dbeafe',D:'#dcfce7',G:'#fef3c7'}, posCol={F:'#1e40af',D:'#166534',G:'#92400e'};
+  // In 1st/2nd Half, the F/D/G roster-slot bar doesn't mean anything — rosters are frozen
+  // size-wise, only drop-one-add-one swaps happen — so it's replaced with picks-remaining.
+  const picksUsedByTeam2627 = (seasonPhase2627 === 'firsthalf') ? _replacementPicksUsed2627('First Half')
+    : (seasonPhase2627 === 'secondhalf') ? _replacementPicksUsed2627('Second Half') : {};
   // Precompute every team's need/cap state once — _getTeamDraftBoard's splash check needs
   // every OTHER team's data too, not just the one being displayed, to correctly judge "is
   // nobody else able to compete for this."
@@ -11621,9 +11702,13 @@ function updateStats(){
         <div style="min-width:0;flex:1"><span class="team-card-name" title="${esc(t)}">${esc(t)}</span><div style="font-size:9px;font-weight:700;color:#9ca3af;letter-spacing:.06em;margin-top:1px;line-height:1">${teamAbbr(t)}</div></div>
         ${isFocused?'<span style="font-size:9px;font-weight:700;background:#6366f1;color:#fff;border-radius:3px;padding:1px 5px;white-space:nowrap;margin-left:2px">Viewing</span>':isOnClock?'<span style="font-size:9px;font-weight:700;background:#6366f1;color:#fff;border-radius:3px;padding:1px 5px;white-space:nowrap;margin-left:2px">On Clock</span>':isFull27?'<span style="font-size:9px;font-weight:600;background:#e5e7eb;color:#9ca3af;border-radius:3px;padding:1px 5px;white-space:nowrap;margin-left:2px">Full</span>':''}
       </div>
-      <div class="team-card-pos">
+      ${(!draftMode && (seasonPhase2627==='firsthalf'||seasonPhase2627==='secondhalf')) ? (()=>{
+        const used = Math.min(2, picksUsedByTeam2627[t]||0), left = 2-used;
+        const col = left===0 ? '#dc2626' : left===1 ? '#d97706' : '#16a34a';
+        return `<div class="team-card-pos"><span title="${used} of 2 midseason replacement picks used this half (from real Yahoo transactions)" style="color:${col};font-weight:700">${left} pick${left!==1?'s':''} left</span></div>`;
+      })() : `<div class="team-card-pos">
         <span title="${fRem} F spot${fRem!==1?'s':''} remaining">F&thinsp;${fRem}</span><span title="${dRem} D spot${dRem!==1?'s':''} remaining">D&thinsp;${dRem}</span><span title="${gRem} G spot${gRem!==1?'s':''} remaining">G&thinsp;${gRem}</span>
-      </div>
+      </div>`}
       ${draftMode?`<div style="display:flex;gap:6px;margin-top:3px">${teamAffordBadge(t,'F')}${teamAffordBadge(t,'D')}${teamAffordBadge(t,'G')}</div>`:''}
       ${_curveDeltaLabel(teamCurveDelta(t), '2627', t)}
       ${top5Html(t,fRem,dRem,gRem,rem)}
