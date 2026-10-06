@@ -8,7 +8,7 @@ Then click "Sync Yahoo" in the roster tracker.
 Requires: pip install requests flask flask-cors
 """
 
-import json, os, re, time, threading, webbrowser, ssl, subprocess, sys, traceback, unicodedata
+import json, os, re, time, threading, webbrowser, ssl, subprocess, sys, traceback, unicodedata, datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs, urlencode
@@ -981,6 +981,134 @@ def season_stats_2627():
         errors.append(f"goalies: {e}")
 
     return jsonify({"ok": True, "players": stats, "count": len(stats), "errors": errors})
+
+
+@app.route("/stats-2627-asof")
+def season_stats_2627_asof():
+    """One-time historical reconstruction: 2026-27 fantasy points as of a cutoff date, via
+    Yahoo's own per-date player stats (not NHL's public api-web.nhle.com, which rate-limits
+    hard on a per-player game-log call and made the first version of this route unreliable).
+    Lets us memorialize a point-in-time state (e.g. draft night) even after later stats syncs
+    have moved the live /stats-2627 numbers past it. Query param: cutoff=YYYY-MM-DD (exclusive
+    — games on/after this date are not counted), default the 26-27 draft date.
+
+    This league's Yahoo scoring (checked live via /settings' stat_modifiers: Goals=1,
+    Assists=1, Wins=2, Shutouts=3) is an exact match for our own fpts formula, so Yahoo's
+    per-day stat_id 1/2 (skaters) and 19/27 (goalies) values can be summed directly — no need
+    to separately reconstruct from NHL's raw game logs.
+
+    Two phases: (1) paginate /league/.../players 25-at-a-time to build a name->player_key map
+    (Yahoo's whole tracked-player universe, ~1000+, so ~40-60 calls — but authenticated and
+    reliable, unlike the NHL endpoint); (2) for each day from NHL_OPENING_NIGHT_2627 through
+    the day before cutoff, batch 25 player_keys per request and sum stat_id 1/2/19/27.
+    """
+    cutoff = request.args.get("cutoff", "2026-10-02")
+    token = get_valid_token()
+    if not token:
+        return jsonify({"error": "Not authenticated."}), 401
+
+    # Phase 1 — build the full name -> (player_key, pos) directory. status=ALL includes
+    # free agents, not just rostered players (we need the whole NHL pool, not just this
+    # league's 9 teams). Stops at the first short/empty page.
+    directory = {}
+    start = 0
+    while True:
+        try:
+            data = yahoo_get(f"/league/{LEAGUE_KEY}/players;start={start};count=25;status=ALL", token)
+        except Exception as e:
+            return jsonify({"error": f"player directory page at start={start}: {e}"}), 500
+        players_raw = data["fantasy_content"]["league"][1]["players"]
+        if isinstance(players_raw, list):
+            entries = [pl["player"][0] for pl in players_raw if isinstance(pl, dict) and "player" in pl]
+        else:
+            entries = [players_raw[idx]["player"][0] for idx in players_raw.keys() if idx != "count"]
+        if not entries:
+            break
+        for meta in entries:
+            pkey = next((m["player_key"] for m in meta if isinstance(m, dict) and "player_key" in m), None)
+            full = next((m["name"]["full"] for m in meta if isinstance(m, dict) and "name" in m), None)
+            pos  = next((m["display_position"] for m in meta if isinstance(m, dict) and "display_position" in m), "")
+            if pkey and full:
+                directory[normalize_name(full).lower()] = {"player_key": pkey, "name": full, "pos": pos}
+        start += 25
+        if len(entries) < 25:
+            break
+
+    # Phase 2 — only query stats for players who are actually in our live pool (not Yahoo's
+    # whole tracked universe, which includes plenty of AHL/depth names we don't carry).
+    all_names = request.args.get("names", "")
+    target_names = [n for n in all_names.split("|") if n] if all_names else list(directory.keys())
+    player_keys = [directory[n]["player_key"] for n in target_names if n in directory]
+    unmatched_names = [n for n in target_names if n not in directory]
+
+    totals = {}   # player_key -> {goals, assists, wins, shutouts, gp}
+    errors = []
+    # Matches NHL_OPENING_NIGHT_2627 in roster_tracker.html — kept as a literal here since
+    # this proxy doesn't otherwise share season-constant definitions with the frontend.
+    opening_night = "2026-09-29"
+    days = []
+    d = opening_night
+    while d < cutoff:
+        days.append(d)
+        y, m, day = (int(x) for x in d.split("-"))
+        d = (datetime.date(y, m, day) + datetime.timedelta(days=1)).isoformat()
+
+    for day in days:
+        for i in range(0, len(player_keys), 25):
+            batch = player_keys[i:i+25]
+            try:
+                data = yahoo_get(f"/league/{LEAGUE_KEY}/players;player_keys={','.join(batch)}/stats;type=date;date={day}", token)
+            except Exception as e:
+                errors.append(f"{day} batch {i}: {e}")
+                continue
+            players_raw = data["fantasy_content"]["league"][1]["players"]
+            entries = ([players_raw[idx]["player"] for idx in players_raw.keys() if idx != "count"]
+                       if not isinstance(players_raw, list)
+                       else [pl["player"] for pl in players_raw if isinstance(pl, dict) and "player" in pl])
+            for entry in entries:
+                meta, statblock = entry[0], entry[1]
+                pkey = next((m["player_key"] for m in meta if isinstance(m, dict) and "player_key" in m), None)
+                if not pkey:
+                    continue
+                stat_list = statblock.get("player_stats", {}).get("stats", [])
+                vals = {s["stat"]["stat_id"]: s["stat"]["value"] for s in stat_list}
+                t = totals.setdefault(pkey, {"goals": 0, "assists": 0, "wins": 0, "shutouts": 0, "gp": 0})
+                played = False
+                for stat_id, field in (("1", "goals"), ("2", "assists")):
+                    v = vals.get(stat_id)
+                    if v not in (None, "-"):
+                        t[field] += int(v)
+                        played = True
+                for stat_id, field in (("19", "wins"), ("27", "shutouts")):
+                    v = vals.get(stat_id)
+                    if v not in (None, "-"):
+                        t[field] += int(v)
+                        played = True
+                if played:
+                    t["gp"] += 1
+
+    stats = {}
+    for n in target_names:
+        if n not in directory:
+            continue
+        info = directory[n]
+        t = totals.get(info["player_key"])
+        if not t or t["gp"] == 0:
+            continue
+        pg = _pos_group(info["pos"].split(",")[0] if info["pos"] else "C")
+        is_goalie = pg == "G"
+        fpts = (t["wins"] * 2 + t["shutouts"] * 3) if is_goalie else (t["goals"] + t["assists"])
+        key = f"{n}_{pg}"
+        entry = {"name": info["name"], "fpts": fpts, "gp": t["gp"]}
+        if is_goalie:
+            entry["wins"], entry["shutouts"] = t["wins"], t["shutouts"]
+        else:
+            entry["goals"], entry["assists"] = t["goals"], t["assists"]
+        stats[key] = entry
+        _add_name_aliases(stats, key, info["name"], pg)
+
+    return jsonify({"ok": True, "cutoff": cutoff, "days": days, "players": stats, "count": len(stats),
+                     "unmatchedCount": len(unmatched_names), "errors": errors})
 
 
 @app.route("/stats-2324")

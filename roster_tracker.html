@@ -5205,10 +5205,25 @@ function resetDraft(){
     toast('Populate PREDROP_ROSTER_2627 (25-26 final rosters) to enable 26-27 Algo Drops.');
     return;
   }
-  if(!confirm('Reset 26-27 rosters to 25-26 year-end (start2627 = end2526, from PREDROP_ROSTER_2627) and clear draft picks?')) return;
+  // In the Pre phase, Reset also reloads NHL_STATS_ASOF_DRAFT_2627 — the real pts2627/gp2627
+  // snapshot frozen the night before the draft (see data_2627.js) — on top of the roster
+  // reset, so re-running the draft starts from the exact state the NHL was actually in that
+  // night, not whatever today's live stats happen to say. Other phases leave stats alone;
+  // there's no "redo the draft" reason to rewind them there.
+  const loadSnapshot = seasonPhase2627 === 'preseason' && Object.keys(NHL_STATS_ASOF_DRAFT_2627).length > 0;
+  const msg = 'Reset 26-27 rosters to 25-26 year-end (start2627 = end2526, from PREDROP_ROSTER_2627) and clear draft picks'
+    + (loadSnapshot ? ', and reload real stats as of the night before the draft (NHL_STATS_ASOF_DRAFT_2627)?' : '?');
+  if(!confirm(msg)) return;
   draftState2627 = {picks:[], simPicks:[]};
   saveDraft();
   _seedStart2627();
+  if(loadSnapshot){
+    for(const p of players){
+      const entry = _dictLookupPos(p.name, p.pos, NHL_STATS_ASOF_DRAFT_2627);
+      p.pts2627 = entry ? entry.pts : 0;
+      p.gp2627  = entry ? entry.gp  : 0;
+    }
+  }
   algoDropsApplied = false;
   lsSet(LS_DROPS, false);
   lsSet(LS_PLAYERS, players);
