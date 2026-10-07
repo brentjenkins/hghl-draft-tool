@@ -1006,6 +1006,7 @@ tr:hover td{background:#fafaf8}
       <label style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:#9ca3af" title="Tracks real points less closely (r=0.72) — weighted down accordingly.">ESPN<input type="number" id="s-wESPN" value="0.69" min="0" max="3" step="0.1" onchange="updateProjWeight('espn',+this.value)" style="width:64px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center;color:#1a1a18"></label>
       <label style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:#9ca3af" title="The least reliable source (r=0.72) — weighted lowest of the 7.">NHL.com<input type="number" id="s-wNHL" value="0.62" min="0" max="3" step="0.1" onchange="updateProjWeight('nhl',+this.value)" style="width:64px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center;color:#1a1a18"></label>
       <label style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:#9ca3af" title="Once 26-27 games exist, PPTS = banked actual points (certain — drops/draft apply retroactively) + this-weighted blend of preseason rate vs actual pace for games remaining. Small on purpose — 14 games is a noisy sample.">Early pace wt<input type="number" id="s-earlyPaceWeight" value="0.2" min="0" max="1" step="0.05" onchange="updateSetting('earlyPaceWeight',+this.value)" style="width:64px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center;color:#1a1a18"></label>
+      <label style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:#9ca3af" title="For a player with NO preseason projection from any source AND no real NHL history (pts2526<=0) — a true unknown — dampens how much weight their early-game pace gets before it's trusted, so a hot 1-2 game stretch can't fully extrapolate across the whole season. Doesn't affect players who have a projection OR real history.">No-history pace damp<input type="number" id="s-noHistoryPaceDampen" value="0.5" min="0" max="1" step="0.05" onchange="updateSetting('noHistoryPaceDampen',+this.value)" style="width:64px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center;color:#1a1a18"></label>
     </div>
   </div>
   <div class="settings-divider"></div>
@@ -2728,6 +2729,17 @@ let EARLY_PACE_WEIGHT = 0.75;
 // the same "25% of the way through their season" footing as skaters instead of
 // taking almost twice as long to reach full trust.
 const EARLY_PACE_TRUST_FRACTION = 0.25;
+// When a player has NO preseason projection from any source AND no real NHL history
+// (pts2526<=0 — a true unknown, not just an unprojected veteran), reblendPts' early-pace
+// fallback otherwise extrapolates the player's ENTIRE season at whatever rate a tiny sample
+// happens to show, with nothing to anchor it — a hot 1-2 game stretch can produce a wildly
+// inflated PPTS (found live 2026-10-07 via Noah Warren). Dampens just that fallback value, not
+// the real paceRate blended in via EARLY_PACE_WEIGHT above — so as the player accumulates more
+// real games (paceWeight rising), trust in their actual pace still grows normally; this only
+// tempers how much weight the UNtrusted early games get while paceWeight is still low. A
+// missing-projection player's SCORE is already penalized separately via wtCoverageDiscount, so
+// this doesn't also need to cover the "no projection, but has real history" case.
+let NO_HISTORY_PACE_DAMPEN = 0.5;
 
 function _weightedBlend(pairs){ // pairs: [[value, weight], ...] — only pairs with value>0 count
   let sw = 0, swv = 0;
@@ -2774,7 +2786,8 @@ function reblendPts(p){
     const paceRate = banked / p.gp2627;
     const projGP = projGp2627blend(p) || Math.round(GAMES_PER_SEASON_2627 * (posGroup(p.pos)==='G' ? GOALIE_EXPECTED_GP_FRACTION : SKATER_EXPECTED_GP_FRACTION));
     const gamesRemaining = Math.max(0, projGP - p.gp2627);
-    const preseasonRate = preseasonProj > 0 ? preseasonProj / projGP : paceRate;
+    const preseasonRate = preseasonProj > 0 ? preseasonProj / projGP
+      : (p.pts2526 > 0 ? paceRate : paceRate * NO_HISTORY_PACE_DAMPEN);
     const trustGP = projGP * EARLY_PACE_TRUST_FRACTION;
     const paceWeight = EARLY_PACE_WEIGHT * Math.min(1, p.gp2627 / trustGP);
     const blendedRate = preseasonRate*(1-paceWeight) + paceRate*paceWeight;
@@ -5846,6 +5859,7 @@ function syncSettings(){
   set('s-wESPN', PROJ_SOURCE_WEIGHTS.espn);
   set('s-wDOB', PROJ_SOURCE_WEIGHTS.dob);
   set('s-earlyPaceWeight', EARLY_PACE_WEIGHT);
+  set('s-noHistoryPaceDampen', NO_HISTORY_PACE_DAMPEN);
   updateYahooDropBtnTooltips();
 }
 function updateDraftWeight(key, val){
@@ -5914,6 +5928,7 @@ function updateSetting(key, val){
   else if(key === 'simElcExpF')   simElcExpF = val;
   else if(key === 'simElcExpD')   simElcExpD = val;
   else if(key === 'earlyPaceWeight')           { EARLY_PACE_WEIGHT = val; applyBlendedPts(); render(); }
+  else if(key === 'noHistoryPaceDampen')       { NO_HISTORY_PACE_DAMPEN = val; applyBlendedPts(); render(); }
 }
 
 function addDays(dateStr, n){
