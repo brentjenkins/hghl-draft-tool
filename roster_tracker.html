@@ -4704,7 +4704,7 @@ function render(){
       ${(()=>{const s=curveDelta(p);if(s===null)return '<td style="text-align:right">—</td>';const sign=s>=0?'+':'';const col=curveSurplusColor(s);return `<td style="color:${col};font-weight:600;font-size:11px;text-align:right;font-variant-numeric:tabular-nums" title="vs avg ${posGroup(p.pos)} curve: ${sign}${s.toFixed(1)} pts">${sign}${Math.round(s)}</td>`;})()}
       <td style="text-align:right;border-right:2px solid #e5e7eb">${(()=>{const n=abpMap.get(p.id);if(n===null||n===undefined)return'—';const c=n===0?'#16a34a':n<=3?'#1a1a18':n<=7?'#d97706':'#dc2626';return`<button onclick="showABPModal(${p.id},'2627')" style="color:${c};font-weight:600;background:none;border:none;cursor:pointer;padding:0;font-size:inherit;text-decoration:underline dotted">${n}</button>`;})()}</td>
       <td style="color:#1a1a18;text-align:right;font-variant-numeric:tabular-nums">${p.gp2627>0?p.gp2627:'—'}</td>
-      <td style="color:#1a1a18;font-weight:600;text-align:right;font-variant-numeric:tabular-nums;border-right:2px solid #e5e7eb">${p.pts2627>0?p.pts2627:'—'}</td>
+      <td style="color:#1a1a18;font-weight:600;text-align:right;font-variant-numeric:tabular-nums;border-right:2px solid #e5e7eb">${p.gp2627>0?p.pts2627:'—'}</td>
       ${_scoreColsHtml2627(p)}
       <td style="text-align:right;white-space:nowrap">
         <button class="edit-btn" onclick="openEdit(${p.id})" title="Edit">✏</button>
@@ -7786,7 +7786,7 @@ function render2425(){
       ${(()=>{const s=curveDelta2425(p);if(s===null)return'<td style="text-align:right">—</td>';const sign=s>=0?'+':'';const col=curveSurplusColor(s);return`<td style="color:${col};font-weight:600;font-size:11px;text-align:right;font-variant-numeric:tabular-nums" title="vs avg ${pg} curve: ${sign}${s.toFixed(1)} pts">${sign}${Math.round(s)}</td>`;})()}
       <td style="text-align:right;border-right:2px solid #e5e7eb">${abpStr}</td>
       <td style="color:#9ca3af;text-align:right;font-variant-numeric:tabular-nums;border-left:2px solid #e5e7eb">${p.gp2425>0?p.gp2425:'—'}</td>
-      <td style="color:#9ca3af;text-align:right;font-variant-numeric:tabular-nums">${p.pts2425>0?p.pts2425:'—'}</td>
+      <td style="color:#9ca3af;text-align:right;font-variant-numeric:tabular-nums">${p.gp2425>0?p.pts2425:'—'}</td>
       ${(()=>{const s=curveDeltaActual2425(p);if(s===null)return'<td style="text-align:right;border-right:2px solid #e5e7eb">—</td>';const sign=s>=0?'+':'';const col=curveSurplusColor(s);return`<td style="color:${col};font-weight:600;font-size:11px;text-align:right;font-variant-numeric:tabular-nums;border-right:2px solid #e5e7eb" title="24-25 actual vs avg ${pg} curve: ${sign}${s.toFixed(1)} pts">${sign}${Math.round(s)}</td>`;})()}
       ${_scoreColsHtml2425(p)}
       <td style="text-align:right;white-space:nowrap">
@@ -8308,7 +8308,7 @@ function render2324(){
       ${(()=>{const s=curveDelta2324(p);if(s===null)return'<td style="text-align:right">—</td>';const sign=s>=0?'+':'';const col=curveSurplusColor(s);return`<td style="color:${col};font-weight:600;font-size:11px;text-align:right;font-variant-numeric:tabular-nums" title="vs avg ${pg} curve: ${sign}${s.toFixed(1)} pts">${sign}${Math.round(s)}</td>`;})()}
       <td style="text-align:right;border-right:2px solid #e5e7eb">${abpStr}</td>
       <td style="color:#9ca3af;text-align:right;font-variant-numeric:tabular-nums;border-left:2px solid #e5e7eb">${p.gp2324>0?p.gp2324:'—'}</td>
-      <td style="color:#9ca3af;text-align:right;font-variant-numeric:tabular-nums">${p.pts2324>0?p.pts2324:'—'}</td>
+      <td style="color:#9ca3af;text-align:right;font-variant-numeric:tabular-nums">${p.gp2324>0?p.pts2324:'—'}</td>
       ${(()=>{const s=curveDeltaActual2324(p);if(s===null)return'<td style="text-align:right;border-right:2px solid #e5e7eb">—</td>';const sign=s>=0?'+':'';const col=curveSurplusColor(s);return`<td style="color:${col};font-weight:600;font-size:11px;text-align:right;font-variant-numeric:tabular-nums;border-right:2px solid #e5e7eb" title="23-24 actual vs avg ${pg} curve: ${sign}${s.toFixed(1)} pts">${sign}${Math.round(s)}</td>`;})()}
       ${_scoreColsHtml2324(p)}
       <td style="text-align:right;white-space:nowrap">
@@ -10955,7 +10955,7 @@ function render2526(){
       ${(()=>{const s=curveDelta2526(p);if(s===null)return '<td style="text-align:right">—</td>';const sign=s>=0?'+':'';const col=curveSurplusColor(s);return `<td style="color:${col};font-weight:600;font-size:11px;text-align:right;font-variant-numeric:tabular-nums" title="vs avg ${posGroup(p.pos)} curve: ${sign}${s.toFixed(1)} pts">${sign}${Math.round(s)}</td>`;})()}
       <td style="text-align:right;border-right:2px solid #f0f0ee">${abpStr}</td>
       <td style="color:#9ca3af;text-align:right;font-variant-numeric:tabular-nums;border-left:2px solid #f0f0ee">${p.gp2526>0?p.gp2526:'—'}</td>
-      <td style="color:#9ca3af;text-align:right;font-variant-numeric:tabular-nums">${p.pts2526>0?p.pts2526:'—'}</td>
+      <td style="color:#9ca3af;text-align:right;font-variant-numeric:tabular-nums">${p.gp2526>0?p.pts2526:'—'}</td>
       ${(()=>{const s=curveDeltaActual2526(p);if(s===null)return '<td style="text-align:right;border-right:2px solid #f0f0ee">—</td>';const sign=s>=0?'+':'';const col=curveSurplusColor(s);return `<td style="color:${col};font-weight:600;font-size:11px;text-align:right;font-variant-numeric:tabular-nums;border-right:2px solid #f0f0ee" title="actual vs avg ${posGroup(p.pos)} curve: ${sign}${s.toFixed(1)} pts">${sign}${Math.round(s)}</td>`;})()}
       ${_scoreColsHtml2526(p)}
       <td style="text-align:right;white-space:nowrap">
