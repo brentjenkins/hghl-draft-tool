@@ -11546,6 +11546,43 @@ function updateStats(){
     col: r<0.3?'#15803d':r<0.6?'#6b7280':r<0.85?'#92400e':'#991b1b',
   });
   const pBadge=(r,need,avail,maxP)=>{const {bg,col}=pressureColors(r);const raw=(need/Math.max(1,avail)).toFixed(3);const tip=`need ${need} / quality avail ${avail} · raw ratio ${raw} · max ${(maxP||0).toFixed(3)} → norm ${r.toFixed(2)}`;return`<span title="${tip}" style="background:${bg};color:${col};border-radius:3px;padding:0 3px;font-size:9px;font-weight:700;cursor:default">${r.toFixed(2)}</span>`;};
+  // Moved ahead of leagueCard (was originally built further down, right before the per-team
+  // dud/stud block) — the League card's "best available overperformers" branch below needs
+  // faByPos2627 too, so this has to exist before the if/else that builds leagueCard.
+  const abpMap = computeABP(players);
+  const rosteredPool2627 = players.filter(p => p.start2627 && p.cap2627 > 0);
+  const curveFns2627 = {
+    F: fitQuadratic(rosteredPool2627.filter(p => posGroup(p.pos)==='F').map(p => ({x: p.cap2627, y: p.proj2627.blend}))),
+    D: fitQuadratic(rosteredPool2627.filter(p => posGroup(p.pos)==='D').map(p => ({x: p.cap2627, y: p.proj2627.blend}))),
+    G: fitQuadratic(rosteredPool2627.filter(p => posGroup(p.pos)==='G').map(p => ({x: p.cap2627, y: p.proj2627.blend}))),
+  };
+  const posBg={F:'#dbeafe',D:'#dcfce7',G:'#fef3c7'}, posCol={F:'#1e40af',D:'#166534',G:'#92400e'};
+  const curveDelta2627 = p => {
+    if(!(p.proj2627.blend > 0 && p.cap2627 > 0)) return null;
+    const pg = posGroup(p.pos);
+    const base = _curveBaseline(pg, p.cap2627, ELC_MAX_2627, curveFns2627[pg]);
+    return base != null ? p.proj2627.blend - base : null;
+  };
+  // Real injury signal, from the "🩹 Injuries" button (p.injuryStatus/p.injuryDetail, scraped
+  // from covers.com) — distinct from the static preseason-known INJURY_DROPS_2627 list. "Out"/
+  // "Out For Season" means genuinely unavailable right now, so a player's banked pre-injury
+  // production shouldn't protect them from being flagged as a real midseason drop candidate.
+  // "Day To Day" is minor/short — not treated as forced. Added 2026-10-08 per user's framing:
+  // dropping an injured, low-performing player is one of the real reasons a GM burns a pick,
+  // separate from simply chasing a hot free agent.
+  const isInjured2627 = p => !!(p.injuryStatus && /^Out\b/i.test(p.injuryStatus));
+  // Long-term-unavailable players (INJURY_DROPS_2627) already blend to 0 via reblendPts, so
+  // they're excluded from faPool2627 by the >0 check alone — INJURY_DROPS_2627_MISS_START
+  // (e.g. sent to AHL to start the season) still needs an explicit exclusion since those
+  // players keep a real nowcasted blend despite not actually being pickup-able right now.
+  const faPool2627 = players.filter(p => !p.start2627 && p.cap2627 > 0 && (p.proj2627.blend||0) > 0
+    && !INJURY_DROPS_2627_MISS_START.has(normName(p.name).toLowerCase()));
+  const faByPos2627 = {F:[], D:[], G:[]};
+  for(const p of faPool2627){
+    const pg = posGroup(p.pos), d = curveDelta2627(p);
+    if(d != null && faByPos2627[pg]) faByPos2627[pg].push({p, d});
+  }
+  for(const pg of ['F','D','G']) faByPos2627[pg].sort((a,b) => b.d - a.d);
   let leagueCard;
   // Hoisted so the per-team affordable-quality badge below (outside this if-block, in the
   // teams.map() card loop) can reuse the same league-wide quality pool and pressure-ratio
@@ -11603,6 +11640,28 @@ function updateStats(){
       </div>
       <button class="btn btn-red-outline" onclick="passCurrentPick()" style="font-size:10px;height:22px;padding:0 8px;width:100%;margin-top:4px">Pass</button>`:''}
     </div>`;
+  } else if(seasonPhase2627==='firsthalf' || seasonPhase2627==='secondhalf'){
+    // League-wide "who's hot" leaderboard for 1st/2nd Half — top 3 free agents per position by
+    // curve-delta (faByPos2627, already sorted desc). Curve-delta, not raw PPTS or the full
+    // draft SCORE — "overperformer" means producing more than their cap predicts, which is
+    // exactly what curve-delta measures; raw PPTS would just surface expensive stars doing
+    // what they're paid to do, and the draft SCORE pulls in youth/term/prospect-upside terms
+    // that are about multi-year commitment, not "who's hot for the rest of this season."
+    const overperformerRow = x => `<div style="display:flex;align-items:center;gap:4px;font-size:10px;line-height:1.5;overflow:hidden;color:${x.d>0?'#16a34a':'#9ca3af'}">
+      <span style="background:${posBg[posGroup(x.p.pos)]};color:${posCol[posGroup(x.p.pos)]};border-radius:3px;padding:0 3px;font-size:9px;font-weight:600;flex-shrink:0">${posGroup(x.p.pos)}</span>
+      <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(x.p.name)}</span><span style="color:#9ca3af;flex-shrink:0">${(x.d>=0?'+':'')+Math.round(x.d)}</span>
+    </div>`;
+    const posSection = pg => {
+      const list = faByPos2627[pg].slice(0,3);
+      return list.length ? list.map(overperformerRow).join('') : `<div style="font-size:9px;color:#d1d5db">none</div>`;
+    };
+    leagueCard=`<div class="team-card league-card" style="background:#eff6ff;border:1px solid #dbeafe">
+      <div class="team-card-header"><span class="team-card-name" style="color:#6366f1">League</span></div>
+      <div class="team-card-cap" style="color:#6b7280;font-size:9px;line-height:1.1;margin-top:-3px;margin-bottom:-3px" title="Free agents producing the most above what their cap predicts (△ vs curve) — not raw points, not draft SCORE.">best available overperformers</div>
+      <div style="margin-top:4px">${posSection('F')}</div>
+      <div style="margin-top:3px">${posSection('D')}</div>
+      <div style="margin-top:3px">${posSection('G')}</div>
+    </div>`;
   } else {
     leagueCard=`<div class="team-card league-card" style="background:#f9fafb;border:1px dashed #e5e7eb;opacity:0.35;pointer-events:none">
       <div class="team-card-header"><span class="team-card-name" style="color:#9ca3af">League</span></div>
@@ -11611,14 +11670,6 @@ function updateStats(){
     </div>`;
   }
 
-  const abpMap = computeABP(players);
-  const rosteredPool2627 = players.filter(p => p.start2627 && p.cap2627 > 0);
-  const curveFns2627 = {
-    F: fitQuadratic(rosteredPool2627.filter(p => posGroup(p.pos)==='F').map(p => ({x: p.cap2627, y: p.proj2627.blend}))),
-    D: fitQuadratic(rosteredPool2627.filter(p => posGroup(p.pos)==='D').map(p => ({x: p.cap2627, y: p.proj2627.blend}))),
-    G: fitQuadratic(rosteredPool2627.filter(p => posGroup(p.pos)==='G').map(p => ({x: p.cap2627, y: p.proj2627.blend}))),
-  };
-  const posBg={F:'#dbeafe',D:'#dcfce7',G:'#fef3c7'}, posCol={F:'#1e40af',D:'#166534',G:'#92400e'};
   // In 1st/2nd Half, the F/D/G roster-slot bar doesn't mean anything — rosters are frozen
   // size-wise, only drop-one-add-one swaps happen — so it's replaced with picks-remaining.
   const picksUsedByTeam2627 = (seasonPhase2627 === 'firsthalf') ? _replacementPicksUsed2627('First Half')
@@ -11664,61 +11715,98 @@ function updateStats(){
       ${top.length?`<div style="font-size:9px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px${locked.length?';margin-top:4px':''}">${mode==='prospect'?'prospect':'Best Avail'}</div>${top.map(({p})=>row(p,false)).join('')}`:''}
     </div>`;
   };
-  // "1st Half" season phase (one of 4 — see seasonPhase2627 — post-draft, in-season until early
-  // January): each team gets 2 drop-one-add-one midseason replacement picks, position- and
-  // cap-constrained. Surfaces, per team card and per position, the team's own worst-value
-  // rostered player (dud, by curve-delta — same basis the △ vs curve label and the table's
-  // delta column use) and the best-value free agent at that position that's cap-legal to add
-  // if that dud were dropped (stud). Only rendered when seasonPhase2627==='firsthalf' AND
-  // draftMode is off — draftMode already has its own "Best Avail"/Locked list above (top5Html)
-  // serving the equivalent live-draft purpose.
-  const curveDelta2627 = p => {
-    if(!(p.proj2627.blend > 0 && p.cap2627 > 0)) return null;
-    const pg = posGroup(p.pos);
-    const base = _curveBaseline(pg, p.cap2627, ELC_MAX_2627, curveFns2627[pg]);
-    return base != null ? p.proj2627.blend - base : null;
-  };
-  // Long-term-unavailable players (INJURY_DROPS_2627) already blend to 0 via reblendPts, so
-  // they're excluded from faPool2627 by the >0 check alone — INJURY_DROPS_2627_MISS_START
-  // (e.g. sent to AHL to start the season) still needs an explicit exclusion since those
-  // players keep a real nowcasted blend despite not actually being pickup-able right now.
-  const faPool2627 = players.filter(p => !p.start2627 && p.cap2627 > 0 && (p.proj2627.blend||0) > 0
-    && !INJURY_DROPS_2627_MISS_START.has(normName(p.name).toLowerCase()));
-  const faByPos2627 = {F:[], D:[], G:[]};
-  for(const p of faPool2627){
-    const pg = posGroup(p.pos), d = curveDelta2627(p);
-    if(d != null && faByPos2627[pg]) faByPos2627[pg].push({p, d});
-  }
-  for(const pg of ['F','D','G']) faByPos2627[pg].sort((a,b) => b.d - a.d);
-  const firstHalfHtml = (t) => {
+  // "1st/2nd Half" midseason replacement picks (2 per team per half, drop-one-add-one,
+  // cap-legal). Redesigned 2026-10-08 per the user's real framing of why a GM actually burns a
+  // pick: (1) a hot free agent is worth making room for, (2) an underperforming/injured roster
+  // player is worth jettisoning regardless of who's available, (3) near the Mid supplemental
+  // draft, might as well spend a pick that otherwise expires unused. Surfaces whichever single
+  // real move helps most, OR — only when the team still has BOTH picks — the best move
+  // spending them together: e.g. dropping two injured/underperforming players to pool their
+  // freed cap with existing room and afford one big addition plus a cheap one (the user's
+  // real Rust+Hyman→Matthews+hot-ELC example). No longer evaluated independently per position
+  // — the best real move often isn't tied to a single position's "worst player."
+  const midseasonPlayHtml = (t) => {
+    const picksLeft = Math.max(0, 2 - Math.min(2, picksUsedByTeam2627[t]||0));
+    if(picksLeft < 1) return '';
     const tp = players.filter(p=>p.start2627===t);
     const teamCap = teamCapAll2627[t]||0;
     const fmtDelta = d => (d>=0?'+':'')+Math.round(d);
-    const rows = ['F','D','G'].map(pg => {
-      const own = tp.filter(p=>posGroup(p.pos)===pg)
-        .map(p=>({p, d:curveDelta2627(p)})).filter(x=>x.d!=null).sort((a,b)=>a.d-b.d);
-      const dud = own[0];
-      if(!dud) return '';
-      // Best free agent at this position that stays cap-legal if dud were dropped to make room.
-      const stud = faByPos2627[pg].find(x => (teamCap - (dud.p.cap2627||0) + (x.p.cap2627||0)) <= CAP_LIMIT);
-      const dudCol = dud.d<0?'#dc2626':'#9ca3af';
-      const studCol = (stud && stud.d>0) ? '#16a34a' : '#9ca3af';
-      const posTag = `<span style="background:${posBg[pg]};color:${posCol[pg]};border-radius:3px;padding:0 3px;font-size:9px;font-weight:600;flex-shrink:0">${pg}</span>`;
-      const posTagGhost = `<span style="visibility:hidden;border-radius:3px;padding:0 3px;font-size:9px;font-weight:600;flex-shrink:0">${pg}</span>`;
-      return `<div style="margin-bottom:3px">
-        <div title="Dud: ${esc(dud.p.name)}, △ ${fmtDelta(dud.d)} vs curve — worst-value ${pg} on this roster" style="display:flex;align-items:center;gap:4px;font-size:10px;line-height:1.5;overflow:hidden;color:${dudCol}">
-          ${posTag}<span style="flex-shrink:0">▼</span><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(dud.p.name)}</span><span style="color:#9ca3af;flex-shrink:0">${fmtDelta(dud.d)}</span>
-        </div>
-        ${stud?`<div title="Stud: ${esc(stud.p.name)}, △ ${fmtDelta(stud.d)} vs curve — best cap-legal ${pg} pickup if ${esc(dud.p.name)} were dropped" style="display:flex;align-items:center;gap:4px;font-size:10px;line-height:1.5;overflow:hidden;color:${studCol}">
-          ${posTagGhost}<span style="flex-shrink:0">▲</span><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(stud.p.name)}</span><span style="color:#9ca3af;flex-shrink:0">${fmtDelta(stud.d)}</span>
-        </div>`:`<div style="display:flex;align-items:center;gap:4px;font-size:9px;color:#d1d5db">${posTagGhost}<span>no legal pickup</span></div>`}
-      </div>`;
-    }).join('');
-    if(!rows) return '';
-    return `<div class="draft-top5" style="border-top:1px solid #e5e7eb;margin-top:5px;padding-top:4px">
-      <div style="font-size:9px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px" title="Dud = your worst-value rostered player at that position vs the scoring curve. Stud = the best-value free agent at that position you could legally add under the cap if you dropped that dud. For evaluating your 2 midseason replacement picks.">Dud / Stud</div>
-      ${rows}
+    const posTag = pg => `<span style="background:${posBg[pg]};color:${posCol[pg]};border-radius:3px;padding:0 3px;font-size:9px;font-weight:600;flex-shrink:0">${pg}</span>`;
+    const moveRow = (dir, pg, name, d, tip) => `<div${tip?` title="${esc(tip)}"`:''} style="display:flex;align-items:center;gap:4px;font-size:10px;line-height:1.5;overflow:hidden;color:${dir==='drop'?(d<0?'#dc2626':'#9ca3af'):(d>0?'#16a34a':'#9ca3af')}">
+      ${posTag(pg)}<span style="flex-shrink:0">${dir==='drop'?'▼':'▲'}</span><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(name)}</span><span style="color:#9ca3af;flex-shrink:0">${fmtDelta(d)}</span>
     </div>`;
+
+    // Worth-considering drop candidates: worst curve-delta first, but any currently-injured
+    // player (real "Out"/"Out For Season" status from the Injuries sync, not the static
+    // preseason list) is bumped ahead of non-injured ones regardless of raw delta — their
+    // banked production doesn't reflect what they'll actually produce while out. Capped at 6:
+    // plenty to find the real best play without an expensive full-roster search.
+    const dropCandidates = tp.map(p => ({p, pg:posGroup(p.pos), d:curveDelta2627(p), inj:isInjured2627(p)}))
+      .filter(x => x.d != null)
+      .sort((a,b) => (a.inj!==b.inj) ? (a.inj?-1:1) : (a.d-b.d))
+      .slice(0, 6);
+    if(!dropCandidates.length) return '';
+
+    // Best single swap: for each drop candidate, the best free agent at the SAME position
+    // that's cap-legal once that candidate is dropped (faByPos2627 is pre-sorted desc by
+    // delta, so this is a linear scan to the first fit) — then take whichever (drop, add)
+    // pair maximizes net value gain, not just whoever has the single worst delta.
+    let bestSingle = null;
+    for(const cand of dropCandidates){
+      const room = CAP_LIMIT - (teamCap - (cand.p.cap2627||0));
+      const stud = faByPos2627[cand.pg].find(x => (x.p.cap2627||0) <= room);
+      const netGain = (stud ? stud.d : -Infinity) - cand.d;
+      if(!bestSingle || netGain > bestSingle.netGain) bestSingle = {dud:cand, stud, netGain};
+    }
+
+    // Best combined 2-pick play (only searched if 2 picks remain): for every pair of drop
+    // candidates — same or different position — pool their freed cap with current room, then
+    // find the best pair of adds (one per dropped position) that maximizes combined delta
+    // within that pooled budget. A pricey pickup that doesn't fit alone can fit once a second,
+    // lower-value player is also dropped to free more room.
+    let bestCombo = null;
+    if(picksLeft >= 2 && dropCandidates.length >= 2){
+      const K = 15; // top-K free agents per position considered — small, keeps this instant
+      for(let i=0;i<dropCandidates.length;i++){
+        for(let j=i+1;j<dropCandidates.length;j++){
+          const dudA = dropCandidates[i], dudB = dropCandidates[j];
+          const room = CAP_LIMIT - (teamCap - (dudA.p.cap2627||0) - (dudB.p.cap2627||0));
+          const listA = faByPos2627[dudA.pg].slice(0, K), listB = faByPos2627[dudB.pg].slice(0, K);
+          for(const a of listA){
+            for(const b of listB){
+              if(a.p.id === b.p.id) continue; // can't add the same free agent twice
+              if((a.p.cap2627||0) + (b.p.cap2627||0) > room) continue;
+              const netGain = (a.d + b.d) - (dudA.d + dudB.d);
+              if(!bestCombo || netGain > bestCombo.netGain) bestCombo = {dudA, dudB, addA:a, addB:b, netGain};
+            }
+          }
+        }
+      }
+    }
+
+    const injTip = cand => cand.inj ? `${cand.p.name}: ${cand.p.injuryStatus}${cand.p.injuryDetail?' — '+cand.p.injuryDetail:''}` : '';
+
+    // Prefer the combined play only if it's actually better than the single swap — having
+    // both picks available doesn't mean spending both is automatically right.
+    if(bestCombo && (!bestSingle || bestCombo.netGain > bestSingle.netGain)){
+      const {dudA, dudB, addA, addB} = bestCombo;
+      return `<div class="draft-top5" style="border-top:1px solid #e5e7eb;margin-top:5px;padding-top:4px">
+        <div style="font-size:9px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px" title="Spending both remaining picks together: drop these 2, pool the freed cap with current room, afford these 2.">Best Play (both picks)</div>
+        ${moveRow('drop', dudA.pg, dudA.p.name, dudA.d, injTip(dudA))}
+        ${moveRow('drop', dudB.pg, dudB.p.name, dudB.d, injTip(dudB))}
+        ${moveRow('add', dudA.pg, addA.p.name, addA.d)}
+        ${moveRow('add', dudB.pg, addB.p.name, addB.d)}
+      </div>`;
+    }
+    if(bestSingle){
+      const {dud, stud} = bestSingle;
+      return `<div class="draft-top5" style="border-top:1px solid #e5e7eb;margin-top:5px;padding-top:4px">
+        <div style="font-size:9px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px" title="Best single midseason replacement pick available right now.">Best Play</div>
+        ${moveRow('drop', dud.pg, dud.p.name, dud.d, injTip(dud))}
+        ${stud ? moveRow('add', dud.pg, stud.p.name, stud.d) : `<div style="display:flex;align-items:center;gap:4px;font-size:9px;color:#d1d5db">${posTag(dud.pg)}<span>no legal pickup</span></div>`}
+      </div>`;
+    }
+    return '';
   };
   const teamCurveDelta = _makeTeamCurveDeltaFn('start2627', p=>p.proj2627.blend||0, p=>p.cap2627||0);
   // Per-team mirror of the League card's avail badge (see qualityAvail2627 above) — same
@@ -11771,7 +11859,7 @@ function updateStats(){
       ${draftMode?`<div style="display:flex;gap:6px;margin-top:3px">${teamAffordBadge(t,'F')}${teamAffordBadge(t,'D')}${teamAffordBadge(t,'G')}</div>`:''}
       ${_curveDeltaLabel(teamCurveDelta(t), '2627', t)}
       ${top5Html(t,fRem,dRem,gRem,rem)}
-      ${(!draftMode && seasonPhase2627==='firsthalf')?firstHalfHtml(t):''}
+      ${(!draftMode && (seasonPhase2627==='firsthalf'||seasonPhase2627==='secondhalf'))?midseasonPlayHtml(t):''}
       <div class="team-card-cap">
         <span style="color:${remColor}">${remLabel}</span>${cppStr}
       </div>
