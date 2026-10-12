@@ -5798,11 +5798,10 @@ function _replacementPicksUsed2627(periodLabel){
 // Half without ever switching into 1st) — Preseason's pure drops are a different Yahoo
 // structure (see yahoo_proxy.py) and are already recorded via the real draft/drops data, so
 // they're deliberately not touched here.
-async function syncXactionsAndApplyPhase2627(mode){
-  const data = await _fetchYahooXactions(YAHOO_LEAGUE_KEY_2627, 'xactionsStatus2627');
-  if(!data) return;
-  xactions2627 = data;
-  lsSet(LS_XACTIONS_2627, xactions2627);
+// Applies xactions2627 (whatever's currently loaded, from either entry point below) to
+// start2627 for the given half — shared so a roster stays correct regardless of HOW the
+// transaction data got refreshed, not just when switching the phase button.
+function _applyMidseasonXactions2627(mode){
   const periods = mode === 'secondhalf' ? ['First Half','Second Half'] : ['First Half'];
   const rows = xactions2627
     .filter(tx => tx.txType !== 'trade' && periods.includes(_midseasonHalf2627(tx.date)))
@@ -5817,6 +5816,15 @@ async function syncXactionsAndApplyPhase2627(mode){
   }
   if(missed.length) console.log(`[1st/2nd Half sync] ${missed.length} transaction player(s) not matched in the live pool:`, missed);
   lsSet(LS_PLAYERS, players);
+}
+
+// Entry point when switching the season-phase button itself (see setSeasonPhase2627).
+async function syncXactionsAndApplyPhase2627(mode){
+  const data = await _fetchYahooXactions(YAHOO_LEAGUE_KEY_2627, 'xactionsStatus2627');
+  if(!data) return;
+  xactions2627 = data;
+  lsSet(LS_XACTIONS_2627, xactions2627);
+  _applyMidseasonXactions2627(mode);
   updateStats();
   if(currentView === 'xactions2627') renderXactions2627();
 }
@@ -5988,6 +5996,13 @@ async function loadXactions2627(){
   if(!data) return;
   xactions2627 = data;
   lsSet(LS_XACTIONS_2627, xactions2627);
+  // Keep rosters in sync with real transactions regardless of HOW they got fetched — this
+  // tab's own "⬇ Fetch from Yahoo" button used to only refresh the log display, leaving
+  // 1st/2nd Half rosters stale until the phase button was re-clicked. Found live 2026-10-12.
+  if(seasonPhase2627 === 'firsthalf' || seasonPhase2627 === 'secondhalf'){
+    _applyMidseasonXactions2627(seasonPhase2627);
+    updateStats();
+  }
   setView('xactions2627');
 }
 
