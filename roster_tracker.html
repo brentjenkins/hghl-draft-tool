@@ -11603,8 +11603,13 @@ function updateStats(){
   // they're excluded from faPool2627 by the >0 check alone — INJURY_DROPS_2627_MISS_START
   // (e.g. sent to AHL to start the season) still needs an explicit exclusion since those
   // players keep a real nowcasted blend despite not actually being pickup-able right now.
+  // isInjured2627 covers the LIVE case (e.g. Matt Duchene going on LTIR mid-season, caught by
+  // the Injuries sync) — those two static lists are both preseason-known, so a real in-season
+  // injury wasn't excluded from the ADD pool at all until this. Found live 2026-10-12: Duchene
+  // recommended as a pickup the same week he landed on LTIR.
   const faPool2627 = players.filter(p => !p.start2627 && p.cap2627 > 0 && (p.proj2627.blend||0) > 0
-    && !INJURY_DROPS_2627_MISS_START.has(normName(p.name).toLowerCase()));
+    && !INJURY_DROPS_2627_MISS_START.has(normName(p.name).toLowerCase())
+    && !isInjured2627(p));
   // {p, cap, score} — the exact shape _knapsackValueCurve/_knapsackChooseExact expect, so this
   // doubles as both the League leaderboard's sorted list AND the per-team knapsack's
   // candidatesByPos input (see midseasonPlayHtml / _solveTeamKnapsack — the SAME joint 0/1
