@@ -61,6 +61,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#1
    affect the Sync/Proj and other toolbars nobody asked to change. */
 #dropsDraftRow2627 .btn{height:32px;padding:0 10px;font-size:12px;gap:4px}
 .btn:disabled{opacity:.45;cursor:not-allowed}
+/* Settings is a read-only display of the real constants/defaults, not an editing surface —
+   real changes happen in code (see feedback_settings_is_display_not_source memory). Every
+   tunable input there is `disabled`; this overrides the native greyed-out disabled look so it
+   reads as "intentionally read-only" rather than "temporarily unavailable". */
+#view-settings input:disabled{opacity:1;background:#fafafa;color:#9ca3af;border-color:#e5e7eb;cursor:default;-webkit-text-fill-color:#9ca3af}
 .btn-primary{background:#185FA5;color:#fff;border-color:#185FA5}
 .btn-primary:hover{background:#0C447C}
 .btn-yahoo{background:#6001D2;color:#fff;border-color:#6001D2}
@@ -893,7 +898,7 @@ tr:hover td{background:#fafaf8}
 <div style="max-width:1100px;display:flex;flex-direction:column;gap:1.75rem">
 
   <div>
-    <div class="section-label">NHL <span class="section-line"></span><span class="section-desc">League salary cap rules and important dates. Cap ceilings are used in drop cap-constraint checks. ELC max = league minimum + $175,000 (read-only). Editable caps are used by the drop algorithm. Trade deadline drives the ELC mandatory-drop rule (Drops > Pass 1).</span></div>
+    <div class="section-label">NHL <span class="section-line"></span><span class="section-desc">League salary cap rules and important dates, as actually used by the app (read-only — change a value by editing its constant in code, not here). Cap ceilings feed drop cap-constraint checks. ELC max = league minimum + $175,000. Trade deadline drives the ELC mandatory-drop rule (Drops > Pass 1).</span></div>
     <div style="display:grid;grid-template-columns:72px repeat(7,1fr);gap:6px;align-items:center;font-size:12px">
       <div></div>
       <div style="text-align:center;color:#9ca3af;font-size:10px;font-weight:600">22–23</div>
@@ -911,7 +916,7 @@ tr:hover td{background:#fafaf8}
       <div id="s-disp-capLimit2526" style="height:32px;border:1px solid #e5e7eb;border-radius:8px;padding:0 4px;font-size:12px;display:flex;align-items:center;justify-content:center;color:#9ca3af;background:#fafafa"></div>
       <div id="s-disp-capLimit2627" style="height:32px;border:1px solid #e5e7eb;border-radius:8px;padding:0 4px;font-size:12px;display:flex;align-items:center;justify-content:center;color:#9ca3af;background:#fafafa"></div>
       <div id="s-disp-capLimit2728" style="height:32px;border:1px solid #e5e7eb;border-radius:8px;padding:0 4px;font-size:12px;display:flex;align-items:center;justify-content:center;color:#9ca3af;background:#fafafa"></div>
-      <input type="number" id="s-capLimit2829" placeholder="TBD" min="0" max="300" step="0.1" onchange="updateSetting('capLimit2829',+this.value)" style="width:100%;box-sizing:border-box;height:32px;border:1px solid #185FA5;border-radius:8px;padding:0 4px;font-size:12px;text-align:center;color:#1a1a18">
+      <input disabled type="number" id="s-capLimit2829" placeholder="TBD" min="0" max="300" step="0.1" onchange="updateSetting('capLimit2829',+this.value)" style="width:100%;box-sizing:border-box;height:32px;border:1px solid #185FA5;border-radius:8px;padding:0 4px;font-size:12px;text-align:center;color:#1a1a18">
 
       <div style="font-size:11px;color:#9ca3af;white-space:nowrap" title="Real NHL regular-season length. 82 games every prior season; expanded to 84 starting 2026-27. Feeds the early-season PPTS nowcast's fallback games-remaining estimate (see EARLY_PACE_WEIGHT) whenever a player has no real per-source projected-GP data.">Games per season</div>
       <div style="height:32px;border:1px solid #e5e7eb;border-radius:8px;padding:0 4px;font-size:12px;display:flex;align-items:center;justify-content:center;color:#9ca3af;background:#fafafa">82</div>
@@ -919,8 +924,8 @@ tr:hover td{background:#fafaf8}
       <div id="s-disp-gamesPerSeason2425" style="height:32px;border:1px solid #e5e7eb;border-radius:8px;padding:0 4px;font-size:12px;display:flex;align-items:center;justify-content:center;color:#9ca3af;background:#fafafa"></div>
       <div id="s-disp-gamesPerSeason2526" style="height:32px;border:1px solid #e5e7eb;border-radius:8px;padding:0 4px;font-size:12px;display:flex;align-items:center;justify-content:center;color:#9ca3af;background:#fafafa"></div>
       <div id="s-disp-gamesPerSeason2627" style="height:32px;border:1px solid #e5e7eb;border-radius:8px;padding:0 4px;font-size:12px;display:flex;align-items:center;justify-content:center;color:#185FA5;font-weight:600;background:#fafafa"></div>
-      <input type="number" id="s-gamesPerSeason2728" value="84" min="1" max="100" step="1" onchange="updateSetting('gamesPerSeason2728',+this.value)" style="width:100%;box-sizing:border-box;height:32px;border:1px solid #185FA5;border-radius:8px;padding:0 4px;font-size:12px;text-align:center;color:#1a1a18">
-      <input type="number" id="s-gamesPerSeason2829" value="84" min="1" max="100" step="1" onchange="updateSetting('gamesPerSeason2829',+this.value)" style="width:100%;box-sizing:border-box;height:32px;border:1px solid #185FA5;border-radius:8px;padding:0 4px;font-size:12px;text-align:center;color:#1a1a18">
+      <input disabled type="number" id="s-gamesPerSeason2728" value="84" min="1" max="100" step="1" onchange="updateSetting('gamesPerSeason2728',+this.value)" style="width:100%;box-sizing:border-box;height:32px;border:1px solid #185FA5;border-radius:8px;padding:0 4px;font-size:12px;text-align:center;color:#1a1a18">
+      <input disabled type="number" id="s-gamesPerSeason2829" value="84" min="1" max="100" step="1" onchange="updateSetting('gamesPerSeason2829',+this.value)" style="width:100%;box-sizing:border-box;height:32px;border:1px solid #185FA5;border-radius:8px;padding:0 4px;font-size:12px;text-align:center;color:#1a1a18">
 
       <div style="font-size:11px;color:#9ca3af;white-space:nowrap">ELC max</div>
       <div style="height:32px;border:1px solid #e5e7eb;border-radius:8px;padding:0 4px;font-size:12px;display:flex;align-items:center;justify-content:center;color:#9ca3af;background:#fafafa">$0.950M</div>
@@ -998,15 +1003,15 @@ tr:hover td{background:#fafaf8}
   <div>
     <div class="section-label">Projections <span class="section-line"></span><span class="section-desc">Confidence weight per projection source when blending PPTS/PPP (higher = trusted more). Defaults re-derived 2026-09-02 from a pooled multi-season backtest (23-24/24-25/25-26 real season data, wherever each source has a file) — DTZ/Athletic tracked actuals most closely, NHL.com least (worst in every individual season too, not just pooled). Per-source r/MAE/n figures below.</span></div>
     <div style="display:flex;flex-wrap:wrap;gap:10px">
-      <label style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:#9ca3af" title="Tracks real points closely (r=0.82) — weighted accordingly.">Athletic<input type="number" id="s-wAthletic" value="1.24" min="0" max="3" step="0.1" onchange="updateProjWeight('athletic',+this.value)" style="width:64px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center;color:#1a1a18"></label>
-      <label style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:#9ca3af" title="Tracks real points closely (r=0.81) — weighted accordingly.">DFO<input type="number" id="s-wDFO" value="1.26" min="0" max="3" step="0.1" onchange="updateProjWeight('dfo',+this.value)" style="width:64px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center;color:#1a1a18"></label>
-      <label style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:#9ca3af" title="Tracks real points closely (r=0.83) — weighted accordingly.">DTZ<input type="number" id="s-wDTZ" value="1.21" min="0" max="3" step="0.1" onchange="updateProjWeight('dtz',+this.value)" style="width:64px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center;color:#1a1a18"></label>
-      <label style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:#9ca3af" title="Tracks real points closely (r=0.81) — weighted accordingly.">Dobbers<input type="number" id="s-wDOB" value="1.09" min="0" max="3" step="0.1" onchange="updateProjWeight('dob',+this.value)" style="width:64px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center;color:#1a1a18"></label>
-      <label style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:#9ca3af" title="Tracks real points moderately well (r=0.78) — weighted accordingly.">CBS<input type="number" id="s-wCBS" value="0.89" min="0" max="3" step="0.1" onchange="updateProjWeight('cbs',+this.value)" style="width:64px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center;color:#1a1a18"></label>
-      <label style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:#9ca3af" title="Tracks real points less closely (r=0.72) — weighted down accordingly.">ESPN<input type="number" id="s-wESPN" value="0.69" min="0" max="3" step="0.1" onchange="updateProjWeight('espn',+this.value)" style="width:64px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center;color:#1a1a18"></label>
-      <label style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:#9ca3af" title="The least reliable source (r=0.72) — weighted lowest of the 7.">NHL.com<input type="number" id="s-wNHL" value="0.62" min="0" max="3" step="0.1" onchange="updateProjWeight('nhl',+this.value)" style="width:64px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center;color:#1a1a18"></label>
-      <label style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:#9ca3af" title="Once 26-27 games exist, PPTS = banked actual points (certain — drops/draft apply retroactively) + this-weighted blend of preseason rate vs actual pace for games remaining. Small on purpose — 14 games is a noisy sample.">Early pace wt<input type="number" id="s-earlyPaceWeight" value="0.2" min="0" max="1" step="0.05" onchange="updateSetting('earlyPaceWeight',+this.value)" style="width:64px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center;color:#1a1a18"></label>
-      <label style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:#9ca3af" title="For a player with NO preseason projection from any source AND no real NHL history (pts2526<=0) — a true unknown — dampens how much weight their early-game pace gets before it's trusted, so a hot 1-2 game stretch can't fully extrapolate across the whole season. Doesn't affect players who have a projection OR real history.">No-history pace damp<input type="number" id="s-noHistoryPaceDampen" value="0.5" min="0" max="1" step="0.05" onchange="updateSetting('noHistoryPaceDampen',+this.value)" style="width:64px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center;color:#1a1a18"></label>
+      <label style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:#9ca3af" title="Tracks real points closely (r=0.82) — weighted accordingly.">Athletic<input disabled type="number" id="s-wAthletic" value="1.24" min="0" max="3" step="0.1" onchange="updateProjWeight('athletic',+this.value)" style="width:64px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center;color:#1a1a18"></label>
+      <label style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:#9ca3af" title="Tracks real points closely (r=0.81) — weighted accordingly.">DFO<input disabled type="number" id="s-wDFO" value="1.26" min="0" max="3" step="0.1" onchange="updateProjWeight('dfo',+this.value)" style="width:64px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center;color:#1a1a18"></label>
+      <label style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:#9ca3af" title="Tracks real points closely (r=0.83) — weighted accordingly.">DTZ<input disabled type="number" id="s-wDTZ" value="1.21" min="0" max="3" step="0.1" onchange="updateProjWeight('dtz',+this.value)" style="width:64px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center;color:#1a1a18"></label>
+      <label style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:#9ca3af" title="Tracks real points closely (r=0.81) — weighted accordingly.">Dobbers<input disabled type="number" id="s-wDOB" value="1.09" min="0" max="3" step="0.1" onchange="updateProjWeight('dob',+this.value)" style="width:64px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center;color:#1a1a18"></label>
+      <label style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:#9ca3af" title="Tracks real points moderately well (r=0.78) — weighted accordingly.">CBS<input disabled type="number" id="s-wCBS" value="0.89" min="0" max="3" step="0.1" onchange="updateProjWeight('cbs',+this.value)" style="width:64px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center;color:#1a1a18"></label>
+      <label style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:#9ca3af" title="Tracks real points less closely (r=0.72) — weighted down accordingly.">ESPN<input disabled type="number" id="s-wESPN" value="0.69" min="0" max="3" step="0.1" onchange="updateProjWeight('espn',+this.value)" style="width:64px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center;color:#1a1a18"></label>
+      <label style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:#9ca3af" title="The least reliable source (r=0.72) — weighted lowest of the 7.">NHL.com<input disabled type="number" id="s-wNHL" value="0.62" min="0" max="3" step="0.1" onchange="updateProjWeight('nhl',+this.value)" style="width:64px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center;color:#1a1a18"></label>
+      <label style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:#9ca3af" title="Once 26-27 games exist, PPTS = banked actual points (certain — drops/draft apply retroactively) + this-weighted blend of preseason rate vs actual pace for games remaining. Small on purpose — 14 games is a noisy sample.">Early pace wt<input disabled type="number" id="s-earlyPaceWeight" value="0.2" min="0" max="1" step="0.05" onchange="updateSetting('earlyPaceWeight',+this.value)" style="width:64px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center;color:#1a1a18"></label>
+      <label style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:#9ca3af" title="For a player with NO preseason projection from any source AND no real NHL history (pts2526<=0) — a true unknown — dampens how much weight their early-game pace gets before it's trusted, so a hot 1-2 game stretch can't fully extrapolate across the whole season. Doesn't affect players who have a projection OR real history.">No-history pace damp<input disabled type="number" id="s-noHistoryPaceDampen" value="0.5" min="0" max="1" step="0.05" onchange="updateSetting('noHistoryPaceDampen',+this.value)" style="width:64px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center;color:#1a1a18"></label>
     </div>
   </div>
   <div class="settings-divider"></div>
@@ -1020,16 +1025,16 @@ tr:hover td{background:#fafaf8}
       <div style="grid-column:1/-1;display:flex;flex-direction:column;gap:3px;margin-top:4px">
         <span style="font-size:11px;color:#9ca3af" title="△ Curve bonus requires pts strictly ABOVE this value (a player at exactly this value scores delta=0, no bonus). Prospect bonus is a continuous ratio (pts / this value) with no floor — it still gives partial credit below this value, scaled by age.">ELC expected pts (<span style="font-family:monospace;color:#b0b0ac">elcExpF / elcExpD / elcExpG</span>)</span>
         <div style="display:flex;gap:6px">
-          <label style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:#9ca3af">F<input type="number" id="s-elcExpF" value="41" min="1" max="200" step="1" onchange="updateDraftWeight('elcExpF',+this.value)" style="width:56px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center;color:#1a1a18"></label>
-          <label style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:#9ca3af">D<input type="number" id="s-elcExpD" value="26" min="1" max="200" step="1" onchange="updateDraftWeight('elcExpD',+this.value)" style="width:56px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center;color:#1a1a18"></label>
-          <label style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:#9ca3af">G<input type="number" id="s-elcExpG" value="35" min="1" max="200" step="1" onchange="updateDraftWeight('elcExpG',+this.value)" style="width:56px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center;color:#1a1a18"></label>
+          <label style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:#9ca3af">F<input disabled type="number" id="s-elcExpF" value="41" min="1" max="200" step="1" onchange="updateDraftWeight('elcExpF',+this.value)" style="width:56px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center;color:#1a1a18"></label>
+          <label style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:#9ca3af">D<input disabled type="number" id="s-elcExpD" value="26" min="1" max="200" step="1" onchange="updateDraftWeight('elcExpD',+this.value)" style="width:56px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center;color:#1a1a18"></label>
+          <label style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:#9ca3af">G<input disabled type="number" id="s-elcExpG" value="35" min="1" max="200" step="1" onchange="updateDraftWeight('elcExpG',+this.value)" style="width:56px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center;color:#1a1a18"></label>
         </div>
       </div>
       <div style="grid-column:1/-1;display:flex;flex-direction:column;gap:3px">
         <span style="font-size:11px;color:#9ca3af" title="Simulate-mode teams (predicting real GM behavior) use THESE values instead of the elcExpF/D above — a real matched-picks backtest found the empirically-correct 41/26 actually predicts real draft picks worse than these older guessed values. Optimize-mode teams (and every other display) always use the real elcExpF/D above; G isn't overridden in Simulate mode.">Simulate-mode ELC expected pts (<span style="font-family:monospace;color:#b0b0ac">simElcExpF / simElcExpD</span>)</span>
         <div style="display:flex;gap:6px">
-          <label style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:#9ca3af">F<input type="number" id="s-simElcExpF" value="35" min="1" max="200" step="1" onchange="updateSetting('simElcExpF',+this.value)" style="width:56px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center;color:#1a1a18"></label>
-          <label style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:#9ca3af">D<input type="number" id="s-simElcExpD" value="25" min="1" max="200" step="1" onchange="updateSetting('simElcExpD',+this.value)" style="width:56px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center;color:#1a1a18"></label>
+          <label style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:#9ca3af">F<input disabled type="number" id="s-simElcExpF" value="35" min="1" max="200" step="1" onchange="updateSetting('simElcExpF',+this.value)" style="width:56px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center;color:#1a1a18"></label>
+          <label style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:#9ca3af">D<input disabled type="number" id="s-simElcExpD" value="25" min="1" max="200" step="1" onchange="updateSetting('simElcExpD',+this.value)" style="width:56px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center;color:#1a1a18"></label>
         </div>
       </div>
     </div>
@@ -1045,37 +1050,37 @@ tr:hover td{background:#fafaf8}
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px 16px;margin-top:6px">
           <div style="display:flex;flex-direction:column;gap:4px">
             <span style="font-size:11px;color:#9ca3af">Min F drops per team (<span style="font-family:monospace;color:#b0b0ac">minDropF</span>)</span>
-            <input type="number" id="s-minDropF" value="1" min="0" max="5" step="1" onchange="updateSetting('minDropF',+this.value)" style="width:80px;height:32px;border:1px solid #ddd;border-radius:8px;padding:0 8px;font-size:13px;text-align:center">
+            <input disabled type="number" id="s-minDropF" value="1" min="0" max="5" step="1" onchange="updateSetting('minDropF',+this.value)" style="width:80px;height:32px;border:1px solid #ddd;border-radius:8px;padding:0 8px;font-size:13px;text-align:center">
           </div>
           <div style="display:flex;flex-direction:column;gap:4px">
             <span style="font-size:11px;color:#9ca3af">Min D drops per team (<span style="font-family:monospace;color:#b0b0ac">minDropD</span>)</span>
-            <input type="number" id="s-minDropD" value="0" min="0" max="5" step="1" onchange="updateSetting('minDropD',+this.value)" style="width:80px;height:32px;border:1px solid #ddd;border-radius:8px;padding:0 8px;font-size:13px;text-align:center">
+            <input disabled type="number" id="s-minDropD" value="0" min="0" max="5" step="1" onchange="updateSetting('minDropD',+this.value)" style="width:80px;height:32px;border:1px solid #ddd;border-radius:8px;padding:0 8px;font-size:13px;text-align:center">
           </div>
         </div>
       </div>
 
       <div style="border:1px solid #e5e7eb;border-radius:8px;padding:8px 10px">
-        <div style="font-size:10px;font-weight:700;color:#6b7280;letter-spacing:.02em">PASS 1 — MANDATORY <span style="font-weight:400;color:#9ca3af">Must be dropped at the preseason draft if the player was (1) added to a fantasy roster after the PRIOR season's trade deadline (see NHL section above) AND (2) their ELC-level contract was also signed after that same deadline — a mid-season stash still has to go, regardless of production or cap efficiency. Always drops first, unconditionally. Not tunable here. 25-26/26-27's lists are auto-detected from PP Signings + that season's Xactions (see <span style="font-family:monospace;color:#b0b0ac">_computeElcMandatoryDrops</span>) — verified live to exactly reproduce 25-26's known Ivan Demidov case; 23-24/24-25 still use their own hand-curated historical list (no Xactions data synced for those seasons).</span></div>
+        <div style="font-size:10px;font-weight:700;color:#6b7280;letter-spacing:.02em">PASS 1 — MANDATORY <span style="font-weight:400;color:#9ca3af">Must be dropped at the preseason draft if the player was (1) added to a fantasy roster after the PRIOR season's trade deadline (see NHL section above) AND (2) their ELC-level contract was also signed after that same deadline — a mid-season stash still has to go, regardless of production or cap efficiency. Always drops first, unconditionally. 25-26/26-27's lists are auto-detected from PP Signings + that season's Xactions (see <span style="font-family:monospace;color:#b0b0ac">_computeElcMandatoryDrops</span>) — verified live to exactly reproduce 25-26's known Ivan Demidov case; 23-24/24-25 still use their own hand-curated historical list (no Xactions data synced for those seasons).</span></div>
       </div>
 
       <div style="border:1px solid #e5e7eb;border-radius:8px;padding:8px 10px">
-        <div style="font-size:10px;font-weight:700;color:#6b7280;letter-spacing:.02em">PASS 2 — INJURY/DEMOTION <span style="font-weight:400;color:#9ca3af">Anyone on that season's known-long-term-unavailable list (injured or sent to a lower league) drops unconditionally, same as Pass 1 — a dead roster spot regardless of how good their last-known production/cap efficiency looks. Not tunable here — same hardcoded per-season list the draft side already excludes free agents with.</span></div>
+        <div style="font-size:10px;font-weight:700;color:#6b7280;letter-spacing:.02em">PASS 2 — INJURY/DEMOTION <span style="font-weight:400;color:#9ca3af">Anyone on that season's known-long-term-unavailable list (injured or sent to a lower league) drops unconditionally, same as Pass 1 — a dead roster spot regardless of how good their last-known production/cap efficiency looks. Same hardcoded per-season list the draft side already excludes free agents with.</span></div>
       </div>
 
       <div style="border:1px solid #cbd5e1;border-radius:8px;padding:8px 10px;background:#f8fafc">
-        <div style="font-size:10px;font-weight:700;color:#475569;letter-spacing:.02em">CANDIDATE SORT ORDER <span style="font-weight:400;color:#6b7280">Passes 3, 5, and 6 all pull from the same worst-value-first candidate list — these modifiers shift a player up or down within it before any of those passes run. They don't add or remove a pass; they only change WHO looks like the worst value first. Read-only: hardcoded constants, not live settings — edit the named variable in code to change one.</span></div>
+        <div style="font-size:10px;font-weight:700;color:#475569;letter-spacing:.02em">CANDIDATE SORT ORDER <span style="font-weight:400;color:#6b7280">Passes 3, 5, and 6 all pull from the same worst-value-first candidate list — these modifiers shift a player up or down within it before any of those passes run. They don't add or remove a pass; they only change WHO looks like the worst value first.</span></div>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px 16px;margin-top:6px">
           <div style="display:flex;flex-direction:column;gap:4px">
             <span style="font-size:11px;color:#9ca3af" title="Same future-curve-delta projection as the TRM (Contract) score — a player projected to stay at or above curve for enough of their remaining years gets that value subtracted from their effective deficit, making them harder to drop. Years left alone isn't enough: a long contract with a poor or never-recovering trajectory earns zero credit, same as TRM=0. Only matters relative to other drop candidates' own credit. Edit wtDropTermCredit in code to change it.">Term credit weight (<span style="font-family:monospace;color:#b0b0ac">wtDropTermCredit</span>)</span>
-            <div style="width:80px;height:32px;border:1px dashed #ddd;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;color:#6b7280;background:#fff">0.2</div>
+            <div style="width:80px;height:32px;border:1px solid #e5e7eb;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;color:#9ca3af;background:#fafafa">0.2</div>
           </div>
           <div style="display:flex;flex-direction:column;gap:4px">
             <span style="font-size:11px;color:#9ca3af" title="Flat protection credit added to a player's effective deficit if their real-life NHL team matches that fantasy team GM's known favorite team (see NHL section > GM fan affiliations). Edit wtFanBiasDrop in code to change it.">Fan-bias protection (<span style="font-family:monospace;color:#b0b0ac">wtFanBiasDrop</span>)</span>
-            <div style="width:80px;height:32px;border:1px dashed #ddd;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;color:#6b7280;background:#fff">20</div>
+            <div style="width:80px;height:32px;border:1px solid #e5e7eb;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;color:#9ca3af;background:#fafafa">20</div>
           </div>
           <div style="display:flex;flex-direction:column;gap:4px">
             <span style="font-size:11px;color:#9ca3af" title="Quality free agents at this position (true pre-drop pool), relative to how many that position typically needs per season (AVG_SEASON_DROPS_BY_POS, from real historical churn), added to a player's effective deficit — a position with more quality options per opening looks MORE droppable, one with fewer looks safer to cut. Only matters relative to other drop candidates' own credit, and mirrors the draft side's qualityAvail/pressure concept in reverse (deep relative to demand = safer to cut). Edit wtPositionDepthDrop in code to change it.">Position depth penalty (<span style="font-family:monospace;color:#b0b0ac">wtPositionDepthDrop</span>)</span>
-            <div style="width:80px;height:32px;border:1px dashed #ddd;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;color:#6b7280;background:#fff">1.0</div>
+            <div style="width:80px;height:32px;border:1px solid #e5e7eb;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;color:#9ca3af;background:#fafafa">1.0</div>
           </div>
         </div>
       </div>
@@ -1084,7 +1089,7 @@ tr:hover td{background:#fafaf8}
         <div style="font-size:10px;font-weight:700;color:#6b7280;letter-spacing:.02em">PASS 3 — REQUIRED MINIMUM <span style="font-weight:400;color:#9ca3af">Below this total, players drop automatically (worst value first) regardless of value, cap, or demand.</span></div>
         <div style="display:flex;flex-direction:column;gap:4px;max-width:200px;margin-top:6px">
           <span style="font-size:11px;color:#9ca3af">Min drops per team (<span style="font-family:monospace;color:#b0b0ac">minDropsPreseason</span>)</span>
-          <input type="number" id="s-minDropsPreseason" value="5" min="0" max="20" step="1" onchange="updateSetting('minDropsPreseason',+this.value)" style="width:80px;height:32px;border:1px solid #ddd;border-radius:8px;padding:0 8px;font-size:13px;text-align:center">
+          <input disabled type="number" id="s-minDropsPreseason" value="5" min="0" max="20" step="1" onchange="updateSetting('minDropsPreseason',+this.value)" style="width:80px;height:32px;border:1px solid #ddd;border-radius:8px;padding:0 8px;font-size:13px;text-align:center">
         </div>
       </div>
 
@@ -1093,15 +1098,15 @@ tr:hover td{background:#fafaf8}
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px 16px;margin-top:6px">
           <div style="display:flex;flex-direction:column;gap:4px">
             <span style="font-size:11px;color:#9ca3af">Max drops per team (<span style="font-family:monospace;color:#b0b0ac">maxDropsPreseason</span>)</span>
-            <input type="number" id="s-maxDropsPreseason" value="20" min="1" max="30" step="1" onchange="updateSetting('maxDropsPreseason',+this.value)" style="width:80px;height:32px;border:1px solid #ddd;border-radius:8px;padding:0 8px;font-size:13px;text-align:center">
+            <input disabled type="number" id="s-maxDropsPreseason" value="20" min="1" max="30" step="1" onchange="updateSetting('maxDropsPreseason',+this.value)" style="width:80px;height:32px;border:1px solid #ddd;border-radius:8px;padding:0 8px;font-size:13px;text-align:center">
           </div>
           <div style="display:flex;flex-direction:column;gap:4px">
             <span style="font-size:11px;color:#9ca3af">Points target. drop until achievable (<span style="font-family:monospace;color:#b0b0ac">ptsTarget</span>)</span>
-            <input type="number" id="s-ptsTarget" value="1200" min="800" max="2000" step="50" onchange="updateSetting('ptsTarget',+this.value)" style="width:80px;height:32px;border:1px solid #ddd;border-radius:8px;padding:0 8px;font-size:13px;text-align:center">
+            <input disabled type="number" id="s-ptsTarget" value="1200" min="800" max="2000" step="50" onchange="updateSetting('ptsTarget',+this.value)" style="width:80px;height:32px;border:1px solid #ddd;border-radius:8px;padding:0 8px;font-size:13px;text-align:center">
           </div>
           <div style="display:flex;flex-direction:column;gap:4px">
             <span style="font-size:11px;color:#9ca3af" title="Won't stop cutting until the team's remaining cap ÷ remaining open roster spots is at least this many multiples of that season's own ELC_MAX — separate from the Pass 5 cap-crunch floor below (a much lower bare-feasibility number), which is left alone. Scales with cap-hit inflation automatically instead of a flat dollar figure going stale. Validated 2026-09-23 against every real team-season's actual postdrop $/pick across all 4 seasons: true historical floor is $1.86M (23-24, a 1.96x multiple of that season's ELC_MAX) — but $1.9M bought a lot more player back in 23-24 than it does now, so 2.0x is the safer real-terms default going forward.">Min $/pick to stop, × ELC_MAX (<span style="font-family:monospace;color:#b0b0ac">minCapPerPickMult</span>)</span>
-            <input type="number" id="s-minCapPerPickMult" value="2.0" min="0" max="10" step="0.05" onchange="updateSetting('minCapPerPickMult',+this.value)" style="width:80px;height:32px;border:1px solid #ddd;border-radius:8px;padding:0 8px;font-size:13px;text-align:center">
+            <input disabled type="number" id="s-minCapPerPickMult" value="2.0" min="0" max="10" step="0.05" onchange="updateSetting('minCapPerPickMult',+this.value)" style="width:80px;height:32px;border:1px solid #ddd;border-radius:8px;padding:0 8px;font-size:13px;text-align:center">
           </div>
         </div>
       </div>
@@ -1115,15 +1120,15 @@ tr:hover td{background:#fafaf8}
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px 16px;margin-top:6px">
           <div style="display:flex;flex-direction:column;gap:4px">
             <span style="font-size:11px;color:#9ca3af" title="Players at/above this pts threshold are last-resort drops, protected until quotas/cap force a cut">Drop value pts floor (<span style="font-family:monospace;color:#b0b0ac">dropValueFloor</span>)</span>
-            <input type="number" id="s-dropValueFloor" value="15" min="0" max="150" step="1" onchange="updateSetting('dropValueFloor',+this.value)" style="width:80px;height:32px;border:1px solid #ddd;border-radius:8px;padding:0 8px;font-size:13px;text-align:center">
+            <input disabled type="number" id="s-dropValueFloor" value="15" min="0" max="150" step="1" onchange="updateSetting('dropValueFloor',+this.value)" style="width:80px;height:32px;border:1px solid #ddd;border-radius:8px;padding:0 8px;font-size:13px;text-align:center">
           </div>
           <div style="display:flex;flex-direction:column;gap:4px">
             <span style="font-size:11px;color:#9ca3af" title="Raw pts at/above this level push a player to the very back of the drop-candidate line — still droppable if the required minimum, position quotas, or cap crunch force it, but only as an absolute last resort. The curve fit is unreliable at the very top of the cap range, so a big negative delta there is as likely a fitting artifact as a real overpay. Lowered 90->85 2026-09-21 after switching drops' curve delta to a relative metric — backtested across all 3 complete seasons, 86 and below correctly protects real cases like William Nylander (23-24) with the aggregate match count holding exactly flat.">Last-resort pts threshold (<span style="font-family:monospace;color:#b0b0ac">untouchableElitePts</span>)</span>
-            <input type="number" id="s-untouchableElitePts" value="85" min="0" max="200" step="1" onchange="updateSetting('untouchableElitePts',+this.value)" style="width:80px;height:32px;border:1px solid #ddd;border-radius:8px;padding:0 8px;font-size:13px;text-align:center">
+            <input disabled type="number" id="s-untouchableElitePts" value="85" min="0" max="200" step="1" onchange="updateSetting('untouchableElitePts',+this.value)" style="width:80px;height:32px;border:1px solid #ddd;border-radius:8px;padding:0 8px;font-size:13px;text-align:center">
           </div>
           <div style="display:flex;flex-direction:column;gap:4px">
             <span style="font-size:11px;color:#9ca3af" title="Below this curve-delta, a player is NOT pushed to the back of the line by the drop value floor or ABP=0 escape hatch above — badly overpaying overrides that last-resort status regardless of raw production. Curve delta is now a RELATIVE (%-below-curve, rescaled to points-equivalent units via ptsTarget/roster size) metric, not raw points — see the drops curve-delta comment in code.">Last-resort △ floor (<span style="font-family:monospace;color:#b0b0ac">untouchableDeltaFloor</span>)</span>
-            <input type="number" id="s-untouchableDeltaFloor" value="-6" min="-100" max="0" step="1" onchange="updateSetting('untouchableDeltaFloor',+this.value)" style="width:80px;height:32px;border:1px solid #ddd;border-radius:8px;padding:0 8px;font-size:13px;text-align:center">
+            <input disabled type="number" id="s-untouchableDeltaFloor" value="-6" min="-100" max="0" step="1" onchange="updateSetting('untouchableDeltaFloor',+this.value)" style="width:80px;height:32px;border:1px solid #ddd;border-radius:8px;padding:0 8px;font-size:13px;text-align:center">
           </div>
         </div>
       </div>
@@ -1136,7 +1141,7 @@ tr:hover td{background:#fafaf8}
         <div style="font-size:10px;font-weight:700;color:#1d4ed8;letter-spacing:.02em">PASS 8 — PROTECTION <span style="font-weight:400;color:#6b7280">Before a Pass 3/5/6 drop happens, skip it entirely (nothing is ever dropped-then-undone) if the player would likely be re-drafted early by someone anyway.</span></div>
         <div style="display:flex;flex-direction:column;gap:4px;max-width:220px;margin-top:6px">
           <span style="font-size:11px;color:#9ca3af" title="Past the minimum, don't spend an optional drop on a player who'd rank in the top N of the WHOLE leaguewide draftable pool (kept players and free agents together) by the same Optimize-mode formula the draft engine uses — they're a near-lock to be rostered by someone, possibly you. Defaults to teams × full roster size (e.g. 9 × 20 = 180).">Early re-draft protection: top N leaguewide (<span style="font-family:monospace;color:#b0b0ac">earlyRedraftTopN</span>)</span>
-          <input type="number" id="s-earlyRedraftTopN" value="180" min="0" max="500" step="1" onchange="updateSetting('earlyRedraftTopN',+this.value)" style="width:80px;height:32px;border:1px solid #ddd;border-radius:8px;padding:0 8px;font-size:13px;text-align:center">
+          <input disabled type="number" id="s-earlyRedraftTopN" value="180" min="0" max="500" step="1" onchange="updateSetting('earlyRedraftTopN',+this.value)" style="width:80px;height:32px;border:1px solid #ddd;border-radius:8px;padding:0 8px;font-size:13px;text-align:center">
         </div>
       </div>
 
@@ -1165,14 +1170,14 @@ tr:hover td{background:#fafaf8}
             <div>
               <div style="display:flex;flex-direction:column;gap:3px">
                 <span style="font-size:11px;color:#9ca3af" title="Shrinks the points used for scoring (not the displayed PPTS) when a player has few projection sources — a 1-source player gets a real haircut on its score, not just a missing bonus. Low-coverage players bust and overproject more often than fully-covered ones.">Coverage discount (<span style="font-family:monospace;color:#b0b0ac">wtCoverageDiscount</span>)</span>
-                <input type="number" id="s-wtCoverageDiscount" value="0.25" min="0" max="1" step="0.05" onchange="updateDraftWeight('wtCoverageDiscount',+this.value)" style="width:70px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center">
+                <input disabled type="number" id="s-wtCoverageDiscount" value="0.25" min="0" max="1" step="0.05" onchange="updateDraftWeight('wtCoverageDiscount',+this.value)" style="width:70px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center">
               </div>
             </div>
 
             <div>
               <div style="display:flex;flex-direction:column;gap:3px">
                 <span style="font-size:11px;color:#9ca3af" title="Hard floor: a free agent needs coverage from at least this many projection sources to be draft-eligible at all. Single-source players miss often; 2-source players get drafted and succeed at a much better rate.">Min sources (<span style="font-family:monospace;color:#b0b0ac">minSources</span>)</span>
-                <input type="number" id="s-minSources" value="2" min="0" max="10" step="1" onchange="updateDraftWeight('minSources',+this.value)" style="width:70px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center">
+                <input disabled type="number" id="s-minSources" value="2" min="0" max="10" step="1" onchange="updateDraftWeight('minSources',+this.value)" style="width:70px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center">
               </div>
             </div>
 
@@ -1182,11 +1187,11 @@ tr:hover td{background:#fafaf8}
               <div style="display:flex;flex-wrap:wrap;gap:8px">
                 <div style="display:flex;flex-direction:column;gap:3px">
                   <span style="font-size:11px;color:#9ca3af">Position pressure weight (<span style="font-family:monospace;color:#b0b0ac">wtPressure</span>)</span>
-                  <input type="number" id="s-wtPressure" value="0.6" min="0" max="3" step="0.05" onchange="updateDraftWeight('wtPressure',+this.value)" style="width:70px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center">
+                  <input disabled type="number" id="s-wtPressure" value="0.6" min="0" max="3" step="0.05" onchange="updateDraftWeight('wtPressure',+this.value)" style="width:70px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center">
                 </div>
                 <div style="display:flex;flex-direction:column;gap:3px">
                   <span style="font-size:11px;color:#9ca3af" title="A free agent's SCORE (team-agnostic, bestAvail mode) must exceed this to count as a 'quality' option remaining at their position — the denominator of the pressure ratio.">Quality threshold (<span style="font-family:monospace;color:#b0b0ac">pressureQualityThreshold</span>)</span>
-                  <input type="number" id="s-pressureQualityThreshold" value="95" min="0" max="300" step="5" onchange="updateDraftWeight('pressureQualityThreshold',+this.value)" style="width:70px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center">
+                  <input disabled type="number" id="s-pressureQualityThreshold" value="95" min="0" max="300" step="5" onchange="updateDraftWeight('pressureQualityThreshold',+this.value)" style="width:70px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center">
                 </div>
               </div>
             </div>
@@ -1208,7 +1213,7 @@ tr:hover td{background:#fafaf8}
               <div style="font-size:11px;color:#6b7280;font-family:monospace;margin-bottom:8px">PPTS/$M × coverage × wtPPTSM</div>
               <div style="display:flex;flex-direction:column;gap:3px">
                 <span style="font-size:11px;color:#9ca3af">PPTS/$M weight (<span style="font-family:monospace;color:#b0b0ac">wtPPTSM</span>)</span>
-                <input type="number" id="s-wtPPTSM" value="0.75" min="0" max="20" step="0.25" onchange="updateDraftWeight('wtPPTSM',+this.value)" style="width:64px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center">
+                <input disabled type="number" id="s-wtPPTSM" value="0.75" min="0" max="20" step="0.25" onchange="updateDraftWeight('wtPPTSM',+this.value)" style="width:64px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center">
               </div>
             </div>
 
@@ -1218,7 +1223,7 @@ tr:hover td{background:#fafaf8}
               <div style="font-size:11px;color:#6b7280;font-family:monospace;margin-bottom:8px">((PPTS × coverage) − curve baseline) × wtDeltaCurve</div>
               <div style="display:flex;flex-direction:column;gap:3px">
                 <span style="font-size:11px;color:#9ca3af" title="Bonus for pts above curve — full weight at every cap level including ELC (coverage discount already tempers thin-sample ELC risk upstream)">△ Curve bonus weight (<span style="font-family:monospace;color:#b0b0ac">wtDeltaCurve</span>)</span>
-                <input type="number" id="s-wtDeltaCurve" value="8" min="0" max="20" step="0.5" onchange="updateDraftWeight('wtDeltaCurve',+this.value)" style="width:64px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center">
+                <input disabled type="number" id="s-wtDeltaCurve" value="8" min="0" max="20" step="0.5" onchange="updateDraftWeight('wtDeltaCurve',+this.value)" style="width:64px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center">
               </div>
             </div>
 
@@ -1228,7 +1233,7 @@ tr:hover td{background:#fafaf8}
               <div style="font-size:11px;color:#6b7280;font-family:monospace;margin-bottom:8px">Σ future curve-delta (floored at 0) × wtTermValue</div>
               <div style="display:flex;flex-direction:column;gap:3px">
                 <span style="font-size:11px;color:#9ca3af" title="Sums the projected production-vs-AAV curve delta across a contract's remaining years (current deal, then next deal's AAV once it takes effect if one's signed) — rewards a deal that keeps providing value going forward. A player who's above curve now but projects to decline below it: only the leading run of above-curve years is summed, stopping at the point he'd actually be dropped. A player who's below curve now but projects to grow above it: every year counts, negative and positive together, since you'd hold through the dip for the later payoff. Floored at 0 overall, never penalizes a worsening deal. 0 for a 1-year-left deal with no next contract on file. Simulate-mode teams always show 0/grayed out.">Term value weight (<span style="font-family:monospace;color:#b0b0ac">wtTermValue</span>)</span>
-                <input type="number" id="s-wtTermValue" value="1" min="0" max="20" step="0.5" onchange="updateDraftWeight('wtTermValue',+this.value)" style="width:64px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center">
+                <input disabled type="number" id="s-wtTermValue" value="1" min="0" max="20" step="0.5" onchange="updateDraftWeight('wtTermValue',+this.value)" style="width:64px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center">
               </div>
             </div>
 
@@ -1245,7 +1250,7 @@ tr:hover td{background:#fafaf8}
           <div style="font-size:11px;color:#6b7280;font-family:monospace;margin-bottom:8px">Peak Trajectory × wtAge × coverage</div>
           <div style="display:flex;flex-direction:column;gap:3px">
             <span style="font-size:11px;color:#9ca3af" title="Proximity to position peak age + ascending contract years. Peak ages: F 26, D 28, G 29">Peak traj weight (<span style="font-family:monospace;color:#b0b0ac">wtAge</span>)</span>
-            <input type="number" id="s-wtAge" value="1" min="0" max="20" step="0.5" onchange="updateDraftWeight('wtAge',+this.value)" style="width:64px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center">
+            <input disabled type="number" id="s-wtAge" value="1" min="0" max="20" step="0.5" onchange="updateDraftWeight('wtAge',+this.value)" style="width:64px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center">
           </div>
         </div>
 
@@ -1258,7 +1263,7 @@ tr:hover td{background:#fafaf8}
           <div style="display:flex;flex-wrap:wrap;align-items:flex-end;gap:8px;font-size:13px">
             <div style="display:flex;flex-direction:column;gap:3px">
               <span style="font-size:11px;color:#9ca3af">Prospect weight (<span style="font-family:monospace;color:#b0b0ac">wtProspect</span>)</span>
-              <input type="number" id="s-wtProspect" value="12" min="0" max="100" step="1" onchange="updateDraftWeight('wtProspect',+this.value)" style="width:70px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center">
+              <input disabled type="number" id="s-wtProspect" value="12" min="0" max="100" step="1" onchange="updateDraftWeight('wtProspect',+this.value)" style="width:70px;height:30px;border:1px solid #ddd;border-radius:6px;padding:0 6px;font-size:12px;text-align:center">
             </div>
           </div>
         </div>
@@ -1269,7 +1274,7 @@ tr:hover td{background:#fafaf8}
           <div style="font-size:10px;color:#9ca3af;margin-bottom:8px">Applies to Production, Contract, Trajectory, AND Prospect alike — not one component. (Production + Contract + Trajectory + Prospect) × wtPosAlloc. Penalizes D picks when the on-the-clock team's D cap share exceeds the optimal 35% (knapsack-derived); 0 = off, no correction.</div>
           <div style="display:flex;flex-direction:column;gap:3px">
             <span style="font-size:11px;color:#9ca3af">Position budget correction (<span style="font-family:monospace;color:#b0b0ac">wtPosAlloc</span>)</span>
-            <input type="number" id="s-wtPosAlloc" value="1.0" min="0" max="5" step="0.1" onchange="updateDraftWeight('wtPosAlloc',+this.value)" style="width:80px;height:32px;border:1px solid #ddd;border-radius:8px;padding:0 8px;font-size:13px;text-align:center">
+            <input disabled type="number" id="s-wtPosAlloc" value="1.0" min="0" max="5" step="0.1" onchange="updateDraftWeight('wtPosAlloc',+this.value)" style="width:80px;height:32px;border:1px solid #ddd;border-radius:8px;padding:0 8px;font-size:13px;text-align:center">
           </div>
         </div>
 
@@ -1283,7 +1288,7 @@ tr:hover td{background:#fafaf8}
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px 16px;font-size:13px">
       <div style="display:flex;flex-direction:column;gap:4px">
         <span style="font-size:11px;color:#9ca3af">Algo Draft Prospect rounds (<span style="font-family:monospace;color:#b0b0ac">draftProspectRounds</span>)</span>
-        <input type="number" id="s-draftProspectRounds" value="1" min="0" max="20" step="1" onchange="updateSetting('draftProspectRounds',+this.value)" style="width:80px;height:32px;border:1px solid #ddd;border-radius:8px;padding:0 8px;font-size:13px;text-align:center">
+        <input disabled type="number" id="s-draftProspectRounds" value="1" min="0" max="20" step="1" onchange="updateSetting('draftProspectRounds',+this.value)" style="width:80px;height:32px;border:1px solid #ddd;border-radius:8px;padding:0 8px;font-size:13px;text-align:center">
       </div>
     </div>
     <div style="margin-top:12px">
@@ -1298,7 +1303,7 @@ tr:hover td{background:#fafaf8}
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px 16px;font-size:13px">
       <div style="display:flex;flex-direction:column;gap:4px">
         <span style="font-size:11px;color:#9ca3af">Cap wiggle (% of cap) (<span style="font-family:monospace;color:#b0b0ac">abpWiggle</span>)</span>
-        <input type="number" id="s-abpWiggle" value="0.5" min="0" max="5" step="0.1" onchange="updateSetting('abpWiggle',+this.value)" style="width:80px;height:32px;border:1px solid #ddd;border-radius:8px;padding:0 8px;font-size:13px;text-align:center">
+        <input disabled type="number" id="s-abpWiggle" value="0.5" min="0" max="5" step="0.1" onchange="updateSetting('abpWiggle',+this.value)" style="width:80px;height:32px;border:1px solid #ddd;border-radius:8px;padding:0 8px;font-size:13px;text-align:center">
       </div>
     </div>
   </div>
@@ -2019,8 +2024,8 @@ const NHL_OPENING_NIGHT_2627 = '2026-09-29';
 // played denominator whenever a player has no real per-source projGp2627 data of their own —
 // scaled by SKATER_EXPECTED_GP_FRACTION/GOALIE_EXPECTED_GP_FRACTION below rather than hardcoded,
 // so a future season-length change doesn't require re-deriving those fallbacks by hand again.
-// 27-28/28-29 editable in Settings once/if the league announces a change; default to carrying
-// the current 84 forward rather than guessing a reversion to 82.
+// 27-28/28-29 default to carrying the current 84 forward rather than guessing a reversion to
+// 82 — update the constant directly in code once/if the league announces a change.
 const GAMES_PER_SEASON_2324 = 82;
 const GAMES_PER_SEASON_2425 = 82;
 const GAMES_PER_SEASON_2526 = 82;
@@ -2073,7 +2078,7 @@ let CAP_LIMIT_2425 = 88;
 let CAP_LIMIT_2526 = 95.5;
 let CAP_LIMIT = 104;
 let CAP_LIMIT_2728 = 113.5; // CBA-committed (2023 NHL-NHLPA MOU) — set 2026-09-25
-let CAP_LIMIT_2829 = null; // not yet announced — editable in Settings once known
+let CAP_LIMIT_2829 = null; // not yet announced — set directly in code once known
 // Forward cap-ceiling schedule for the term-adjusted cap-efficiency term (tTermValue, see
 // _scoreDraftCandidate) — feeds the SCORING heuristic that rewards locking a flat AAV in for
 // multiple years. 27-28's $113.5M is CBA-committed (per the 2023 NHL-NHLPA MOU) and now real
@@ -2089,9 +2094,9 @@ let CAP_LIMIT_2829 = null; // not yet announced — editable in Settings once kn
 // until it's set). A FUNCTION, not a fixed array — found live 2026-09-25 that this used to be a
 // hardcoded literal ([83.5, 88, 95.5, 104, 113.5]) that merely HAPPENED to match these constants
 // rather than actually reading them, despite this same comment already (incorrectly) claiming it
-// "stays correct if CAP_LIMIT_2X2Y is ever live-edited in Settings" — a fixed array evaluated
-// once at load can't reflect a later Settings edit (e.g. CAP_LIMIT_2829, live-editable), only a
-// fresh computation can. Applies to EVERY season's Term scoring identically: whichever season a
+// "stays correct if CAP_LIMIT_2X2Y is ever edited" — a fixed array evaluated once at load can't
+// reflect a later edit to the constant (e.g. CAP_LIMIT_2829 once it's set), only a fresh
+// computation can. Applies to EVERY season's Term scoring identically: whichever season a
 // caller anchors from (via capLimit0/fromCapLimit, already threaded through every
 // _scoreDraftCandidate call site), future years look up the REAL cap that actually happened
 // wherever the sequence covers it — e.g. a 23-24 candidate's "1 year from now" correctly
@@ -2671,8 +2676,7 @@ function dedup(){
 // other sources' own 23-24 numbers (0.812 vs ATH's 0.812/DTZ's 0.822 that same year), rather
 // than the earlier, lower 0.747 figure it had been carrying. Full breakdown: ATH r=0.820
 // (n=1861), DFO r=0.813 (n=1263), DTZ r=0.826 (n=2161), CBS r=0.783 (n=767), ESPN r=0.723
-// (n=428), NHL.com r=0.716 (n=1036), DOB r=0.812 (n=753). Tunable live in Settings >
-// Projections.
+// (n=428), NHL.com r=0.716 (n=1036), DOB r=0.812 (n=753).
 let PROJ_SOURCE_WEIGHTS = { athletic: 1.24, dfo: 1.26, dtz: 1.21, cbs: 0.89, nhl: 0.62, espn: 0.69, dob: 1.09 };
 
 // Shared 26-27 source-coverage counter (draft-confidence minSources floor) — used to be
@@ -2754,7 +2758,7 @@ const MAX_SRC_2324 = 4;
 // because in-season role changes are sticky, not noise: a player who's over/under-
 // performing tends to get moved up/down the lineup or power play, which reinforces
 // rather than reverts their early pace — by ~25% games played that's a real signal,
-// not a hot streak. Tunable in Settings > Projections.
+// not a hot streak.
 let EARLY_PACE_WEIGHT = 0.75;
 // Fraction of a player's own projected season (see projGP below — already
 // position-aware, ~78 GP for skaters vs ~45 for goalies) at which the early-pace
@@ -8933,8 +8937,8 @@ function _runAlgoDrops({ players, teams, startField, ppts, getCap, capLimit, dra
   // stays directly combinable with fanBiasProtection/termCreditOf's existing points-scale
   // calibration (and the untouchableDeltaFloor/isHighVal/isUntouchable thresholds) without
   // having to redesign those too. Computed live from ptsTarget/roster size, not hardcoded — a
-  // flat constant here would silently go stale the moment ptsTarget (a real, user-editable
-  // Settings value) changed. User's own catch, 2026-09-21.
+  // flat constant here would silently go stale the moment ptsTarget changed. User's own catch,
+  // 2026-09-21.
   const dropDeltaReferencePts = ptsTarget / (DRAFT_ROSTER_MAX.F + DRAFT_ROSTER_MAX.D + DRAFT_ROSTER_MAX.G);
   // Pass 4 target (see minCapPerPickMult) — Pass 4 ("Stop Conditions": maxDropsPreseason/
   // ptsTarget already live there) is exactly the right home, not a new pass — its whole job is
