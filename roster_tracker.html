@@ -5841,23 +5841,25 @@ function _applySeasonPhaseGating2627(){
 // because Oct 3 fell inside that grace window). "First Half" runs all the way up to (not
 // including) the supplemental draft date itself — both the "1st" and "Mid" phase buttons load
 // transactions through this same cutoff, 2026-10-20, per the user: Mid-prep wants the roster
-// exactly as it stands going into the draft. "Second Half" only starts a week after the
-// supplemental draft date, so the draft's own multi-round adds/drops (a different mechanic,
-// not part of the 2-pick-per-half budget) don't get misread as Second Half picks. Returns
-// null for anything in the preseason window or the supplemental-draft week itself.
+// exactly as it stands going into the draft. "Mid Draft" is the live draft night itself (the
+// supplemental draft date through a week after — a generous window since the real event is
+// "one evening" but Yahoo transaction timestamps for it could lag) — its own 5-pick budget,
+// separate from First/Second Half's 2-pick budget (added 2026-10-20). "Second Half" only
+// starts once that week is over.
 function _midseasonHalf2627(dateStr){
   const d = new Date(dateStr);
   if(d <= new Date(draftDatePreseason2627)) return null;
   if(d < new Date(draftDateSupplemental2627)) return 'First Half';
   const suppEnd = new Date(addDays(draftDateSupplemental2627, 7));
-  if(d <= suppEnd) return null;
+  if(d <= suppEnd) return 'Mid Draft';
   return 'Second Half';
 }
 
 // Each real midseason replacement swap is one Yahoo "add/drop" transaction containing one
 // drop row + one add row sharing the same timestamp (see /yahoo-xactions in yahoo_proxy.py).
-// A team's picks used for a half = the count of DISTINCT timestamps it appears in within that
-// half's date window, excluding trades (not one of the 2 allowed picks).
+// A team's picks used for a period = the count of DISTINCT timestamps it appears in within
+// that period's date window, excluding trades (not one of its allowed picks — 2 for a half,
+// 5 for the Mid Draft night).
 function _replacementPicksUsed2627(periodLabel){
   const seen = {};
   for(const tx of xactions2627){
@@ -5877,14 +5879,16 @@ function _replacementPicksUsed2627(periodLabel){
 // Draft. Entering 2nd Half re-applies First Half too (robust to skipping straight to 2nd
 // Half without ever switching into 1st) — Preseason's pure drops are a different Yahoo
 // structure (see yahoo_proxy.py) and are already recorded via the real draft/drops data, so
-// they're deliberately not touched here. Mid shares this same "First Half only" branch —
-// it's prepping for the supplemental draft, not a half of its own, so it should reflect every
-// real transaction through the day before that draft (see _midseasonHalf2627).
+// they're deliberately not touched here. Mid also re-applies First Half (same reason) PLUS
+// any real "Mid Draft" night picks already made (added 2026-10-20) — so the roster stays
+// accurate as the live draft actually happens, not just in the lead-up to it.
 // Applies xactions2627 (whatever's currently loaded, from either entry point below) to
 // start2627 for the given half — shared so a roster stays correct regardless of HOW the
 // transaction data got refreshed, not just when switching the phase button.
 function _applyMidseasonXactions2627(mode){
-  const periods = mode === 'secondhalf' ? ['First Half','Second Half'] : ['First Half'];
+  const periods = mode === 'secondhalf' ? ['First Half','Second Half']
+    : mode === 'midseason' ? ['First Half','Mid Draft']
+    : ['First Half'];
   const rows = xactions2627
     .filter(tx => tx.txType !== 'trade' && periods.includes(_midseasonHalf2627(tx.date)))
     .sort((a,b) => a.timestamp - b.timestamp);
@@ -11869,10 +11873,12 @@ function updateStats(){
     </div>`;
   }
 
-  // In 1st/2nd Half, the F/D/G roster-slot bar doesn't mean anything — rosters are frozen
+  // In 1st/Mid/2nd Half, the F/D/G roster-slot bar doesn't mean anything — rosters are frozen
   // size-wise, only drop-one-add-one swaps happen — so it's replaced with picks-remaining.
+  // Mid tracks against the "Mid Draft" window (its own 5-pick night, not a 2-pick half).
   const picksUsedByTeam2627 = (seasonPhase2627 === 'firsthalf') ? _replacementPicksUsed2627('First Half')
-    : (seasonPhase2627 === 'secondhalf') ? _replacementPicksUsed2627('Second Half') : {};
+    : (seasonPhase2627 === 'secondhalf') ? _replacementPicksUsed2627('Second Half')
+    : (seasonPhase2627 === 'midseason') ? _replacementPicksUsed2627('Mid Draft') : {};
   // Precompute every team's need/cap state once — _getTeamDraftBoard's splash check needs
   // every OTHER team's data too, not just the one being displayed, to correctly judge "is
   // nobody else able to compete for this."
@@ -12069,6 +12075,13 @@ function updateStats(){
         const used = Math.min(2, picksUsedByTeam2627[t]||0), left = 2-used;
         const col = left===0 ? '#dc2626' : left===1 ? '#d97706' : '#16a34a';
         return `<div class="team-card-pos"><span title="${used} of 2 midseason replacement picks used this half (from real Yahoo transactions)" style="color:${col};font-weight:700">${left} pick${left!==1?'s':''} left</span></div>`;
+      })() : (!draftMode && seasonPhase2627==='midseason') ? (()=>{
+        // Mid's own 5-pick budget, condensed into one evening's draft rather than spread
+        // across a half — see _midseasonHalf2627's "Mid Draft" window. No minimum: a team can
+        // pass on every pick and still show "5 picks left" all night.
+        const used = Math.min(5, picksUsedByTeam2627[t]||0), left = 5-used;
+        const col = left===0 ? '#dc2626' : left<=2 ? '#d97706' : '#16a34a';
+        return `<div class="team-card-pos"><span title="${used} of 5 Mid supplemental draft picks used (from real Yahoo transactions) — no minimum, a team can pass on every pick" style="color:${col};font-weight:700">${left} pick${left!==1?'s':''} left</span></div>`;
       })() : `<div class="team-card-pos">
         <span title="${fRem} F spot${fRem!==1?'s':''} remaining">F&thinsp;${fRem}</span><span title="${dRem} D spot${dRem!==1?'s':''} remaining">D&thinsp;${dRem}</span><span title="${gRem} G spot${gRem!==1?'s':''} remaining">G&thinsp;${gRem}</span>
       </div>`}
