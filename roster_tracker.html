@@ -11822,8 +11822,8 @@ function updateStats(){
       </div>
       <button class="btn btn-red-outline" onclick="passCurrentPick()" style="font-size:10px;height:22px;padding:0 8px;width:100%;margin-top:4px">Pass</button>`:''}
     </div>`;
-  } else if(seasonPhase2627==='firsthalf' || seasonPhase2627==='midseason' || seasonPhase2627==='secondhalf'){
-    // League-wide "who's hot" leaderboard for 1st/Mid/2nd — top 3 free agents per position by
+  } else if(seasonPhase2627==='firsthalf' || seasonPhase2627==='secondhalf'){
+    // League-wide "who's hot" leaderboard for 1st/2nd — top 3 free agents per position by
     // real SCORE (faByPos2627, already sorted desc) — the same PRD/PPM/TRJ/CRV/TRM formula the
     // preseason draft uses, per the user's 2026-10-09 argument that these picks are held just
     // as indefinitely and matter just as much to winning the league as a draft pick does.
@@ -11841,6 +11841,25 @@ function updateStats(){
       <div style="margin-top:4px">${posSection('F')}</div>
       <div style="margin-top:3px">${posSection('D')}</div>
       <div style="margin-top:3px">${posSection('G')}</div>
+    </div>`;
+  } else if(seasonPhase2627==='midseason'){
+    // Mid-prep League bubble (changed 2026-10-20 from a top-3-names leaderboard): shows the
+    // SAME "# of quality players at each position" readout the Pre draft League bubble shows
+    // (_cachedQualityAvail, SCORE > pressureQualityThreshold) — just the quality free-agent
+    // counts, no pressure-ratio/"picks remaining" badge, since rosters are frozen going into
+    // the supplemental draft (no league-wide "open slots" denominator exists here).
+    const rosteredNowMid = players.filter(p => p.start2627 && (p.cap2627||0) > 0);
+    const curveFnsMid = {
+      F: fitQuadratic(rosteredNowMid.filter(p=>posGroup(p.pos)==='F').map(p=>({x:p.cap2627,y:p.proj2627.blend||0}))),
+      D: fitQuadratic(rosteredNowMid.filter(p=>posGroup(p.pos)==='D').map(p=>({x:p.cap2627,y:p.proj2627.blend||0}))),
+      G: fitQuadratic(rosteredNowMid.filter(p=>posGroup(p.pos)==='G').map(p=>({x:p.cap2627,y:p.proj2627.blend||0}))),
+    };
+    const qualityAvailMid = _cachedQualityAvail('start2627', p=>p.proj2627.blend||0, p=>p.cap2627||0, calcAge, NHL_SEASON_YEAR, 'nextTerm2627', curveFnsMid, ELC_MAX_2627, srcNFn2627, MAX_SRC_2627, CAP_LIMIT);
+    const qualityBadge = pg => `<span title="${qualityAvailMid[pg]} quality free agents at ${pg} league-wide (SCORE > ${draftWeights.pressureQualityThreshold??95}, any team's affordability)" style="background:#eef2ff;color:#4338ca;border-radius:4px;padding:1px 5px;font-size:11px;font-weight:500;cursor:default">${pg}&thinsp;${qualityAvailMid[pg]}</span>`;
+    leagueCard=`<div class="team-card league-card" style="background:#eff6ff;border:1px solid #dbeafe">
+      <div class="team-card-header"><span class="team-card-name" style="color:#6366f1">League</span></div>
+      <div class="team-card-cap" style="color:#6b7280;font-size:9px;line-height:1.1;margin-top:-3px;margin-bottom:-3px" title="Free agents scoring above the real draft SCORE quality threshold — same metric and threshold as the Pre draft League bubble's Avail badge.">quality players available</div>
+      <div style="display:flex;gap:6px;margin-top:4px">${qualityBadge('F')}${qualityBadge('D')}${qualityBadge('G')}</div>
     </div>`;
   } else {
     leagueCard=`<div class="team-card league-card" style="background:#f9fafb;border:1px dashed #e5e7eb;opacity:0.35;pointer-events:none">
