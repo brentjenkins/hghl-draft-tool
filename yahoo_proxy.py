@@ -233,6 +233,47 @@ def league():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/yahoo-standings")
+def yahoo_standings():
+    """Return each team's current overall-season rank from Yahoo's standings resource.
+
+    ?league_key=  defaults to current LEAGUE_KEY.
+    Returns [{team, rank, points}], sorted by rank ascending (rank 1 = best).
+
+    "Current" means as of whenever this is called — Yahoo's API has no historical/point-in-time
+    standings lookup, so a call made well before the real midseason supplemental draft date
+    reflects the season-to-date only, not a true snapshot "as of" that future date. Calling this
+    once that date actually arrives is what makes the number correct for it.
+
+    Structure mirrors /teamlogos above (team[0] = meta list with name) with team[1] (or
+    team[2], Yahoo's "team_standings" placement varies in the wild) = {"team_standings": {...}}.
+    """
+    league_key = request.args.get("league_key", LEAGUE_KEY)
+    token = get_valid_token()
+    if not token:
+        return jsonify({"error": "Not authenticated."}), 401
+    try:
+        data = yahoo_get(f"/league/{league_key}/standings", token)
+        standings_raw = data["fantasy_content"]["league"][1]["standings"][0]["teams"]
+        result = []
+        for idx in (k for k in standings_raw.keys() if k != "count"):
+            team = standings_raw[idx]["team"]
+            team_meta = team[0]
+            name = next((m["name"] for m in team_meta if isinstance(m, dict) and "name" in m), None)
+            ts = next((m["team_standings"] for m in team if isinstance(m, dict) and "team_standings" in m), None)
+            if not name or not ts:
+                continue
+            rank = ts.get("rank")
+            points = ts.get("points_for") or ts.get("points") or (ts.get("outcome_totals") or {}).get("percentage")
+            result.append({"team": name, "rank": int(rank) if rank is not None else None, "points": points})
+        result.sort(key=lambda t: (t["rank"] is None, t["rank"]))
+        print(f"  standings: {len(result)} teams for {league_key}")
+        return jsonify({"ok": True, "standings": result})
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/teamlogos")
 def teamlogos():
     token = get_valid_token()

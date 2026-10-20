@@ -1500,6 +1500,7 @@ const LS_SIGNINGS_RAW = 'hghl_signings_raw_v1'; // all contracts grouped by play
 const LS_XACTIONS_2425 = 'hghl_xactions_2425';
 const LS_XACTIONS_2526 = 'hghl_xactions_2526';
 const LS_XACTIONS_2627 = 'hghl_xactions_2627';
+const LS_STANDINGS_2627 = 'hghl_standings_2627';
 
 let players = [], transactions = [], teamLogos = {}, editId = null, sortCol = 'pts', sortDir = -1, proxyOk = false, algoDropsApplied = false, draftMode = false, draftSubMode = 'prospect';
 // 26-27's season-long phase, independent of draftMode (which only drives the live preseason-
@@ -1511,6 +1512,10 @@ let players = [], transactions = [], teamLogos = {}, editId = null, sortCol = 'p
 // selectable placeholders for now, built out when each phase is actually reached.
 let seasonPhase2627 = 'firsthalf';
 let xactions2425 = [], xactions2526 = [], xactions2627 = [];
+// Each team's current overall-season rank (1=best) from Yahoo's /league/standings — fetched
+// when entering Mid so the team bubbles can be ordered worst-to-first (left-to-right), the
+// same convention DRAFT_TEAMS_2627 uses for the real draft order. {teamName: {rank, points}}.
+let standings2627 = {};
 let sortColSignings = 'sign_date', sortDirSignings = -1;
 // elcExpF/elcExpD set to their empirically backtested values (2026-07-28): weighted median
 // PROJECTED points of rostered ELC players by position (the basis the formula actually compares
@@ -3034,6 +3039,7 @@ function load(){
   xactions2425   = lsGet(LS_XACTIONS_2425) || [];
   xactions2526   = lsGet(LS_XACTIONS_2526) || [];
   xactions2627   = lsGet(LS_XACTIONS_2627) || [];
+  standings2627  = lsGet(LS_STANDINGS_2627) || {};
   // migrate: stamp end2526 from start2627 if not yet set
   let migrated = false;
   for(const p of players){
@@ -5814,11 +5820,12 @@ function setSeasonPhase2627(mode){
   // 1st/Mid/2nd Half: sync real Yahoo add/drop transactions and apply the completed ones to
   // the actual roster (start2627) — see syncXactionsAndApplyPhase2627. Fires async; updateStats()
   // above already rendered the F/D/G-less "picks left" bar with whatever's cached, this just
-  // refines it once the live fetch lands. Mid uses the same First Half xaction window (see
-  // _applyMidseasonXactions2627) since Mid-prep wants the roster exactly as it stands going
-  // into the supplemental draft — everything through the day before it, nothing from the
-  // draft itself yet.
+  // refines it once the live fetch lands. Mid applies First Half xactions plus any real "Mid
+  // Draft" night picks already made (see _applyMidseasonXactions2627).
   if(mode === 'firsthalf' || mode === 'midseason' || mode === 'secondhalf') syncXactionsAndApplyPhase2627(mode);
+  // Mid also needs each team's current standings rank to order the team bubbles worst-to-
+  // first (left-to-right) — see _syncStandings2627 / the teams sort in updateStats().
+  if(mode === 'midseason') _syncStandings2627().then(updateStats);
 }
 
 // 2nd Half doesn't exist yet until the midseason supplemental draft actually happens — disable
@@ -6137,6 +6144,28 @@ async function _fetchYahooXactions(leagueKey, statusElId){
     toast('Fetch failed: '+e.message);
     if(statusEl) statusEl.textContent = 'Error: '+e.message;
     return null;
+  }
+}
+
+// Fetches each team's current overall-season rank (see /yahoo-standings in yahoo_proxy.py)
+// and stores it keyed by OUR team names (via YAHOO_TEAM_NAME_ALIASES_2627 — Yahoo's real team
+// name can differ from the one used everywhere else in the app, e.g. "Whale Tank" -> "Killer
+// Whales"). Silent on failure (no statusEl) — this just feeds Mid's team-bubble ordering, it's
+// not a user-facing sync action with its own status line.
+async function _syncStandings2627(){
+  if(!proxyOk) return;
+  try {
+    const d = await fetch(`/yahoo-standings?league_key=${YAHOO_LEAGUE_KEY_2627}`).then(r=>r.json());
+    if(d.error) throw new Error(d.error);
+    const byTeam = {};
+    for(const row of d.standings){
+      const team = YAHOO_TEAM_NAME_ALIASES_2627[row.team] || row.team;
+      byTeam[team] = {rank: row.rank, points: row.points};
+    }
+    standings2627 = byTeam;
+    lsSet(LS_STANDINGS_2627, standings2627);
+  } catch(e){
+    console.log('[Mid standings sync] failed:', e.message);
   }
 }
 
@@ -11723,6 +11752,19 @@ function updateStats(){
     if(bi===-1) return -1;
     return ai - bi;
   });
+  // Mid: reorder the bubbles worst-to-first (left-to-right) by real current standings rank
+  // (see _syncStandings2627/standings2627), same convention DRAFT_TEAMS_2627 uses for the real
+  // draft order — rank 1 is best, so the HIGHEST rank number (worst team) goes first. A team
+  // missing from standings2627 (not synced yet) falls back to the end, after every ranked team.
+  if(seasonPhase2627 === 'midseason' && Object.keys(standings2627).length){
+    teams.sort((a,b)=>{
+      const ra = standings2627[a]?.rank, rb = standings2627[b]?.rank;
+      if(ra == null && rb == null) return 0;
+      if(ra == null) return 1;
+      if(rb == null) return -1;
+      return rb - ra;
+    });
+  }
   if(!teams.length){ document.getElementById('statCards').innerHTML=''; return; }
 
   // Shared bg/text color pair for a normalized pressure ratio (0=plenty of quality supply for
