@@ -5805,17 +5805,20 @@ function setSeasonPhase2627(mode){
   // 1st/2nd Half replacement swaps get layered on top right after, via
   // syncXactionsAndApplyPhase2627. Found live 2026-10-06: switching to 1st Half was showing a
   // predraft (PREDROP_ROSTER_2627) composition because nothing was forcing this baseline.
-  if((mode === 'firsthalf' || mode === 'secondhalf') && Object.keys(POSTDRAFT_ROSTER_2627).length){
+  if((mode === 'firsthalf' || mode === 'midseason' || mode === 'secondhalf') && Object.keys(POSTDRAFT_ROSTER_2627).length){
     _seedStart2627FromActualDraft();
     lsSet(LS_PLAYERS, players);
   }
   updateDraftTab();
   updateStats();
-  // 1st/2nd Half: sync real Yahoo add/drop transactions and apply the completed ones to the
-  // actual roster (start2627) — see syncXactionsAndApplyPhase2627. Fires async; updateStats()
+  // 1st/Mid/2nd Half: sync real Yahoo add/drop transactions and apply the completed ones to
+  // the actual roster (start2627) — see syncXactionsAndApplyPhase2627. Fires async; updateStats()
   // above already rendered the F/D/G-less "picks left" bar with whatever's cached, this just
-  // refines it once the live fetch lands.
-  if(mode === 'firsthalf' || mode === 'secondhalf') syncXactionsAndApplyPhase2627(mode);
+  // refines it once the live fetch lands. Mid uses the same First Half xaction window (see
+  // _applyMidseasonXactions2627) since Mid-prep wants the roster exactly as it stands going
+  // into the supplemental draft — everything through the day before it, nothing from the
+  // draft itself yet.
+  if(mode === 'firsthalf' || mode === 'midseason' || mode === 'secondhalf') syncXactionsAndApplyPhase2627(mode);
 }
 
 // 2nd Half doesn't exist yet until the midseason supplemental draft actually happens — disable
@@ -5835,14 +5838,17 @@ function _applySeasonPhaseGating2627(){
 // for the Xactions tab's human-readable summary but wrong here: a real first-half replacement
 // pick made the very next day after the draft must count against the 2-pick limit immediately
 // (found live 2026-10-06 — KIL's Oct 3 Forsberg/Gauthier swap was invisible to the count
-// because Oct 3 fell inside that grace window). "First Half"/"Second Half" here mean strictly
-// after the draft / strictly after the supplemental window, with no grace. Returns null for
-// anything in the preseason or supplemental-draft windows (not one of the 2 half-picks).
+// because Oct 3 fell inside that grace window). "First Half" runs all the way up to (not
+// including) the supplemental draft date itself — both the "1st" and "Mid" phase buttons load
+// transactions through this same cutoff, 2026-10-20, per the user: Mid-prep wants the roster
+// exactly as it stands going into the draft. "Second Half" only starts a week after the
+// supplemental draft date, so the draft's own multi-round adds/drops (a different mechanic,
+// not part of the 2-pick-per-half budget) don't get misread as Second Half picks. Returns
+// null for anything in the preseason window or the supplemental-draft week itself.
 function _midseasonHalf2627(dateStr){
   const d = new Date(dateStr);
   if(d <= new Date(draftDatePreseason2627)) return null;
-  const suppStart = new Date(addDays(draftDateSupplemental2627, -7));
-  if(d < suppStart) return 'First Half';
+  if(d < new Date(draftDateSupplemental2627)) return 'First Half';
   const suppEnd = new Date(addDays(draftDateSupplemental2627, 7));
   if(d <= suppEnd) return null;
   return 'Second Half';
@@ -5871,7 +5877,9 @@ function _replacementPicksUsed2627(periodLabel){
 // Draft. Entering 2nd Half re-applies First Half too (robust to skipping straight to 2nd
 // Half without ever switching into 1st) — Preseason's pure drops are a different Yahoo
 // structure (see yahoo_proxy.py) and are already recorded via the real draft/drops data, so
-// they're deliberately not touched here.
+// they're deliberately not touched here. Mid shares this same "First Half only" branch —
+// it's prepping for the supplemental draft, not a half of its own, so it should reflect every
+// real transaction through the day before that draft (see _midseasonHalf2627).
 // Applies xactions2627 (whatever's currently loaded, from either entry point below) to
 // start2627 for the given half — shared so a roster stays correct regardless of HOW the
 // transaction data got refreshed, not just when switching the phase button.
